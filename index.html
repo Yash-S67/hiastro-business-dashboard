@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HiAstro Business Dashboard</title>
-    <link rel="stylesheet" href="assets/styles.css" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260609-stream-split" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -54,11 +54,34 @@
             <div class="panel"><canvas id="revenueRateChart"></canvas></div>
           </div>
           <div class="grid two">
+            <div class="panel"><canvas id="familyPayerChart"></canvas></div>
+            <div class="panel"><canvas id="familyAvgTxnChart"></canvas></div>
+          </div>
+          <div class="grid two">
             <div class="panel"><canvas id="revenueFamilyChart"></canvas></div>
+            <div class="panel"><canvas id="revenueCohortChart"></canvas></div>
+          </div>
+          <div class="panel">
+            <h3>Revenue Stream KPI Detail</h3>
+            <div id="revenueStreamKpiTable"></div>
+          </div>
+          <div class="grid two">
             <div class="panel">
               <h3>Daily Revenue Detail</h3>
               <div id="revenueDailyTable"></div>
             </div>
+            <div class="panel">
+              <h3>Revenue by User Type</h3>
+              <div id="revenueCohortTable"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>Payer Segment Detail</h3>
+            <div id="payerSegmentTable"></div>
+          </div>
+          <div class="panel">
+            <h3>Payer Segment by Revenue Stream</h3>
+            <div id="payerFamilySegmentTable"></div>
           </div>
           <div class="panel">
             <h3>Revenue Family Detail</h3>
@@ -117,6 +140,13 @@
               <div id="acquisitionDailyTable"></div>
             </div>
           </div>
+          <div class="grid two">
+            <div class="panel"><canvas id="acquisitionPaymentFamilyChart"></canvas></div>
+            <div class="panel">
+              <h3>New User Payment Type Funnel</h3>
+              <div id="acquisitionPaymentFamilyTable"></div>
+            </div>
+          </div>
           <div class="panel">
             <h3>Funnel Detail</h3>
             <div id="acquisitionFunnelTableDetail"></div>
@@ -130,10 +160,17 @@
         </div>
         <div class="tab-panel" id="acquisition-followup">
           <div class="grid two">
+            <div class="panel"><canvas id="followupCohortChart"></canvas></div>
             <div class="panel"><canvas id="followupEntityChart"></canvas></div>
+          </div>
+          <div class="grid two">
             <div class="panel">
               <h3>Follow-up Query Demographics</h3>
               <div id="followupDemoTable"></div>
+            </div>
+            <div class="panel">
+              <h3>Follow-up Segment Detail</h3>
+              <div id="followupSegmentTable"></div>
             </div>
           </div>
           <div class="panel">
@@ -179,6 +216,10 @@
               <div id="botTable"></div>
             </div>
           </div>
+          <div class="panel">
+            <h3>Bot Repeat by User Type</h3>
+            <div id="botCohortTable"></div>
+          </div>
         </div>
       </section>
 
@@ -198,9 +239,16 @@
         <div class="tab-panel active" id="engagement-sessions">
           <div class="grid two">
             <div class="panel"><canvas id="engagementDailyChart"></canvas></div>
+            <div class="panel"><canvas id="sessionCohortChart"></canvas></div>
+          </div>
+          <div class="grid two">
             <div class="panel">
               <h3>Session Time by Platform</h3>
               <div id="sessionPlatformTable"></div>
+            </div>
+            <div class="panel">
+              <h3>Session Segment Detail</h3>
+              <div id="sessionSegmentTable"></div>
             </div>
           </div>
           <div class="panel">
@@ -212,6 +260,13 @@
           <div class="grid two">
             <div class="panel"><canvas id="bimDailyChart"></canvas></div>
             <div class="panel"><canvas id="notificationTrendChart"></canvas></div>
+          </div>
+          <div class="grid two">
+            <div class="panel"><canvas id="bimCohortChart"></canvas></div>
+            <div class="panel">
+              <h3>BIM by User Type</h3>
+              <div id="bimCohortTable"></div>
+            </div>
           </div>
           <div class="grid two">
             <div class="panel">
@@ -255,6 +310,6 @@
       </section>
     </main>
 
-    <script src="assets/app.js"></script>
+    <script src="assets/app.js?v=20260609-stream-split"></script>
   </body>
 </html>

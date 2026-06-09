@@ -28,6 +28,11 @@ UUID_RE = re.compile(
     r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 )
 ENTITY_ID_RE = re.compile(r"^[0-9a-fA-F]{24}$")
+REVENUE_FAMILIES = [
+    ("subscription", "Subscription"),
+    ("pay_as_you_go", "Pay as you go"),
+    ("day_pass", "Day pass"),
+]
 
 
 def clean_value(value: Any) -> Any:
@@ -97,6 +102,12 @@ def slug_variants(name: str) -> set[str]:
         if len(stripped) >= 2:
             variants.add(stripped[0] + stripped[-1])
     return {v for v in variants if v}
+
+
+def revenue_family_label(family: Any) -> str:
+    labels = dict(REVENUE_FAMILIES)
+    key = str(family or "unknown")
+    return labels.get(key, key.replace("_", " ").title())
 
 
 def age_bucket(dob: Any, as_of: date) -> str:
@@ -318,6 +329,7 @@ def aggregate_mixpanel(
     bot_lookup = bot_lookup or {}
     session_daily: dict[str, dict[str, Any]] = defaultdict(lambda: {"sessions": 0, "users": set(), "seconds": 0.0})
     session_platform: dict[str, dict[str, Any]] = defaultdict(lambda: {"sessions": 0, "users": set(), "seconds": 0.0})
+    session_user_daily: dict[tuple[str, str], dict[str, Any]] = defaultdict(lambda: {"sessions": 0, "seconds": 0.0})
     session_users_total: set[str] = set()
     login_daily: dict[str, set[str]] = defaultdict(set)
     followup_daily: dict[str, set[str]] = defaultdict(set)
@@ -332,6 +344,7 @@ def aggregate_mixpanel(
     }
     bim_daily: dict[str, dict[str, Any]] = defaultdict(lambda: {"opens": 0, "users": set()})
     bim_platform: dict[str, dict[str, Any]] = defaultdict(lambda: {"opens": 0, "users": set()})
+    bim_user_daily: dict[tuple[str, str], dict[str, Any]] = defaultdict(lambda: {"opens": 0})
     notification_campaigns: dict[str, dict[str, Any]] = defaultdict(lambda: {"opens": 0, "users": set()})
 
     for event in events:
@@ -354,6 +367,8 @@ def aggregate_mixpanel(
             if user_id:
                 session_daily[event_date]["users"].add(user_id)
                 session_platform[platform]["users"].add(user_id)
+                session_user_daily[(event_date, user_id)]["sessions"] += 1
+                session_user_daily[(event_date, user_id)]["seconds"] += duration
                 session_users_total.add(user_id)
 
         elif name == "Login Success" and user_id:
@@ -391,6 +406,7 @@ def aggregate_mixpanel(
                 if user_id:
                     bim_daily[event_date]["users"].add(user_id)
                     bim_platform[platform]["users"].add(user_id)
+                    bim_user_daily[(event_date, user_id)]["opens"] += 1
 
     def session_rows(source: dict[str, dict[str, Any]], key_name: str) -> list[dict[str, Any]]:
         rows = []
@@ -441,9 +457,19 @@ def aggregate_mixpanel(
     return {
         "session_daily": session_rows(session_daily, "date"),
         "session_by_platform": session_rows(session_platform, "platform"),
+        "session_user_daily": [
+            {
+                "date": event_date,
+                "user_id": user_id,
+                "sessions": value["sessions"],
+                "seconds": value["seconds"],
+            }
+            for (event_date, user_id), value in sorted(session_user_daily.items())
+        ],
         "session_users_total": len(session_users_total),
         "login_daily": user_rows(login_daily, "date", "login_success_users"),
         "followup_daily": user_rows(followup_daily, "date", "followup_users"),
+        "followup_daily_user_ids": {event_date: sorted(users) for event_date, users in sorted(followup_daily.items())},
         "followup_users": followup_users,
         "primary_entity_by_user": {
             user_id: counts.most_common(1)[0][0]
@@ -464,8 +490,21 @@ def aggregate_mixpanel(
         "followup_demographics": followup_demographics,
         "bim_daily": open_rows(bim_daily, "date"),
         "bim_by_platform": open_rows(bim_platform, "platform"),
+        "bim_user_daily": [
+            {
+                "date": event_date,
+                "user_id": user_id,
+                "opens": value["opens"],
+            }
+            for (event_date, user_id), value in sorted(bim_user_daily.items())
+        ],
         "notification_campaigns": [
-            {"campaign": campaign, "opens": value["opens"], "users": len(value["users"])}
+            {
+                "campaign": campaign,
+                "opens": value["opens"],
+                "users": len(value["users"]),
+                "opens_per_user": safe_ratio(value["opens"], len(value["users"])),
+            }
             for campaign, value in sorted(notification_campaigns.items(), key=lambda item: item[1]["opens"], reverse=True)[:15]
         ],
     }
@@ -474,6 +513,7 @@ def aggregate_mixpanel(
 def build_monetization(
     engine,
     ranges: dict[str, Any],
+    profiles: pd.DataFrame,
     primary_entity_by_user: dict[str, str],
     bot_lookup: dict[str, dict[str, str]] | None = None,
 ) -> dict[str, Any]:
@@ -557,6 +597,7 @@ def build_monetization(
     current = window_df(ranges["current_start"], ranges["current_end"])
     prior7 = window_df(ranges["prior_7_start"], ranges["prior_7_end"])
     prior30 = window_df(ranges["prior_30_start"], ranges["prior_30_end"])
+    current_enriched = enrich_users(current, profiles, ranges)
 
     def kpis(df: pd.DataFrame) -> dict[str, float]:
         txns = int(df["transactions"].sum()) if not df.empty else 0
@@ -578,15 +619,63 @@ def build_monetization(
         for key, value in prior30_kpis.items()
     }
 
+    def family_summary_rows() -> pd.DataFrame:
+        known_families = [family_id for family_id, _label in REVENUE_FAMILIES]
+        extra_families = sorted(
+            (
+                set(current["family"].dropna().astype(str))
+                | set(prior7["family"].dropna().astype(str))
+                | set(prior30["family"].dropna().astype(str))
+            )
+            - set(known_families)
+        )
+        rows = []
+        total_revenue = current_kpis["revenue"]
+        total_payers = current_kpis["payers"]
+        total_transactions = current_kpis["transactions"]
+        for family_id in known_families + extra_families:
+            current_metrics = kpis(current[current["family"].eq(family_id)])
+            prior7_metrics = kpis(prior7[prior7["family"].eq(family_id)])
+            prior30_metrics = kpis(prior30[prior30["family"].eq(family_id)])
+            prior30_baseline = {
+                key: (value / 30 * ranges["period_days"] if key in {"revenue", "transactions", "payers"} else value)
+                for key, value in prior30_metrics.items()
+            }
+            rows.append(
+                {
+                    "family": family_id,
+                    "family_label": revenue_family_label(family_id),
+                    "selection": f"family = {revenue_family_label(family_id)}",
+                    **current_metrics,
+                    "revenue_share_pct": safe_div(current_metrics["revenue"], total_revenue),
+                    "payer_share_pct": safe_div(current_metrics["payers"], total_payers),
+                    "transaction_share_pct": safe_div(current_metrics["transactions"], total_transactions),
+                    "revenue_growth_vs_prior_7_pct": pct_change(current_metrics["revenue"], prior7_metrics["revenue"]),
+                    "payer_growth_vs_prior_7_pct": pct_change(current_metrics["payers"], prior7_metrics["payers"]),
+                    "transaction_growth_vs_prior_7_pct": pct_change(current_metrics["transactions"], prior7_metrics["transactions"]),
+                    "avg_transaction_growth_vs_prior_7_pct": pct_change(current_metrics["avg_transaction"], prior7_metrics["avg_transaction"]),
+                    "revenue_growth_vs_30day_baseline_pct": pct_change(current_metrics["revenue"], prior30_baseline["revenue"]),
+                    "payer_growth_vs_30day_baseline_pct": pct_change(current_metrics["payers"], prior30_baseline["payers"]),
+                    "transaction_growth_vs_30day_baseline_pct": pct_change(current_metrics["transactions"], prior30_baseline["transactions"]),
+                    "avg_transaction_growth_vs_30day_baseline_pct": pct_change(current_metrics["avg_transaction"], prior30_baseline["avg_transaction"]),
+                }
+            )
+        return pd.DataFrame(rows)
+
+    family_summary = family_summary_rows()
+
     if current.empty:
-        daily = pd.DataFrame(columns=["day", "family", "revenue", "transactions", "payers", "avg_transaction", "revenue_share_pct"])
+        daily = pd.DataFrame(columns=["day", "family", "family_label", "revenue", "transactions", "payers", "avg_transaction", "revenue_share_pct"])
         daily_summary = pd.DataFrame(columns=["day", "revenue", "transactions", "payers", "avg_transaction", "avg_revenue_per_payer"])
+        daily_user_cohort = pd.DataFrame(columns=["day", "user_cohort", "revenue", "transactions", "payers", "avg_transaction", "revenue_share_pct"])
+        daily_family_user_cohort = pd.DataFrame(columns=["day", "family", "family_label", "user_cohort", "revenue", "transactions", "payers", "avg_transaction", "revenue_share_pct"])
     else:
         daily = (
             current.groupby(["day", "family"], as_index=False)
             .agg(revenue=("revenue", "sum"), transactions=("transactions", "sum"), payers=("user_id", "nunique"))
             .sort_values(["day", "family"])
         )
+        daily["family_label"] = daily["family"].apply(revenue_family_label)
         daily_totals = daily.groupby("day")["revenue"].transform("sum")
         daily["avg_transaction"] = (daily["revenue"] / daily["transactions"]).round(2)
         daily["revenue_share_pct"] = (daily["revenue"] / daily_totals * 100).round(2)
@@ -599,19 +688,35 @@ def build_monetization(
         daily_summary["avg_transaction"] = (daily_summary["revenue"] / daily_summary["transactions"]).round(2)
         daily_summary["avg_revenue_per_payer"] = (daily_summary["revenue"] / daily_summary["payers"]).round(2)
 
+        daily_user_cohort = (
+            current_enriched.groupby(["day", "user_cohort"], as_index=False)
+            .agg(revenue=("revenue", "sum"), transactions=("transactions", "sum"), payers=("user_id", "nunique"))
+            .sort_values(["day", "user_cohort"])
+        )
+        daily_user_cohort["avg_transaction"] = (daily_user_cohort["revenue"] / daily_user_cohort["transactions"]).round(2)
+        daily_cohort_totals = daily_user_cohort.groupby("day")["revenue"].transform("sum")
+        daily_user_cohort["revenue_share_pct"] = (daily_user_cohort["revenue"] / daily_cohort_totals * 100).round(2)
+
+        daily_family_user_cohort = (
+            current_enriched.groupby(["day", "family", "user_cohort"], as_index=False)
+            .agg(revenue=("revenue", "sum"), transactions=("transactions", "sum"), payers=("user_id", "nunique"))
+            .sort_values(["day", "family", "user_cohort"])
+        )
+        daily_family_user_cohort["family_label"] = daily_family_user_cohort["family"].apply(revenue_family_label)
+        daily_family_user_cohort["avg_transaction"] = (
+            daily_family_user_cohort["revenue"] / daily_family_user_cohort["transactions"]
+        ).round(2)
+        daily_family_totals = daily_family_user_cohort.groupby(["day", "family"])["revenue"].transform("sum")
+        daily_family_user_cohort["revenue_share_pct"] = (
+            daily_family_user_cohort["revenue"] / daily_family_totals * 100
+        ).round(2)
+
     daily["day"] = daily["day"].astype(str)
     daily_summary["day"] = daily_summary["day"].astype(str)
+    daily_user_cohort["day"] = daily_user_cohort["day"].astype(str)
+    daily_family_user_cohort["day"] = daily_family_user_cohort["day"].astype(str)
 
-    family = (
-        current.groupby("family", as_index=False)
-        .agg(revenue=("revenue", "sum"), transactions=("transactions", "sum"), payers=("user_id", "nunique"))
-        .sort_values("revenue", ascending=False)
-    )
-    if family.empty:
-        family = pd.DataFrame(columns=["family", "revenue", "transactions", "payers", "avg_transaction", "revenue_share_pct"])
-    else:
-        family["avg_transaction"] = (family["revenue"] / family["transactions"]).round(2)
-        family["revenue_share_pct"] = (family["revenue"] / family["revenue"].sum() * 100).round(2)
+    family = family_summary.sort_values("revenue", ascending=False)
 
     pack = (
         current.groupby(["family", "pack", "plan_code", "amount"], as_index=False)
@@ -619,8 +724,10 @@ def build_monetization(
         .sort_values("revenue", ascending=False)
     )
     if pack.empty:
-        pack = pd.DataFrame(columns=["family", "pack", "plan_code", "amount", "revenue", "transactions", "payers", "avg_transaction", "revenue_share_pct"])
+        pack = pd.DataFrame(columns=["family", "family_label", "selection", "pack", "plan_code", "amount", "revenue", "transactions", "payers", "avg_transaction", "revenue_share_pct"])
     else:
+        pack["family_label"] = pack["family"].apply(revenue_family_label)
+        pack["selection"] = "family = " + pack["family_label"] + "; pack = " + pack["pack"].astype(str)
         pack["avg_transaction"] = (pack["revenue"] / pack["transactions"]).round(2)
         pack["revenue_share_pct"] = (pack["revenue"] / pack["revenue"].sum() * 100).round(2)
 
@@ -628,21 +735,94 @@ def build_monetization(
         current.groupby("user_id", as_index=False)
         .agg(revenue=("revenue", "sum"), transactions=("transactions", "sum"))
     )
+    user_family_revenue = (
+        current.groupby(["user_id", "family"], as_index=False)
+        .agg(revenue=("revenue", "sum"), transactions=("transactions", "sum"))
+    )
+    segment_rows = []
+    family_segment_rows = []
+    for field in ["user_cohort", "platform", "gender", "age_bucket", "config_id", "occupation", "marital_status"]:
+        if current_enriched.empty:
+            continue
+        seg = (
+            current_enriched.groupby(field, dropna=False)
+            .agg(revenue=("revenue", "sum"), transactions=("transactions", "sum"), payers=("user_id", "nunique"))
+            .reset_index()
+            .rename(columns={field: "bucket"})
+        )
+        seg["segment"] = field
+        seg["selection"] = seg["segment"].astype(str) + " = " + seg["bucket"].astype(str)
+        seg["avg_transaction"] = (seg["revenue"] / seg["transactions"]).round(2)
+        seg["avg_revenue_per_payer"] = (seg["revenue"] / seg["payers"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        seg = add_share(seg, "revenue", "revenue_share_pct")
+        segment_rows.append(seg)
+
+        family_seg = (
+            current_enriched.groupby(["family", field], dropna=False)
+            .agg(revenue=("revenue", "sum"), transactions=("transactions", "sum"), payers=("user_id", "nunique"))
+            .reset_index()
+            .rename(columns={field: "bucket"})
+        )
+        family_seg["family_label"] = family_seg["family"].apply(revenue_family_label)
+        family_seg["segment"] = field
+        family_seg["selection"] = (
+            "family = "
+            + family_seg["family_label"].astype(str)
+            + "; "
+            + family_seg["segment"].astype(str)
+            + " = "
+            + family_seg["bucket"].astype(str)
+        )
+        family_seg["avg_transaction"] = (family_seg["revenue"] / family_seg["transactions"]).round(2)
+        family_seg["avg_revenue_per_payer"] = (
+            family_seg["revenue"] / family_seg["payers"]
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        total_revenue_by_family = family_seg.groupby("family")["revenue"].transform("sum")
+        family_seg["family_revenue_share_pct"] = (
+            family_seg["revenue"] / total_revenue_by_family * 100
+        ).round(2)
+        family_seg = add_share(family_seg, "revenue", "total_revenue_share_pct")
+        family_segment_rows.append(family_seg)
+    payer_segments = pd.concat(segment_rows, ignore_index=True) if segment_rows else pd.DataFrame(
+        columns=["segment", "bucket", "selection", "revenue", "transactions", "payers", "avg_transaction", "avg_revenue_per_payer", "revenue_share_pct"]
+    )
+    payer_segments_by_family = pd.concat(family_segment_rows, ignore_index=True) if family_segment_rows else pd.DataFrame(
+        columns=["family", "family_label", "segment", "bucket", "selection", "revenue", "transactions", "payers", "avg_transaction", "avg_revenue_per_payer", "family_revenue_share_pct", "total_revenue_share_pct"]
+    )
     entity_rows = []
+    family_ids = [family_id for family_id, _label in REVENUE_FAMILIES]
+    family_metrics_by_user: dict[str, dict[str, dict[str, float]]] = defaultdict(dict)
+    for row in user_family_revenue.to_dict(orient="records"):
+        family_metrics_by_user[str(row.get("user_id"))][str(row.get("family"))] = {
+            "revenue": float(row.get("revenue") or 0),
+            "transactions": int(row.get("transactions") or 0),
+        }
     for user_id, entity in primary_entity_by_user.items():
         row = user_revenue[user_revenue["user_id"].eq(user_id)]
         revenue_value = float(row["revenue"].sum()) if not row.empty else 0.0
         txns = int(row["transactions"].sum()) if not row.empty else 0
+        family_values: dict[str, Any] = {}
+        for family_id in family_ids:
+            family_metric = family_metrics_by_user.get(user_id, {}).get(family_id, {})
+            family_revenue = float(family_metric.get("revenue") or 0)
+            family_transactions = int(family_metric.get("transactions") or 0)
+            family_values[f"{family_id}_revenue"] = family_revenue
+            family_values[f"{family_id}_transactions"] = family_transactions
+            family_values[f"{family_id}_payer"] = 1 if family_revenue > 0 else 0
         entity_rows.append(
             {
                 **resolve_entity(entity, bot_lookup),
                 "user_id": user_id,
                 "revenue": revenue_value,
                 "transactions": txns,
+                **family_values,
             }
         )
     entity_df = pd.DataFrame(entity_rows)
     if entity_df.empty:
+        family_entity_columns = []
+        for family_id in family_ids:
+            family_entity_columns.extend([f"{family_id}_revenue", f"{family_id}_payers", f"{family_id}_transactions"])
         entity_distribution = pd.DataFrame(
             columns=[
                 "entity_label",
@@ -658,17 +838,23 @@ def build_monetization(
                 "revenue_share_pct",
                 "avg_revenue_per_payer",
                 "revenue_per_followup_user",
+                *family_entity_columns,
             ]
         )
     else:
+        entity_agg: dict[str, Any] = {
+            "followup_users": ("user_id", "nunique"),
+            "payers": ("revenue", lambda s: int((s > 0).sum())),
+            "transactions": ("transactions", "sum"),
+            "revenue": ("revenue", "sum"),
+        }
+        for family_id in family_ids:
+            entity_agg[f"{family_id}_revenue"] = (f"{family_id}_revenue", "sum")
+            entity_agg[f"{family_id}_payers"] = (f"{family_id}_payer", "sum")
+            entity_agg[f"{family_id}_transactions"] = (f"{family_id}_transactions", "sum")
         entity_distribution = (
             entity_df.groupby(["entity_label", "bot_name", "entity_slug", "bot_id", "entity_match_type"], as_index=False)
-            .agg(
-                followup_users=("user_id", "nunique"),
-                payers=("revenue", lambda s: int((s > 0).sum())),
-                transactions=("transactions", "sum"),
-                revenue=("revenue", "sum"),
-            )
+            .agg(**entity_agg)
             .sort_values(["revenue", "followup_users"], ascending=False)
             .head(20)
         )
@@ -685,6 +871,10 @@ def build_monetization(
         entity_distribution["revenue_per_followup_user"] = (
             entity_distribution["revenue"] / entity_distribution["followup_users"]
         ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        for family_id in family_ids:
+            entity_distribution[f"{family_id}_entity_revenue_share_pct"] = (
+                entity_distribution[f"{family_id}_revenue"] / entity_distribution["revenue"] * 100
+            ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
 
     return {
         "kpis": {
@@ -703,13 +893,21 @@ def build_monetization(
                 key: pct_change(current_kpis.get(key, 0), prior_30_period_baseline.get(key, 0))
                 for key in current_kpis
             },
+            "by_family": records(family_summary.sort_values("revenue", ascending=False)),
         },
         "daily": records(daily),
         "daily_summary": records(daily_summary),
+        "daily_user_cohort": records(daily_user_cohort),
+        "daily_family_user_cohort": records(daily_family_user_cohort),
         "family": records(family),
         "pack": records(pack.head(30)),
+        "payer_segments": records(payer_segments.sort_values(["segment", "revenue"], ascending=[True, False]).head(80)),
+        "payer_segments_by_family": records(
+            payer_segments_by_family.sort_values(["family", "segment", "revenue"], ascending=[True, True, False]).head(160)
+        ),
         "entity_distribution": records(entity_distribution),
         "user_revenue_current": records(user_revenue),
+        "user_family_revenue_current": records(user_family_revenue),
     }
 
 
@@ -761,8 +959,61 @@ def build_profiles(engine, as_of: date) -> pd.DataFrame:
     profiles["signup_date"] = pd.to_datetime(profiles["signup_date"]).dt.date
     profiles["gender"] = profiles["gender"].fillna("Unknown").astype(str).str.lower()
     profiles["platform"] = profiles["platform"].fillna("unknown").astype(str).str.lower()
+    profiles["occupation"] = profiles["occupation"].fillna("Unknown").astype(str)
+    profiles["marital_status"] = profiles["marital_status"].fillna("Unknown").astype(str)
     profiles["age_bucket"] = profiles["birth_datetime_utc"].apply(lambda value: age_bucket(value, as_of))
     return profiles
+
+
+PROFILE_COLUMNS = [
+    "user_id",
+    "signup_date",
+    "gender",
+    "age_bucket",
+    "platform",
+    "config_id",
+    "occupation",
+    "marital_status",
+]
+
+
+def user_cohort_from_signup(signup_date: Any, ranges: dict[str, Any]) -> str:
+    if signup_date is None or pd.isna(signup_date):
+        return "Unknown user"
+    if isinstance(signup_date, str):
+        try:
+            signup_date = pd.to_datetime(signup_date).date()
+        except Exception:
+            return "Unknown user"
+    if isinstance(signup_date, datetime):
+        signup_date = signup_date.date()
+    return "New user" if ranges["current_start"] <= signup_date <= ranges["current_end"] else "Old user"
+
+
+def enrich_users(df: pd.DataFrame, profiles: pd.DataFrame, ranges: dict[str, Any]) -> pd.DataFrame:
+    if df.empty:
+        out = df.copy()
+        for column in PROFILE_COLUMNS:
+            if column not in out.columns:
+                out[column] = None
+        out["user_cohort"] = "Unknown user"
+        return out
+    profile_cols = [column for column in PROFILE_COLUMNS if column in profiles.columns]
+    out = df.merge(profiles[profile_cols], on="user_id", how="left")
+    out["user_cohort"] = out["signup_date"].apply(lambda value: user_cohort_from_signup(value, ranges))
+    for column in ["gender", "age_bucket", "platform", "occupation", "marital_status"]:
+        out[column] = out[column].fillna("Unknown").astype(str)
+    out["config_id"] = out["config_id"].fillna("Unknown").astype(str)
+    return out
+
+
+def add_share(df: pd.DataFrame, value_col: str, out_col: str) -> pd.DataFrame:
+    if df.empty:
+        df[out_col] = []
+        return df
+    total = float(df[value_col].sum())
+    df[out_col] = (df[value_col] / total * 100).round(2) if total else 0
+    return df
 
 
 def build_acquisition(
@@ -770,6 +1021,7 @@ def build_acquisition(
     ranges: dict[str, Any],
     mixpanel: dict[str, Any],
     user_revenue_current: pd.DataFrame,
+    user_family_revenue_current: pd.DataFrame,
 ) -> dict[str, Any]:
     current_users = profiles[
         (profiles["signup_date"] >= ranges["current_start"])
@@ -777,6 +1029,22 @@ def build_acquisition(
     ].copy()
     followup_ids = set(mixpanel["followup_users"].keys())
     payer_ids = set(user_revenue_current.loc[user_revenue_current["revenue"] > 0, "user_id"])
+    followup_base = pd.DataFrame(
+        [
+            {
+                "user_id": user_id,
+                "first_followup_date": profile.get("first_followup_date"),
+                "region": profile.get("region") or "Unknown",
+                "city": profile.get("city") or "Unknown",
+            }
+            for user_id, profile in mixpanel["followup_users"].items()
+        ]
+    )
+    if followup_base.empty:
+        followup_base = pd.DataFrame(columns=["user_id", "first_followup_date", "region", "city"])
+    followup_profiles = enrich_users(followup_base, profiles, ranges)
+    followup_profiles["region"] = followup_profiles["region"].fillna("Unknown").astype(str)
+    followup_profiles["city"] = followup_profiles["city"].fillna("Unknown").astype(str)
 
     current_users["had_followup"] = current_users["user_id"].isin(followup_ids)
     current_users["paid"] = current_users["user_id"].isin(payer_ids)
@@ -815,8 +1083,58 @@ def build_acquisition(
         ).fillna(0).round(2)
     daily["signup_date"] = daily["signup_date"].astype(str)
 
+    current_user_ids = set(current_users["user_id"])
+    new_user_family_revenue = user_family_revenue_current[user_family_revenue_current["user_id"].isin(current_user_ids)].copy()
+    if new_user_family_revenue.empty:
+        payment_type_funnel = pd.DataFrame(
+            columns=["family", "family_label", "selection", "new_users", "followup_users", "payers", "followup_payers", "revenue", "transactions", "new_to_payment_pct", "followup_to_payment_pct", "avg_revenue_per_payer"]
+        )
+        daily_payment_family = pd.DataFrame(columns=["signup_date", "family", "family_label", "payers", "transactions", "revenue", "avg_revenue_per_payer"])
+    else:
+        new_user_family_revenue["revenue"] = pd.to_numeric(new_user_family_revenue["revenue"], errors="coerce").fillna(0.0)
+        new_user_family_revenue["transactions"] = pd.to_numeric(new_user_family_revenue["transactions"], errors="coerce").fillna(0).astype(int)
+        new_user_family_revenue = new_user_family_revenue.merge(
+            current_users[["user_id", "signup_date", "had_followup"]],
+            on="user_id",
+            how="left",
+        )
+        payment_rows = []
+        for family_id, family_label in REVENUE_FAMILIES:
+            family_df = new_user_family_revenue[new_user_family_revenue["family"].eq(family_id)]
+            family_payers = int(family_df["user_id"].nunique()) if not family_df.empty else 0
+            family_followup_payers = int(family_df.loc[family_df["had_followup"].fillna(False), "user_id"].nunique()) if not family_df.empty else 0
+            family_revenue = float(family_df["revenue"].sum()) if not family_df.empty else 0.0
+            family_transactions = int(family_df["transactions"].sum()) if not family_df.empty else 0
+            payment_rows.append(
+                {
+                    "family": family_id,
+                    "family_label": family_label,
+                    "selection": f"family = {family_label}",
+                    "new_users": new_users,
+                    "followup_users": followup_users,
+                    "payers": family_payers,
+                    "followup_payers": family_followup_payers,
+                    "revenue": round(family_revenue, 2),
+                    "transactions": family_transactions,
+                    "new_to_payment_pct": safe_div(family_payers, new_users),
+                    "followup_to_payment_pct": safe_div(family_followup_payers, followup_users),
+                    "avg_revenue_per_payer": round(family_revenue / family_payers, 2) if family_payers else 0,
+                }
+            )
+        payment_type_funnel = pd.DataFrame(payment_rows)
+        daily_payment_family = (
+            new_user_family_revenue.groupby(["signup_date", "family"], as_index=False)
+            .agg(payers=("user_id", "nunique"), transactions=("transactions", "sum"), revenue=("revenue", "sum"))
+            .sort_values(["signup_date", "family"])
+        )
+        daily_payment_family["family_label"] = daily_payment_family["family"].apply(revenue_family_label)
+        daily_payment_family["avg_revenue_per_payer"] = (
+            daily_payment_family["revenue"] / daily_payment_family["payers"]
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+    daily_payment_family["signup_date"] = daily_payment_family["signup_date"].astype(str)
+
     segment_rows = []
-    for field in ["platform", "gender", "age_bucket", "config_id"]:
+    for field in ["platform", "gender", "age_bucket", "config_id", "occupation", "marital_status"]:
         seg = (
             current_users.groupby(field, dropna=False)
             .agg(new_users=("user_id", "nunique"), followup_users=("had_followup", "sum"), payers=("paid", "sum"))
@@ -824,6 +1142,7 @@ def build_acquisition(
             .rename(columns={field: "bucket"})
         )
         seg["segment"] = field
+        seg["selection"] = seg["segment"].astype(str) + " = " + seg["bucket"].astype(str)
         seg["followup_rate_pct"] = (seg["followup_users"] / seg["new_users"] * 100).round(2)
         seg["payer_rate_pct"] = (seg["payers"] / seg["new_users"] * 100).round(2)
         seg["followup_to_payer_pct"] = (seg["payers"] / seg["followup_users"] * 100).replace(
@@ -831,6 +1150,51 @@ def build_acquisition(
         ).fillna(0).round(2)
         segment_rows.append(seg)
     segments = pd.concat(segment_rows, ignore_index=True) if segment_rows else pd.DataFrame()
+
+    followup_daily_rows = []
+    for event_date, users in mixpanel.get("followup_daily_user_ids", {}).items():
+        for user_id in users:
+            followup_daily_rows.append({"date": event_date, "user_id": user_id})
+    followup_daily_df = pd.DataFrame(followup_daily_rows)
+    if followup_daily_df.empty:
+        followup_daily_user_cohort = pd.DataFrame(columns=["date", "user_cohort", "followup_users", "share_pct"])
+    else:
+        followup_daily_df = enrich_users(followup_daily_df, profiles, ranges)
+        followup_daily_user_cohort = (
+            followup_daily_df.groupby(["date", "user_cohort"], as_index=False)
+            .agg(followup_users=("user_id", "nunique"))
+            .sort_values(["date", "user_cohort"])
+        )
+        daily_total = followup_daily_user_cohort.groupby("date")["followup_users"].transform("sum")
+        followup_daily_user_cohort["share_pct"] = (followup_daily_user_cohort["followup_users"] / daily_total * 100).round(2)
+
+    followup_demographics = {}
+    followup_segment_rows = []
+    for field in ["user_cohort", "platform", "gender", "age_bucket", "region", "city", "config_id", "occupation", "marital_status"]:
+        if followup_profiles.empty:
+            followup_demographics[field] = []
+            continue
+        counter = Counter((value or "Unknown") for value in followup_profiles[field].fillna("Unknown").astype(str))
+        total = sum(counter.values())
+        rows = [
+            {
+                "bucket": bucket,
+                "users": count,
+                "pct": round(count / total * 100, 2) if total else 0,
+            }
+            for bucket, count in counter.most_common(20)
+        ]
+        followup_demographics[field] = rows
+        for row in rows:
+            followup_segment_rows.append(
+                {
+                    "segment": field,
+                    "bucket": row["bucket"],
+                    "selection": f"{field} = {row['bucket']}",
+                    "users": row["users"],
+                    "pct": row["pct"],
+                }
+            )
 
     return {
         "kpis": {
@@ -840,11 +1204,15 @@ def build_acquisition(
             "new_user_to_payment_pct": safe_div(payers, new_users),
         },
         "daily": records(daily),
+        "daily_payment_family": records(daily_payment_family),
         "login_daily": mixpanel["login_daily"],
         "funnel": funnel,
+        "payment_type_funnel": records(payment_type_funnel.sort_values("revenue", ascending=False)),
         "segments": records(segments.sort_values(["segment", "new_users"], ascending=[True, False])),
+        "followup_daily_user_cohort": records(followup_daily_user_cohort),
         "followup_entity_events": mixpanel.get("followup_entity_events", []),
-        "followup_demographics": mixpanel.get("followup_demographics", {}),
+        "followup_demographics": followup_demographics,
+        "followup_segment_detail": followup_segment_rows,
     }
 
 
@@ -1024,11 +1392,57 @@ def build_retention(engine, profiles: pd.DataFrame, ranges: dict[str, Any]) -> d
         bot["repeat_rate_pct"] = (bot["repeat_users_2plus_days"] / bot["active_users"] * 100).round(2)
         bot["minutes_per_user"] = (bot["minutes"] / bot["active_users"]).round(2)
 
+    bot_user = read_sql(
+        engine,
+        """
+        SELECT
+            bot_name,
+            LOWER(BIN_TO_UUID(user_id)) AS user_id,
+            COUNT(*) AS sessions,
+            COUNT(DISTINCT DATE(DATE_ADD(started_at, INTERVAL 330 MINUTE))) AS active_days,
+            SUM(COALESCE(duration_mins, 0)) AS minutes
+        FROM prod.chat_session
+        WHERE started_at >= :start_utc
+          AND started_at < :end_utc
+          AND status = 'COMPLETED'
+        GROUP BY bot_name, user_id
+        """,
+        {
+            "start_utc": utc_naive(local_midnight(ranges["current_start"])),
+            "end_utc": utc_naive(local_midnight(ranges["current_end"] + timedelta(days=1))),
+        },
+    )
+    if bot_user.empty:
+        bot_user_cohort = pd.DataFrame(
+            columns=["bot_name", "user_cohort", "active_users", "repeat_users_2plus_days", "repeat_rate_pct", "sessions", "minutes", "minutes_per_user"]
+        )
+    else:
+        bot_user = enrich_users(bot_user, profiles, ranges)
+        bot_user["repeat_flag"] = bot_user["active_days"] >= 2
+        bot_user_cohort = (
+            bot_user.groupby(["bot_name", "user_cohort"], as_index=False)
+            .agg(
+                active_users=("user_id", "nunique"),
+                repeat_users_2plus_days=("repeat_flag", "sum"),
+                sessions=("sessions", "sum"),
+                minutes=("minutes", "sum"),
+            )
+            .sort_values(["active_users", "sessions"], ascending=False)
+            .head(40)
+        )
+        bot_user_cohort["repeat_rate_pct"] = (
+            bot_user_cohort["repeat_users_2plus_days"] / bot_user_cohort["active_users"] * 100
+        ).round(2)
+        bot_user_cohort["minutes_per_user"] = (
+            bot_user_cohort["minutes"] / bot_user_cohort["active_users"]
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+
     return {
         "cohort_window": {"start": cohort_start.isoformat(), "end": cohort_end.isoformat()},
         "curve": curve_rows,
         "platform": platform_rows,
         "bot": records(bot),
+        "bot_user_cohort": records(bot_user_cohort),
     }
 
 
@@ -1060,7 +1474,7 @@ def filter_events(events: list[dict[str, Any]], start: date, end: date) -> list[
     ]
 
 
-def build_engagement(mixpanel: dict[str, Any]) -> dict[str, Any]:
+def build_engagement(mixpanel: dict[str, Any], profiles: pd.DataFrame, ranges: dict[str, Any]) -> dict[str, Any]:
     session_daily = pd.DataFrame(mixpanel["session_daily"])
     if session_daily.empty:
         engagement_kpis = {
@@ -1084,6 +1498,68 @@ def build_engagement(mixpanel: dict[str, Any]) -> dict[str, Any]:
 
     bim_opens = sum(row["opens"] for row in mixpanel["bim_daily"])
     bim_users = sum(row["users"] for row in mixpanel["bim_by_platform"])
+
+    session_user_daily = pd.DataFrame(mixpanel.get("session_user_daily", []))
+    if session_user_daily.empty:
+        session_user_cohort_daily = pd.DataFrame(columns=["date", "user_cohort", "sessions", "users", "total_minutes", "avg_minutes_per_user", "sessions_per_user"])
+        session_segments = pd.DataFrame(columns=["segment", "bucket", "selection", "users", "sessions", "total_minutes", "avg_minutes_per_user", "sessions_per_user", "user_share_pct"])
+    else:
+        session_user_daily = enrich_users(session_user_daily, profiles, ranges)
+        session_user_daily["total_minutes"] = session_user_daily["seconds"] / 60
+        session_user_cohort_daily = (
+            session_user_daily.groupby(["date", "user_cohort"], as_index=False)
+            .agg(
+                sessions=("sessions", "sum"),
+                users=("user_id", "nunique"),
+                total_minutes=("total_minutes", "sum"),
+            )
+            .sort_values(["date", "user_cohort"])
+        )
+        session_user_cohort_daily["total_minutes"] = session_user_cohort_daily["total_minutes"].round(1)
+        session_user_cohort_daily["avg_minutes_per_user"] = (
+            session_user_cohort_daily["total_minutes"] / session_user_cohort_daily["users"]
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        session_user_cohort_daily["sessions_per_user"] = (
+            session_user_cohort_daily["sessions"] / session_user_cohort_daily["users"]
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+
+        segment_rows = []
+        for field in ["user_cohort", "platform", "gender", "age_bucket", "config_id", "occupation", "marital_status"]:
+            seg = (
+                session_user_daily.groupby(field, dropna=False)
+                .agg(
+                    users=("user_id", "nunique"),
+                    sessions=("sessions", "sum"),
+                    total_minutes=("total_minutes", "sum"),
+                )
+                .reset_index()
+                .rename(columns={field: "bucket"})
+            )
+            seg["segment"] = field
+            seg["selection"] = seg["segment"].astype(str) + " = " + seg["bucket"].astype(str)
+            seg["total_minutes"] = seg["total_minutes"].round(1)
+            seg["avg_minutes_per_user"] = (seg["total_minutes"] / seg["users"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+            seg["sessions_per_user"] = (seg["sessions"] / seg["users"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+            seg = add_share(seg, "users", "user_share_pct")
+            segment_rows.append(seg)
+        session_segments = pd.concat(segment_rows, ignore_index=True)
+
+    bim_user_daily = pd.DataFrame(mixpanel.get("bim_user_daily", []))
+    if bim_user_daily.empty:
+        bim_user_cohort_daily = pd.DataFrame(columns=["date", "user_cohort", "opens", "users", "opens_per_user", "share_pct"])
+    else:
+        bim_user_daily = enrich_users(bim_user_daily, profiles, ranges)
+        bim_user_cohort_daily = (
+            bim_user_daily.groupby(["date", "user_cohort"], as_index=False)
+            .agg(opens=("opens", "sum"), users=("user_id", "nunique"))
+            .sort_values(["date", "user_cohort"])
+        )
+        bim_user_cohort_daily["opens_per_user"] = (
+            bim_user_cohort_daily["opens"] / bim_user_cohort_daily["users"]
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        daily_opens = bim_user_cohort_daily.groupby("date")["opens"].transform("sum")
+        bim_user_cohort_daily["share_pct"] = (bim_user_cohort_daily["opens"] / daily_opens * 100).round(2)
+
     return {
         "kpis": {
             **engagement_kpis,
@@ -1092,8 +1568,11 @@ def build_engagement(mixpanel: dict[str, Any]) -> dict[str, Any]:
         },
         "session_daily": mixpanel["session_daily"],
         "session_by_platform": mixpanel["session_by_platform"],
+        "session_user_cohort_daily": records(session_user_cohort_daily),
+        "session_segments": records(session_segments.sort_values(["segment", "users"], ascending=[True, False]).head(80)),
         "bim_daily": mixpanel["bim_daily"],
         "bim_by_platform": mixpanel["bim_by_platform"],
+        "bim_user_cohort_daily": records(bim_user_cohort_daily),
         "notification_campaigns": mixpanel["notification_campaigns"],
     }
 
@@ -1127,6 +1606,14 @@ def build_metric_coverage(period_dashboard: dict[str, Any]) -> dict[str, Any]:
         {
             "area": "Monetization",
             "metric": "Revenue, payer, transaction, avg transaction",
+            "status": "Available",
+            "coverage_pct": 100,
+            "missing_detail": "None",
+            "next_data_needed": "None",
+        },
+        {
+            "area": "Monetization",
+            "metric": "Revenue stream KPI split by subscription, pay-as-you-go, and day pass",
             "status": "Available",
             "coverage_pct": 100,
             "missing_detail": "None",
@@ -1234,15 +1721,18 @@ def build_period_dashboard(
     period_events = filter_events(all_mixpanel_events, ranges["current_start"], ranges["current_end"])
     mixpanel = aggregate_mixpanel(period_events, latest_complete_day, bot_lookup)
 
-    monetization = build_monetization(engine, ranges, mixpanel["primary_entity_by_user"], bot_lookup)
+    monetization = build_monetization(engine, ranges, profiles, mixpanel["primary_entity_by_user"], bot_lookup)
     user_revenue_current = pd.DataFrame(monetization.pop("user_revenue_current"))
     if user_revenue_current.empty:
         user_revenue_current = pd.DataFrame(columns=["user_id", "revenue", "transactions"])
+    user_family_revenue_current = pd.DataFrame(monetization.pop("user_family_revenue_current"))
+    if user_family_revenue_current.empty:
+        user_family_revenue_current = pd.DataFrame(columns=["user_id", "family", "revenue", "transactions"])
 
-    acquisition = build_acquisition(profiles, ranges, mixpanel, user_revenue_current)
+    acquisition = build_acquisition(profiles, ranges, mixpanel, user_revenue_current, user_family_revenue_current)
     config_funnel = build_config_funnel(engine, ranges, set(mixpanel["followup_users"].keys()))
     retention = build_retention(engine, profiles, ranges)
-    engagement = build_engagement(mixpanel)
+    engagement = build_engagement(mixpanel, profiles, ranges)
     period_dashboard = {
         "metadata": {
             "period_id": ranges["period_id"],

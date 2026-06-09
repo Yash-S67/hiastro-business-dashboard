@@ -41,6 +41,31 @@ function pct(value) {
   return `${Number(value).toFixed(2)}%`;
 }
 
+function familyLabel(value) {
+  return ({
+    subscription: "Subscription",
+    pay_as_you_go: "Pay as you go",
+    day_pass: "Day pass",
+  })[value] || String(value || "Unknown").replaceAll("_", " ");
+}
+
+function familyRows(monetization) {
+  return monetization.kpis?.by_family || monetization.family || [];
+}
+
+function familyMetric(monetization, familyId) {
+  return familyRows(monetization).find((row) => row.family === familyId) || {
+    family: familyId,
+    family_label: familyLabel(familyId),
+    revenue: 0,
+    payers: 0,
+    transactions: 0,
+    avg_transaction: 0,
+    avg_revenue_per_payer: 0,
+    revenue_share_pct: 0,
+  };
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -113,7 +138,7 @@ function groupedDaily(rows, familyKey = "family", valueKey = "revenue") {
   return {
     labels,
     datasets: families.map((family) => ({
-      label: family.replaceAll("_", " "),
+      label: familyKey === "family" ? familyLabel(family) : String(family).replaceAll("_", " "),
       data: labels.map((day) => {
         const row = rows.find((r) => r.day === day && r[familyKey] === family);
         return row ? Number(row[valueKey]) : 0;
@@ -121,6 +146,25 @@ function groupedDaily(rows, familyKey = "family", valueKey = "revenue") {
       backgroundColor: COLORS[family] || COLORS.muted,
       borderColor: COLORS[family] || COLORS.muted,
       borderWidth: 1,
+    })),
+  };
+}
+
+function groupedLine(rows, xKey, groupKey, valueKey) {
+  const labels = [...new Set((rows || []).map((r) => r[xKey]))].sort();
+  const groups = [...new Set((rows || []).map((r) => r[groupKey]))].sort();
+  const palette = [COLORS.blue, COLORS.teal, COLORS.gold, COLORS.rose, COLORS.green, COLORS.slate];
+  return {
+    labels,
+    datasets: groups.map((group, index) => ({
+      label: groupKey === "family" ? familyLabel(group) : String(group),
+      data: labels.map((label) => {
+        const row = rows.find((r) => r[xKey] === label && r[groupKey] === group);
+        return row ? Number(row[valueKey] || 0) : 0;
+      }),
+      borderColor: COLORS[group] || palette[index % palette.length],
+      backgroundColor: "transparent",
+      tension: 0.25,
     })),
   };
 }
@@ -152,12 +196,18 @@ function chart(id, type, data, options = {}) {
 function renderOverview(data) {
   const m = data.monetization.kpis.current;
   const g7 = data.monetization.kpis.growth_vs_prior_7;
+  const sub = familyMetric(data.monetization, "subscription");
+  const payg = familyMetric(data.monetization, "pay_as_you_go");
+  const dayPass = familyMetric(data.monetization, "day_pass");
   const a = data.acquisition.kpis;
   const r = data.retention.curve.find((x) => x.day_n === 1);
   const e = data.engagement.kpis;
   const comparison = data.metadata?.comparison_window?.label || "previous period";
   document.getElementById("overviewCards").innerHTML = [
     card("Revenue", money(m.revenue), `vs ${comparison} ${trend(g7.revenue)}`),
+    card("Subscription Rev", money(sub.revenue), `${pct(sub.revenue_share_pct)} of revenue | ${number(sub.payers)} payers`),
+    card("PayG Rev", money(payg.revenue), `${pct(payg.revenue_share_pct)} of revenue | ${number(payg.payers)} payers`),
+    card("Day Pass Rev", money(dayPass.revenue), `${pct(dayPass.revenue_share_pct)} of revenue | ${number(dayPass.payers)} payers`),
     card("Payers", number(m.payers), `vs ${comparison} ${trend(g7.payers)}`),
     card("Avg Transaction", money(m.avg_transaction), `vs ${comparison} ${trend(g7.avg_transaction)}`),
     card("New Users", number(a.new_users), `${pct(a.new_user_to_followup_pct)} reached follow-up`),
@@ -173,10 +223,16 @@ function renderMonetization(data) {
   const k = m.kpis.current;
   const g7 = m.kpis.growth_vs_prior_7;
   const g30 = m.kpis.growth_vs_prior_30_7day_baseline;
+  const sub = familyMetric(m, "subscription");
+  const payg = familyMetric(m, "pay_as_you_go");
+  const dayPass = familyMetric(m, "day_pass");
   const comparison = meta.comparison_window || meta.prior_7_window;
   document.getElementById("monetizationNote").textContent = `${meta.current_window.start} to ${meta.current_window.end}; growth vs ${comparison.start} to ${comparison.end}.`;
   document.getElementById("monetizationCards").innerHTML = [
-    card("Revenue", money(k.revenue), `${comparison.label || "previous period"} ${trend(g7.revenue)} | 30-day baseline ${trend(g30.revenue)}`),
+    card("Total Revenue", money(k.revenue), `${comparison.label || "previous period"} ${trend(g7.revenue)} | 30-day baseline ${trend(g30.revenue)}`),
+    card("Subscription", money(sub.revenue), `${pct(sub.revenue_share_pct)} share | ${trend(sub.revenue_growth_vs_prior_7_pct)} vs prev`),
+    card("Pay as you go", money(payg.revenue), `${pct(payg.revenue_share_pct)} share | ${trend(payg.revenue_growth_vs_prior_7_pct)} vs prev`),
+    card("Day Pass", money(dayPass.revenue), `${pct(dayPass.revenue_share_pct)} share | ${trend(dayPass.revenue_growth_vs_prior_7_pct)} vs prev`),
     card("Payers", number(k.payers), `${comparison.label || "previous period"} ${trend(g7.payers)} | 30-day baseline ${trend(g30.payers)}`),
     card("Transactions", number(k.transactions), `${comparison.label || "previous period"} ${trend(g7.transactions)} | 30-day baseline ${trend(g30.transactions)}`),
     card("Avg Transaction", money(k.avg_transaction), `${comparison.label || "previous period"} ${trend(g7.avg_transaction)} | 30-day avg ${trend(g30.avg_transaction)}`),
@@ -184,9 +240,9 @@ function renderMonetization(data) {
 
   const daily = groupedDaily(m.daily);
   daily.labels = daily.labels.map(shortDate);
-  chart("revenueDailyChart", "bar", daily, {
+  chart("revenueDailyChart", "line", daily, {
     plugins: { title: { display: true, text: "Daily Revenue by Family" }, legend: { position: "bottom" } },
-    scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" } } },
   });
 
   const dailySummary = m.daily_summary || [];
@@ -206,16 +262,48 @@ function renderMonetization(data) {
     },
   });
 
+  const familyPayers = groupedDaily(m.daily || [], "family", "payers");
+  familyPayers.labels = familyPayers.labels.map(shortDate);
+  chart("familyPayerChart", "line", familyPayers, {
+    plugins: { title: { display: true, text: "Daily Payers by Revenue Stream" } },
+  });
+
+  const familyAvgTxn = groupedDaily(m.daily || [], "family", "avg_transaction");
+  familyAvgTxn.labels = familyAvgTxn.labels.map(shortDate);
+  chart("familyAvgTxnChart", "line", familyAvgTxn, {
+    plugins: { title: { display: true, text: "Avg Transaction by Revenue Stream" } },
+  });
+
   chart("revenueFamilyChart", "doughnut", {
-    labels: m.family.map((r) => r.family.replaceAll("_", " ")),
+    labels: m.family.map((r) => r.family_label || familyLabel(r.family)),
     datasets: [{ data: m.family.map((r) => r.revenue), backgroundColor: [COLORS.subscription, COLORS.pay_as_you_go, COLORS.day_pass] }],
   }, {
     plugins: { title: { display: true, text: "Revenue Mix" }, legend: { position: "bottom" } },
   });
 
+  const cohortRevenue = groupedLine(m.daily_user_cohort || [], "day", "user_cohort", "revenue");
+  cohortRevenue.labels = cohortRevenue.labels.map(shortDate);
+  chart("revenueCohortChart", "line", cohortRevenue, {
+    plugins: { title: { display: true, text: "Revenue by New vs Old Users" } },
+  });
+
+  table("revenueStreamKpiTable", m.kpis?.by_family || m.family || [], [
+    { key: "selection", label: "Selection", text: true },
+    { key: "family_label", label: "Revenue Stream", text: true },
+    { key: "revenue", label: "Revenue", format: money },
+    { key: "revenue_share_pct", label: "Revenue Share", format: pct },
+    { key: "revenue_growth_vs_prior_7_pct", label: "Rev Growth", format: pct },
+    { key: "payers", label: "Payers", format: number },
+    { key: "payer_share_pct", label: "Payer Share", format: pct },
+    { key: "transactions", label: "Txns", format: number },
+    { key: "transaction_share_pct", label: "Txn Share", format: pct },
+    { key: "avg_transaction", label: "Avg Txn", format: money },
+    { key: "avg_revenue_per_payer", label: "ARPP", format: money },
+  ], 10);
+
   table("revenueDailyTable", m.daily, [
     { key: "day", label: "Date", text: true, format: shortDate },
-    { key: "family", label: "Family", text: true, format: (v) => String(v).replaceAll("_", " ") },
+    { key: "family", label: "Family", text: true, format: familyLabel },
     { key: "revenue", label: "Revenue", format: money },
     { key: "payers", label: "Payers", format: number },
     { key: "transactions", label: "Txns", format: number },
@@ -223,18 +311,57 @@ function renderMonetization(data) {
     { key: "revenue_share_pct", label: "Day Share", format: pct },
   ], 30);
 
-  table("revenueFamilyTable", m.family, [
-    { key: "family", label: "Family", text: true, format: (v) => String(v).replaceAll("_", " ") },
+  table("revenueCohortTable", m.daily_user_cohort || [], [
+    { key: "day", label: "Date", text: true, format: shortDate },
+    { key: "user_cohort", label: "User Type", text: true },
     { key: "revenue", label: "Revenue", format: money },
     { key: "payers", label: "Payers", format: number },
+    { key: "transactions", label: "Txns", format: number },
+    { key: "avg_transaction", label: "Avg Txn", format: money },
+    { key: "revenue_share_pct", label: "Daily Share", format: pct },
+  ], 20);
+
+  table("payerSegmentTable", m.payer_segments || [], [
+    { key: "selection", label: "Selection", text: true },
+    { key: "segment", label: "Segment", text: true },
+    { key: "bucket", label: "Bucket", text: true },
+    { key: "revenue", label: "Revenue", format: money },
+    { key: "revenue_share_pct", label: "Revenue Share", format: pct },
+    { key: "payers", label: "Payers", format: number },
+    { key: "transactions", label: "Txns", format: number },
+    { key: "avg_transaction", label: "Avg Txn", format: money },
+    { key: "avg_revenue_per_payer", label: "ARPP", format: money },
+  ], 40);
+
+  table("payerFamilySegmentTable", m.payer_segments_by_family || [], [
+    { key: "selection", label: "Selection", text: true },
+    { key: "family_label", label: "Revenue Stream", text: true },
+    { key: "segment", label: "Segment", text: true },
+    { key: "bucket", label: "Bucket", text: true },
+    { key: "revenue", label: "Revenue", format: money },
+    { key: "family_revenue_share_pct", label: "Stream Share", format: pct },
+    { key: "total_revenue_share_pct", label: "Total Share", format: pct },
+    { key: "payers", label: "Payers", format: number },
+    { key: "transactions", label: "Txns", format: number },
+    { key: "avg_transaction", label: "Avg Txn", format: money },
+  ], 60);
+
+  table("revenueFamilyTable", m.family, [
+    { key: "selection", label: "Selection", text: true },
+    { key: "family_label", label: "Family", text: true },
+    { key: "revenue", label: "Revenue", format: money },
+    { key: "revenue_growth_vs_prior_7_pct", label: "Rev Growth", format: pct },
+    { key: "payers", label: "Payers", format: number },
+    { key: "payer_share_pct", label: "Payer Share", format: pct },
     { key: "transactions", label: "Txns", format: number },
     { key: "avg_transaction", label: "Avg Txn", format: money },
     { key: "revenue_share_pct", label: "Revenue Share", format: pct },
   ], 10);
 
   table("packTable", m.pack, [
+    { key: "selection", label: "Selection", text: true },
     { key: "pack", label: "Pack", text: true },
-    { key: "family", label: "Family", text: true, format: (v) => String(v).replaceAll("_", " ") },
+    { key: "family_label", label: "Family", text: true },
     { key: "plan_code", label: "Plan", text: true },
     { key: "amount", label: "Amount", format: money },
     { key: "revenue", label: "Revenue", format: money },
@@ -293,6 +420,12 @@ function renderMonetization(data) {
     { key: "revenue_share_pct", label: "Revenue Share", format: pct },
     { key: "transactions", label: "Txns", format: number },
     { key: "revenue", label: "Revenue", format: money },
+    { key: "subscription_revenue", label: "Sub Rev", format: money },
+    { key: "subscription_payers", label: "Sub Payers", format: number },
+    { key: "pay_as_you_go_revenue", label: "PayG Rev", format: money },
+    { key: "pay_as_you_go_payers", label: "PayG Payers", format: number },
+    { key: "day_pass_revenue", label: "Day Pass Rev", format: money },
+    { key: "day_pass_payers", label: "Day Pass Payers", format: number },
     { key: "avg_revenue_per_payer", label: "ARPP", format: money },
     { key: "revenue_per_followup_user", label: "Rev/FU", format: money },
   ], 20);
@@ -300,20 +433,28 @@ function renderMonetization(data) {
 
 function renderAcquisition(data) {
   const a = data.acquisition;
+  const paymentRows = a.payment_type_funnel || [];
+  const paymentMetric = (familyId) => paymentRows.find((row) => row.family === familyId) || { payers: 0, revenue: 0, new_to_payment_pct: 0, followup_to_payment_pct: 0 };
+  const subPayment = paymentMetric("subscription");
+  const paygPayment = paymentMetric("pay_as_you_go");
+  const dayPassPayment = paymentMetric("day_pass");
   document.getElementById("acquisitionNote").textContent = "New users are from SQL signups; Login Success is shown from Mixpanel for cross-check.";
   document.getElementById("acquisitionCards").innerHTML = [
     card("New Users", number(a.kpis.new_users), `${number(a.kpis.login_success_users)} Login Success users`),
     card("Follow-up Rate", pct(a.kpis.new_user_to_followup_pct), "New user to Follow up Query"),
     card("Payment Rate", pct(a.kpis.new_user_to_payment_pct), "New user to any payment"),
+    card("Sub Payers", number(subPayment.payers), `${pct(subPayment.new_to_payment_pct)} of new users | ${money(subPayment.revenue)}`),
+    card("PayG Payers", number(paygPayment.payers), `${pct(paygPayment.new_to_payment_pct)} of new users | ${money(paygPayment.revenue)}`),
+    card("Day Pass Payers", number(dayPassPayment.payers), `${pct(dayPassPayment.new_to_payment_pct)} of new users | ${money(dayPassPayment.revenue)}`),
     card("Payment Users", number(a.funnel[2].users), `${pct(a.funnel[2].conversion_from_previous_pct)} from follow-up`),
   ].join("");
 
-  chart("newUsersChart", "bar", {
+  chart("newUsersChart", "line", {
     labels: a.daily.map((r) => shortDate(r.signup_date)),
     datasets: [
-      { label: "New users", data: a.daily.map((r) => r.new_users), backgroundColor: COLORS.blue },
-      { label: "Follow-up users", data: a.daily.map((r) => r.followup_users), backgroundColor: COLORS.teal },
-      { label: "Payers", data: a.daily.map((r) => r.payers), backgroundColor: COLORS.gold },
+      { label: "New users", data: a.daily.map((r) => r.new_users), borderColor: COLORS.blue, tension: 0.25 },
+      { label: "Follow-up users", data: a.daily.map((r) => r.followup_users), borderColor: COLORS.teal, tension: 0.25 },
+      { label: "Payers", data: a.daily.map((r) => r.payers), borderColor: COLORS.gold, tension: 0.25 },
     ],
   }, { plugins: { title: { display: true, text: "New User Daily Funnel" } } });
 
@@ -337,6 +478,12 @@ function renderAcquisition(data) {
     plugins: { title: { display: true, text: "New Login to Follow-up to Payment" }, legend: { display: false } },
   });
 
+  const acquisitionPaymentFamily = groupedLine(a.daily_payment_family || [], "signup_date", "family", "revenue");
+  acquisitionPaymentFamily.labels = acquisitionPaymentFamily.labels.map(shortDate);
+  chart("acquisitionPaymentFamilyChart", "line", acquisitionPaymentFamily, {
+    plugins: { title: { display: true, text: "New User Payment Revenue by Stream" } },
+  });
+
   table("acquisitionDailyTable", a.daily, [
     { key: "signup_date", label: "Date", text: true, format: shortDate },
     { key: "new_users", label: "New Users", format: number },
@@ -354,7 +501,22 @@ function renderAcquisition(data) {
     { key: "conversion_from_start_pct", label: "Start Conv.", format: pct },
   ], 5);
 
+  table("acquisitionPaymentFamilyTable", paymentRows, [
+    { key: "selection", label: "Selection", text: true },
+    { key: "family_label", label: "Payment Type", text: true },
+    { key: "new_users", label: "New Users", format: number },
+    { key: "followup_users", label: "Follow-up Users", format: number },
+    { key: "payers", label: "Payers", format: number },
+    { key: "followup_payers", label: "Follow-up Payers", format: number },
+    { key: "new_to_payment_pct", label: "New to Pay", format: pct },
+    { key: "followup_to_payment_pct", label: "Follow-up to Pay", format: pct },
+    { key: "revenue", label: "Revenue", format: money },
+    { key: "transactions", label: "Txns", format: number },
+    { key: "avg_revenue_per_payer", label: "ARPP", format: money },
+  ], 10);
+
   table("acquisitionSegmentTable", a.segments, [
+    { key: "selection", label: "Selection", text: true },
     { key: "segment", label: "Segment", text: true },
     { key: "bucket", label: "Bucket", text: true },
     { key: "new_users", label: "New Users", format: number },
@@ -366,6 +528,12 @@ function renderAcquisition(data) {
   ], 30);
 
   const entityRows = a.followup_entity_events || [];
+  const followupCohort = groupedLine(a.followup_daily_user_cohort || [], "date", "user_cohort", "followup_users");
+  followupCohort.labels = followupCohort.labels.map(shortDate);
+  chart("followupCohortChart", "line", followupCohort, {
+    plugins: { title: { display: true, text: "Follow-up Query Users by New vs Old" } },
+  });
+
   chart("followupEntityChart", "bar", {
     labels: entityRows.slice(0, 10).map((r) => r.entity_label || r.entity_slug),
     datasets: [{ label: "Follow-up Query events", data: entityRows.slice(0, 10).map((r) => r.followup_events), backgroundColor: COLORS.teal }],
@@ -387,6 +555,14 @@ function renderAcquisition(data) {
     { key: "users", label: "Users", format: number },
     { key: "pct", label: "%", format: pct },
   ], 30);
+
+  table("followupSegmentTable", a.followup_segment_detail || [], [
+    { key: "selection", label: "Selection", text: true },
+    { key: "segment", label: "Segment", text: true },
+    { key: "bucket", label: "Bucket", text: true },
+    { key: "users", label: "Users", format: number },
+    { key: "pct", label: "Share", format: pct },
+  ], 50);
 
   table("followupEntityTable", entityRows, [
     { key: "entity_label", label: "Bot / Entity", text: true },
@@ -413,15 +589,11 @@ function renderRetention(data) {
     }],
   }, { plugins: { title: { display: true, text: "New User Retention Curve" } } });
 
-  const platforms = [...new Set(r.platform.map((x) => x.platform))];
-  chart("retentionPlatformChart", "bar", {
-    labels: platforms,
-    datasets: [1, 3, 7].map((day, idx) => ({
-      label: `D${day}`,
-      data: platforms.map((platform) => r.platform.find((x) => x.platform === platform && x.day_n === day)?.retention_pct || 0),
-      backgroundColor: [COLORS.blue, COLORS.teal, COLORS.gold][idx],
-    })),
-  }, { plugins: { title: { display: true, text: "Retention by Platform" } } });
+  const platformRetention = groupedLine(r.platform || [], "day_n", "platform", "retention_pct");
+  platformRetention.labels = platformRetention.labels.map((day) => `D${day}`);
+  chart("retentionPlatformChart", "line", platformRetention, {
+    plugins: { title: { display: true, text: "Retention Movement by Platform" } },
+  });
 
   table("retentionCurveTable", r.curve, [
     { key: "day_n", label: "Day", text: true, format: (v) => `D${v}` },
@@ -454,6 +626,16 @@ function renderRetention(data) {
     { key: "sessions", label: "Sessions", format: number },
     { key: "minutes_per_user", label: "Min/User", format: (v) => Number(v || 0).toFixed(2) },
   ], 15);
+
+  table("botCohortTable", r.bot_user_cohort || [], [
+    { key: "bot_name", label: "Bot", text: true },
+    { key: "user_cohort", label: "User Type", text: true },
+    { key: "active_users", label: "Users", format: number },
+    { key: "repeat_users_2plus_days", label: "Repeat Users", format: number },
+    { key: "repeat_rate_pct", label: "Repeat Rate", format: pct },
+    { key: "sessions", label: "Sessions", format: number },
+    { key: "minutes_per_user", label: "Min/User", format: (v) => Number(v || 0).toFixed(2) },
+  ], 30);
 }
 
 function renderEngagement(data) {
@@ -474,6 +656,12 @@ function renderEngagement(data) {
     ],
   }, { plugins: { title: { display: true, text: "Daily Engagement Depth" } } });
 
+  const sessionCohort = groupedLine(e.session_user_cohort_daily || [], "date", "user_cohort", "sessions");
+  sessionCohort.labels = sessionCohort.labels.map(shortDate);
+  chart("sessionCohortChart", "line", sessionCohort, {
+    plugins: { title: { display: true, text: "App Sessions by New vs Old Users" } },
+  });
+
   table("sessionDailyTable", e.session_daily, [
     { key: "date", label: "Date", text: true, format: shortDate },
     { key: "users", label: "Users", format: number },
@@ -483,11 +671,11 @@ function renderEngagement(data) {
     { key: "sessions_per_user", label: "Sessions/User", format: (v) => Number(v || 0).toFixed(2) },
   ], 14);
 
-  chart("bimDailyChart", "bar", {
+  chart("bimDailyChart", "line", {
     labels: e.bim_daily.map((r) => shortDate(r.date)),
     datasets: [
-      { label: "BIM opens", data: e.bim_daily.map((r) => r.opens), backgroundColor: COLORS.rose },
-      { label: "Users", data: e.bim_daily.map((r) => r.users), backgroundColor: COLORS.blue },
+      { label: "BIM opens", data: e.bim_daily.map((r) => r.opens), borderColor: COLORS.rose, tension: 0.25 },
+      { label: "Users", data: e.bim_daily.map((r) => r.users), borderColor: COLORS.blue, tension: 0.25 },
     ],
   }, { plugins: { title: { display: true, text: "App Opened from Notification: BIM" } } });
 
@@ -507,6 +695,12 @@ function renderEngagement(data) {
     },
   });
 
+  const bimCohort = groupedLine(e.bim_user_cohort_daily || [], "date", "user_cohort", "opens");
+  bimCohort.labels = bimCohort.labels.map(shortDate);
+  chart("bimCohortChart", "line", bimCohort, {
+    plugins: { title: { display: true, text: "BIM Opens by New vs Old Users" } },
+  });
+
   table("sessionPlatformTable", e.session_by_platform, [
     { key: "platform", label: "Platform", text: true },
     { key: "users", label: "Users", format: number },
@@ -514,6 +708,17 @@ function renderEngagement(data) {
     { key: "avg_minutes_per_user", label: "Avg Min/User", format: (v) => Number(v || 0).toFixed(2) },
     { key: "sessions_per_user", label: "Sessions/User", format: (v) => Number(v || 0).toFixed(2) },
   ]);
+
+  table("sessionSegmentTable", e.session_segments || [], [
+    { key: "selection", label: "Selection", text: true },
+    { key: "segment", label: "Segment", text: true },
+    { key: "bucket", label: "Bucket", text: true },
+    { key: "users", label: "Users", format: number },
+    { key: "user_share_pct", label: "User Share", format: pct },
+    { key: "sessions", label: "Sessions", format: number },
+    { key: "sessions_per_user", label: "Sessions/User", format: (v) => Number(v || 0).toFixed(2) },
+    { key: "avg_minutes_per_user", label: "Min/User", format: (v) => Number(v || 0).toFixed(2) },
+  ], 50);
 
   table("campaignTable", e.notification_campaigns, [
     { key: "campaign", label: "Campaign", text: true },
@@ -528,6 +733,15 @@ function renderEngagement(data) {
     { key: "users", label: "Users", format: number },
     { key: "opens_per_user", label: "Opens/User", format: (v) => Number(v || 0).toFixed(2) },
   ], 14);
+
+  table("bimCohortTable", e.bim_user_cohort_daily || [], [
+    { key: "date", label: "Date", text: true, format: shortDate },
+    { key: "user_cohort", label: "User Type", text: true },
+    { key: "opens", label: "Opens", format: number },
+    { key: "users", label: "Users", format: number },
+    { key: "share_pct", label: "Open Share", format: pct },
+    { key: "opens_per_user", label: "Opens/User", format: (v) => Number(v || 0).toFixed(2) },
+  ], 30);
 }
 
 function renderMetricCoverage(data) {
@@ -572,7 +786,7 @@ function renderMetricCoverage(data) {
 
 async function main() {
   try {
-    const response = await fetch("data/dashboard_data.json");
+    const response = await fetch(`data/dashboard_data.json?ts=${Date.now()}`, { cache: "no-store" });
     DASHBOARD_DATA = await response.json();
     SELECTED_PERIOD = DASHBOARD_DATA.metadata.default_period || "weekly";
     setupPeriodControls();
