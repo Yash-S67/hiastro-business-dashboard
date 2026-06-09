@@ -13,7 +13,13 @@
         <p class="eyebrow">HiAstro Operating Metrics</p>
         <h1>Business Dashboard</h1>
       </div>
-      <div class="freshness" id="freshness">Loading data...</div>
+      <div class="header-actions">
+        <div class="period-toggle" id="periodControls" aria-label="Time period filter">
+          <button type="button" data-period="daily">Daily</button>
+          <button type="button" data-period="weekly">Weekly</button>
+        </div>
+        <div class="freshness" id="freshness">Loading data...</div>
+      </div>
     </header>
 
     <nav class="section-nav" aria-label="Dashboard sections">
@@ -71,6 +77,17 @@
         <div class="panel">
           <h3>New User Funnel by Segment</h3>
           <div id="acquisitionSegmentTable"></div>
+        </div>
+        <div class="grid two">
+          <div class="panel"><canvas id="followupEntityChart"></canvas></div>
+          <div class="panel">
+            <h3>Follow-up Query Demographics</h3>
+            <div id="followupDemoTable"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Follow-up Query Entity Detail</h3>
+          <div id="followupEntityTable"></div>
         </div>
       </section>
 

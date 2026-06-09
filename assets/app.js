@@ -22,6 +22,10 @@ Chart.defaults.color = "#475569";
 Chart.defaults.plugins.legend.labels.boxWidth = 10;
 Chart.defaults.plugins.tooltip.backgroundColor = "#111827";
 
+const CHARTS = {};
+let DASHBOARD_DATA = null;
+let SELECTED_PERIOD = "weekly";
+
 function money(value) {
   return INR.format(Number(value || 0));
 }
@@ -108,7 +112,10 @@ function groupedDaily(rows, familyKey = "family", valueKey = "revenue") {
 
 function chart(id, type, data, options = {}) {
   const el = document.getElementById(id);
-  return new Chart(el, {
+  if (CHARTS[id]) {
+    CHARTS[id].destroy();
+  }
+  CHARTS[id] = new Chart(el, {
     type,
     data,
     options: {
@@ -124,6 +131,7 @@ function chart(id, type, data, options = {}) {
       ...options,
     },
   });
+  return CHARTS[id];
 }
 
 function renderOverview(data) {
@@ -132,10 +140,11 @@ function renderOverview(data) {
   const a = data.acquisition.kpis;
   const r = data.retention.curve.find((x) => x.day_n === 1);
   const e = data.engagement.kpis;
+  const comparison = data.metadata?.comparison_window?.label || "previous period";
   document.getElementById("overviewCards").innerHTML = [
-    card("Revenue", money(m.revenue), `vs prior 7 days ${trend(g7.revenue)}`),
-    card("Payers", number(m.payers), `vs prior 7 days ${trend(g7.payers)}`),
-    card("Avg Transaction", money(m.avg_transaction), `vs prior 7 days ${trend(g7.avg_transaction)}`),
+    card("Revenue", money(m.revenue), `vs ${comparison} ${trend(g7.revenue)}`),
+    card("Payers", number(m.payers), `vs ${comparison} ${trend(g7.payers)}`),
+    card("Avg Transaction", money(m.avg_transaction), `vs ${comparison} ${trend(g7.avg_transaction)}`),
     card("New Users", number(a.new_users), `${pct(a.new_user_to_followup_pct)} reached follow-up`),
     card("D1 Chat Retention", pct(r?.retention_pct || 0), `${number(r?.retained_users || 0)} retained users`),
     card("Avg Time / User", `${e.avg_minutes_per_user}m`, `${number(e.sessions)} app sessions`),
@@ -149,12 +158,13 @@ function renderMonetization(data) {
   const k = m.kpis.current;
   const g7 = m.kpis.growth_vs_prior_7;
   const g30 = m.kpis.growth_vs_prior_30_7day_baseline;
-  document.getElementById("monetizationNote").textContent = `${meta.current_window.start} to ${meta.current_window.end}; growth vs ${meta.prior_7_window.start} to ${meta.prior_7_window.end}.`;
+  const comparison = meta.comparison_window || meta.prior_7_window;
+  document.getElementById("monetizationNote").textContent = `${meta.current_window.start} to ${meta.current_window.end}; growth vs ${comparison.start} to ${comparison.end}.`;
   document.getElementById("monetizationCards").innerHTML = [
-    card("Revenue", money(k.revenue), `7-day ${trend(g7.revenue)} | 30-day baseline ${trend(g30.revenue)}`),
-    card("Payers", number(k.payers), `7-day ${trend(g7.payers)} | 30-day baseline ${trend(g30.payers)}`),
-    card("Transactions", number(k.transactions), `7-day ${trend(g7.transactions)} | 30-day baseline ${trend(g30.transactions)}`),
-    card("Avg Transaction", money(k.avg_transaction), `7-day ${trend(g7.avg_transaction)} | 30-day avg ${trend(g30.avg_transaction)}`),
+    card("Revenue", money(k.revenue), `${comparison.label || "previous period"} ${trend(g7.revenue)} | 30-day baseline ${trend(g30.revenue)}`),
+    card("Payers", number(k.payers), `${comparison.label || "previous period"} ${trend(g7.payers)} | 30-day baseline ${trend(g30.payers)}`),
+    card("Transactions", number(k.transactions), `${comparison.label || "previous period"} ${trend(g7.transactions)} | 30-day baseline ${trend(g30.transactions)}`),
+    card("Avg Transaction", money(k.avg_transaction), `${comparison.label || "previous period"} ${trend(g7.avg_transaction)} | 30-day avg ${trend(g30.avg_transaction)}`),
   ].join("");
 
   const daily = groupedDaily(m.daily);
@@ -190,7 +200,8 @@ function renderMonetization(data) {
   ]);
 
   table("entityTable", m.entity_distribution, [
-    { key: "entity", label: "Entity", text: true },
+    { key: "entity_label", label: "Bot / Entity", text: true },
+    { key: "entity_slug", label: "Entity Slug", text: true },
     { key: "followup_users", label: "Follow-up Users", format: number },
     { key: "payers", label: "Payers", format: number },
     { key: "conversion_pct", label: "Conv.", format: pct },
@@ -235,6 +246,37 @@ function renderAcquisition(data) {
     { key: "followup_rate_pct", label: "Follow-up Rate", format: pct },
     { key: "payer_rate_pct", label: "Payer Rate", format: pct },
   ], 30);
+
+  const entityRows = a.followup_entity_events || [];
+  chart("followupEntityChart", "bar", {
+    labels: entityRows.slice(0, 10).map((r) => r.entity_label || r.entity_slug),
+    datasets: [{ label: "Follow-up Query events", data: entityRows.slice(0, 10).map((r) => r.followup_events), backgroundColor: COLORS.teal }],
+  }, {
+    indexAxis: "y",
+    plugins: { title: { display: true, text: "Follow-up Query by Bot / Entity" }, legend: { display: false } },
+  });
+
+  const demoRows = [];
+  const demos = a.followup_demographics || {};
+  for (const [segment, rows] of Object.entries(demos)) {
+    rows.slice(0, segment === "city" || segment === "region" ? 8 : 6).forEach((row) => {
+      demoRows.push({ segment, ...row });
+    });
+  }
+  table("followupDemoTable", demoRows, [
+    { key: "segment", label: "Segment", text: true },
+    { key: "bucket", label: "Bucket", text: true },
+    { key: "users", label: "Users", format: number },
+    { key: "pct", label: "%", format: pct },
+  ], 30);
+
+  table("followupEntityTable", entityRows, [
+    { key: "entity_label", label: "Bot / Entity", text: true },
+    { key: "entity_slug", label: "Entity Slug", text: true },
+    { key: "bot_id", label: "Bot ID", text: true },
+    { key: "entity_match_type", label: "Match", text: true },
+    { key: "followup_events", label: "Follow-up Events", format: number },
+  ], 25);
 }
 
 function renderRetention(data) {
@@ -325,19 +367,43 @@ function renderEngagement(data) {
 async function main() {
   try {
     const response = await fetch("data/dashboard_data.json");
-    const data = await response.json();
-    const meta = data.metadata;
-    document.getElementById("freshness").textContent = `Generated ${new Date(meta.generated_at_ist).toLocaleString("en-IN")} IST | ${meta.current_window.start} to ${meta.current_window.end}`;
-    renderOverview(data);
-    renderMonetization(data);
-    renderAcquisition(data);
-    renderRetention(data);
-    renderEngagement(data);
-    document.getElementById("sourceNotes").innerHTML = meta.source_notes.map((note) => `<li>${note}</li>`).join("");
+    DASHBOARD_DATA = await response.json();
+    SELECTED_PERIOD = DASHBOARD_DATA.metadata.default_period || "weekly";
+    setupPeriodControls();
+    renderDashboard();
   } catch (error) {
     document.getElementById("freshness").textContent = "Could not load dashboard data.";
     document.body.insertAdjacentHTML("afterbegin", `<div class="panel" style="margin:16px">Data load failed: ${error.message}</div>`);
   }
+}
+
+function selectedData() {
+  return DASHBOARD_DATA.periods?.[SELECTED_PERIOD] || DASHBOARD_DATA;
+}
+
+function setupPeriodControls() {
+  const controls = document.getElementById("periodControls");
+  controls.querySelectorAll("button").forEach((button) => {
+    button.classList.toggle("active", button.dataset.period === SELECTED_PERIOD);
+    button.addEventListener("click", () => {
+      SELECTED_PERIOD = button.dataset.period;
+      controls.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.period === SELECTED_PERIOD));
+      renderDashboard();
+    });
+  });
+}
+
+function renderDashboard() {
+  const data = selectedData();
+  const rootMeta = DASHBOARD_DATA.metadata;
+  const meta = data.metadata || rootMeta;
+  document.getElementById("freshness").textContent = `Generated ${new Date(rootMeta.generated_at_ist).toLocaleString("en-IN")} IST | ${SELECTED_PERIOD.toUpperCase()} ${meta.current_window.start} to ${meta.current_window.end}`;
+  renderOverview(data);
+  renderMonetization(data);
+  renderAcquisition(data);
+  renderRetention(data);
+  renderEngagement(data);
+  document.getElementById("sourceNotes").innerHTML = rootMeta.source_notes.map((note) => `<li>${note}</li>`).join("");
 }
 
 main();

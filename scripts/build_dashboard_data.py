@@ -8,6 +8,7 @@ from collections import Counter, defaultdict
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
+from time import sleep
 from typing import Any
 
 import pandas as pd
@@ -26,6 +27,7 @@ IST = timezone(timedelta(hours=5, minutes=30))
 UUID_RE = re.compile(
     r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 )
+ENTITY_ID_RE = re.compile(r"^[0-9a-fA-F]{24}$")
 
 
 def clean_value(value: Any) -> Any:
@@ -72,6 +74,25 @@ def day_range(start: date, end_inclusive: date) -> list[str]:
         days.append(d.isoformat())
         d += timedelta(days=1)
     return days
+
+
+def slugify(value: Any) -> str:
+    text_value = str(value or "").lower()
+    return re.sub(r"[^a-z0-9]+", "", text_value)
+
+
+def slug_variants(name: str) -> set[str]:
+    raw = slugify(name)
+    words = [w for w in re.split(r"[^a-zA-Z0-9]+", str(name or "").lower()) if w]
+    prefixes = {"pandit", "guru", "astrologer", "jyotish", "acharya"}
+    stripped = [w for w in words if w not in prefixes]
+    variants = {raw}
+    if stripped:
+        variants.add("".join(stripped))
+        variants.add(stripped[0])
+        if len(stripped) >= 2:
+            variants.add(stripped[0] + stripped[-1])
+    return {v for v in variants if v}
 
 
 def age_bucket(dob: Any, as_of: date) -> str:
@@ -156,6 +177,63 @@ def read_sql(engine, sql: str, params: dict[str, Any] | None = None) -> pd.DataF
         return pd.read_sql(text(sql), conn, params=params or {})
 
 
+def build_bot_lookup(engine, start: date, end: date) -> dict[str, dict[str, str]]:
+    bots = read_sql(
+        engine,
+        """
+        SELECT
+            LOWER(HEX(bot_id)) AS bot_id_hex,
+            bot_name,
+            COUNT(*) AS sessions
+        FROM prod.chat_session
+        WHERE started_at >= :start_utc
+          AND started_at < :end_utc
+          AND bot_id IS NOT NULL
+          AND bot_name IS NOT NULL
+        GROUP BY bot_id_hex, bot_name
+        ORDER BY sessions DESC
+        """,
+        {
+            "start_utc": utc_naive(local_midnight(start)),
+            "end_utc": utc_naive(local_midnight(end + timedelta(days=1))),
+        },
+    )
+    lookup: dict[str, dict[str, str]] = {}
+    seen_bot_ids: set[str] = set()
+    for row in bots.to_dict(orient="records"):
+        bot_id = str(row.get("bot_id_hex") or "").lower()
+        bot_name = str(row.get("bot_name") or "").strip()
+        if not bot_id or not bot_name:
+            continue
+        if bot_id not in seen_bot_ids:
+            lookup[bot_id] = {"bot_id": bot_id, "bot_name": bot_name, "match_type": "bot_id"}
+            seen_bot_ids.add(bot_id)
+        for variant in slug_variants(bot_name):
+            lookup.setdefault(variant, {"bot_id": bot_id, "bot_name": bot_name, "match_type": "slug"})
+    return lookup
+
+
+def resolve_entity(entity: Any, bot_lookup: dict[str, dict[str, str]]) -> dict[str, str]:
+    entity_slug = str(entity or "Unknown").strip()
+    key = entity_slug.lower()
+    lookup = bot_lookup.get(key) or bot_lookup.get(slugify(entity_slug))
+    if lookup:
+        return {
+            "entity_slug": entity_slug,
+            "bot_id": lookup.get("bot_id") or (key if ENTITY_ID_RE.match(key) else ""),
+            "bot_name": lookup.get("bot_name") or entity_slug,
+            "entity_label": lookup.get("bot_name") or entity_slug,
+            "entity_match_type": lookup.get("match_type") or "unknown",
+        }
+    return {
+        "entity_slug": entity_slug,
+        "bot_id": key if ENTITY_ID_RE.match(key) else "",
+        "bot_name": "Unmapped",
+        "entity_label": entity_slug,
+        "entity_match_type": "unmapped",
+    }
+
+
 def fetch_mixpanel_events(env: dict[str, str], events: list[str], start: date, end: date) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     auth = (
@@ -163,40 +241,77 @@ def fetch_mixpanel_events(env: dict[str, str], events: list[str], start: date, e
         env["MIXPANEL_SERVICE_ACCOUNT_SECRET"],
     )
     d = start
+    max_attempts = 4
     while d <= end:
-        response = requests.get(
-            "https://data-eu.mixpanel.com/api/2.0/export",
-            params={
-                "project_id": env["MIXPANEL_PROJECT_ID"],
-                "from_date": d.isoformat(),
-                "to_date": d.isoformat(),
-                "event": json.dumps(events),
-            },
-            auth=auth,
-            stream=True,
-            timeout=180,
-        )
-        response.raise_for_status()
-        for line in response.iter_lines(decode_unicode=True):
-            if not line:
-                continue
-            event = json.loads(line)
-            props = event.get("properties", {})
-            ts = pd.to_datetime(props.get("time"), unit="s", utc=True, errors="coerce")
-            if pd.isna(ts):
-                continue
-            local_ts = ts.tz_convert("Asia/Kolkata")
-            local_day = local_ts.date()
-            if local_day < start or local_day > end:
-                continue
-            props["_event_time_ist"] = local_ts.isoformat()
-            props["_event_date"] = local_day.isoformat()
-            out.append({"event": event.get("event"), "properties": props})
+        for attempt in range(1, max_attempts + 1):
+            day_events: list[dict[str, Any]] = []
+            try:
+                with requests.get(
+                    "https://data-eu.mixpanel.com/api/2.0/export",
+                    params={
+                        "project_id": env["MIXPANEL_PROJECT_ID"],
+                        "from_date": d.isoformat(),
+                        "to_date": d.isoformat(),
+                        "event": json.dumps(events),
+                    },
+                    auth=auth,
+                    stream=True,
+                    timeout=240,
+                ) as response:
+                    response.raise_for_status()
+                    for line in response.iter_lines(decode_unicode=True):
+                        if not line:
+                            continue
+                        event = json.loads(line)
+                        props = event.get("properties", {})
+                        ts = pd.to_datetime(props.get("time"), unit="s", utc=True, errors="coerce")
+                        if pd.isna(ts):
+                            continue
+                        local_ts = ts.tz_convert("Asia/Kolkata")
+                        local_day = local_ts.date()
+                        if local_day < start or local_day > end:
+                            continue
+                        slim_props = {
+                            key: props.get(key)
+                            for key in (
+                                "time",
+                                "distinct_id",
+                                "$user_id",
+                                "user_id",
+                                "userId",
+                                "uuid",
+                                "id",
+                                "$ae_session_length",
+                                "$os",
+                                "platform",
+                                "entity",
+                                "category",
+                                "gender",
+                                "dob",
+                                "$region",
+                                "$city",
+                                "campaign_name",
+                            )
+                        }
+                        slim_props["_event_time_ist"] = local_ts.isoformat()
+                        slim_props["_event_date"] = local_day.isoformat()
+                        day_events.append({"event": event.get("event"), "properties": slim_props})
+                out.extend(day_events)
+                break
+            except requests.RequestException as exc:
+                if attempt == max_attempts:
+                    raise RuntimeError(f"Mixpanel export failed for {d.isoformat()} after {max_attempts} attempts") from exc
+                sleep(2 * attempt)
         d += timedelta(days=1)
     return out
 
 
-def aggregate_mixpanel(events: list[dict[str, Any]], latest_day: date) -> dict[str, Any]:
+def aggregate_mixpanel(
+    events: list[dict[str, Any]],
+    latest_day: date,
+    bot_lookup: dict[str, dict[str, str]] | None = None,
+) -> dict[str, Any]:
+    bot_lookup = bot_lookup or {}
     session_daily: dict[str, dict[str, Any]] = defaultdict(lambda: {"sessions": 0, "users": set(), "seconds": 0.0})
     session_platform: dict[str, dict[str, Any]] = defaultdict(lambda: {"sessions": 0, "users": set(), "seconds": 0.0})
     session_users_total: set[str] = set()
@@ -301,6 +416,19 @@ def aggregate_mixpanel(events: list[dict[str, Any]], latest_day: date) -> dict[s
             for key, value in sorted(source.items())
         ]
 
+    followup_demographics = {}
+    for field in ["platform", "gender", "age_bucket", "region", "city"]:
+        counter = Counter((profile.get(field) or "Unknown") for profile in followup_users.values())
+        total = sum(counter.values())
+        followup_demographics[field] = [
+            {
+                "bucket": bucket,
+                "users": count,
+                "pct": round(count / total * 100, 2) if total else 0,
+            }
+            for bucket, count in counter.most_common(20)
+        ]
+
     return {
         "session_daily": session_rows(session_daily, "date"),
         "session_by_platform": session_rows(session_platform, "platform"),
@@ -314,7 +442,7 @@ def aggregate_mixpanel(events: list[dict[str, Any]], latest_day: date) -> dict[s
             if counts
         },
         "followup_entity_events": [
-            {"entity": entity, "followup_events": count}
+            {**resolve_entity(entity, bot_lookup), "followup_events": count}
             for entity, count in followup_entity_events.most_common(25)
         ],
         "followup_segments": {
@@ -324,6 +452,7 @@ def aggregate_mixpanel(events: list[dict[str, Any]], latest_day: date) -> dict[s
             ]
             for field, counter in followup_segment_counts.items()
         },
+        "followup_demographics": followup_demographics,
         "bim_daily": open_rows(bim_daily, "date"),
         "bim_by_platform": open_rows(bim_platform, "platform"),
         "notification_campaigns": [
@@ -333,7 +462,13 @@ def aggregate_mixpanel(events: list[dict[str, Any]], latest_day: date) -> dict[s
     }
 
 
-def build_monetization(engine, ranges: dict[str, Any], primary_entity_by_user: dict[str, str]) -> dict[str, Any]:
+def build_monetization(
+    engine,
+    ranges: dict[str, Any],
+    primary_entity_by_user: dict[str, str],
+    bot_lookup: dict[str, dict[str, str]] | None = None,
+) -> dict[str, Any]:
+    bot_lookup = bot_lookup or {}
     params = {
         "start_utc": utc_naive(local_midnight(ranges["prior_30_start"])),
         "end_utc": utc_naive(local_midnight(ranges["current_end"] + timedelta(days=1))),
@@ -429,8 +564,8 @@ def build_monetization(engine, ranges: dict[str, Any], primary_entity_by_user: d
     current_kpis = kpis(current)
     prior7_kpis = kpis(prior7)
     prior30_kpis = kpis(prior30)
-    month_7day_baseline = {
-        key: (value / 30 * 7 if key in {"revenue", "transactions", "payers"} else value)
+    prior_30_period_baseline = {
+        key: (value / 30 * ranges["period_days"] if key in {"revenue", "transactions", "payers"} else value)
         for key, value in prior30_kpis.items()
     }
 
@@ -464,13 +599,33 @@ def build_monetization(engine, ranges: dict[str, Any], primary_entity_by_user: d
         row = user_revenue[user_revenue["user_id"].eq(user_id)]
         revenue_value = float(row["revenue"].sum()) if not row.empty else 0.0
         txns = int(row["transactions"].sum()) if not row.empty else 0
-        entity_rows.append({"entity": entity, "user_id": user_id, "revenue": revenue_value, "transactions": txns})
+        entity_rows.append(
+            {
+                **resolve_entity(entity, bot_lookup),
+                "user_id": user_id,
+                "revenue": revenue_value,
+                "transactions": txns,
+            }
+        )
     entity_df = pd.DataFrame(entity_rows)
     if entity_df.empty:
-        entity_distribution = pd.DataFrame(columns=["entity", "followup_users", "payers", "transactions", "revenue", "conversion_pct"])
+        entity_distribution = pd.DataFrame(
+            columns=[
+                "entity_label",
+                "bot_name",
+                "entity_slug",
+                "bot_id",
+                "entity_match_type",
+                "followup_users",
+                "payers",
+                "transactions",
+                "revenue",
+                "conversion_pct",
+            ]
+        )
     else:
         entity_distribution = (
-            entity_df.groupby("entity", as_index=False)
+            entity_df.groupby(["entity_label", "bot_name", "entity_slug", "bot_id", "entity_match_type"], as_index=False)
             .agg(
                 followup_users=("user_id", "nunique"),
                 payers=("revenue", lambda s: int((s > 0).sum())),
@@ -494,7 +649,11 @@ def build_monetization(engine, ranges: dict[str, Any], primary_entity_by_user: d
                 for key in current_kpis
             },
             "growth_vs_prior_30_7day_baseline": {
-                key: pct_change(current_kpis.get(key, 0), month_7day_baseline.get(key, 0))
+                key: pct_change(current_kpis.get(key, 0), prior_30_period_baseline.get(key, 0))
+                for key in current_kpis
+            },
+            "growth_vs_prior_30_period_baseline": {
+                key: pct_change(current_kpis.get(key, 0), prior_30_period_baseline.get(key, 0))
                 for key in current_kpis
             },
         },
@@ -625,6 +784,8 @@ def build_acquisition(
         "login_daily": mixpanel["login_daily"],
         "funnel": funnel,
         "segments": records(segments.sort_values(["segment", "new_users"], ascending=[True, False])),
+        "followup_entity_events": mixpanel.get("followup_entity_events", []),
+        "followup_demographics": mixpanel.get("followup_demographics", {}),
     }
 
 
@@ -811,48 +972,44 @@ def build_retention(engine, profiles: pd.DataFrame, ranges: dict[str, Any]) -> d
     }
 
 
-def main() -> None:
-    env = load_env()
-    engine = mysql_engine(env)
-    today_ist = datetime.now(IST).date()
-    latest_complete_day = today_ist - timedelta(days=1)
-    current_end = latest_complete_day
-    current_start = current_end - timedelta(days=6)
-    prior_7_end = current_start - timedelta(days=1)
-    prior_7_start = prior_7_end - timedelta(days=6)
-    prior_30_end = prior_7_end
+def make_ranges(period_id: str, current_start: date, current_end: date) -> dict[str, Any]:
+    period_days = (current_end - current_start).days + 1
+    previous_end = current_start - timedelta(days=1)
+    previous_start = previous_end - timedelta(days=period_days - 1)
+    prior_30_end = previous_end
     prior_30_start = prior_30_end - timedelta(days=29)
-    ranges = {
-        "today_ist": today_ist,
+    return {
+        "period_id": period_id,
+        "period_days": period_days,
+        "today_ist": datetime.now(IST).date(),
         "current_start": current_start,
         "current_end": current_end,
-        "prior_7_start": prior_7_start,
-        "prior_7_end": prior_7_end,
+        "prior_7_start": previous_start,
+        "prior_7_end": previous_end,
         "prior_30_start": prior_30_start,
         "prior_30_end": prior_30_end,
+        "comparison_label": "previous day" if period_days == 1 else f"previous {period_days} days",
     }
 
-    mixpanel_events = fetch_mixpanel_events(
-        env,
-        ["$ae_session", "Login Success", "Follow up Query", "App Opened from Notification"],
-        current_start,
-        current_end,
-    )
-    mixpanel = aggregate_mixpanel(mixpanel_events, latest_complete_day)
 
-    monetization = build_monetization(engine, ranges, mixpanel["primary_entity_by_user"])
-    user_revenue_current = pd.DataFrame(monetization.pop("user_revenue_current"))
-    if user_revenue_current.empty:
-        user_revenue_current = pd.DataFrame(columns=["user_id", "revenue", "transactions"])
+def filter_events(events: list[dict[str, Any]], start: date, end: date) -> list[dict[str, Any]]:
+    return [
+        event
+        for event in events
+        if start <= datetime.strptime(event["properties"]["_event_date"], "%Y-%m-%d").date() <= end
+    ]
 
-    profiles = build_profiles(engine, latest_complete_day)
-    acquisition = build_acquisition(profiles, ranges, mixpanel, user_revenue_current)
-    config_funnel = build_config_funnel(engine, ranges, set(mixpanel["followup_users"].keys()))
-    retention = build_retention(engine, profiles, ranges)
 
+def build_engagement(mixpanel: dict[str, Any]) -> dict[str, Any]:
     session_daily = pd.DataFrame(mixpanel["session_daily"])
     if session_daily.empty:
-        engagement_kpis = {"active_users": 0, "sessions": 0, "avg_minutes_per_user": 0, "avg_minutes_per_session": 0}
+        engagement_kpis = {
+            "active_users": 0,
+            "sessions": 0,
+            "total_minutes": 0,
+            "avg_minutes_per_user": 0,
+            "avg_minutes_per_session": 0,
+        }
     else:
         total_sessions = int(session_daily["sessions"].sum())
         total_minutes = float(session_daily["total_minutes"].sum())
@@ -867,7 +1024,7 @@ def main() -> None:
 
     bim_opens = sum(row["opens"] for row in mixpanel["bim_daily"])
     bim_users = sum(row["users"] for row in mixpanel["bim_by_platform"])
-    engagement = {
+    return {
         "kpis": {
             **engagement_kpis,
             "bim_notification_opens": int(bim_opens),
@@ -880,26 +1037,115 @@ def main() -> None:
         "notification_campaigns": mixpanel["notification_campaigns"],
     }
 
+
+def build_period_dashboard(
+    engine,
+    profiles: pd.DataFrame,
+    all_mixpanel_events: list[dict[str, Any]],
+    ranges: dict[str, Any],
+    bot_lookup: dict[str, dict[str, str]],
+    latest_complete_day: date,
+) -> dict[str, Any]:
+    period_events = filter_events(all_mixpanel_events, ranges["current_start"], ranges["current_end"])
+    mixpanel = aggregate_mixpanel(period_events, latest_complete_day, bot_lookup)
+
+    monetization = build_monetization(engine, ranges, mixpanel["primary_entity_by_user"], bot_lookup)
+    user_revenue_current = pd.DataFrame(monetization.pop("user_revenue_current"))
+    if user_revenue_current.empty:
+        user_revenue_current = pd.DataFrame(columns=["user_id", "revenue", "transactions"])
+
+    acquisition = build_acquisition(profiles, ranges, mixpanel, user_revenue_current)
+    config_funnel = build_config_funnel(engine, ranges, set(mixpanel["followup_users"].keys()))
+    retention = build_retention(engine, profiles, ranges)
+    engagement = build_engagement(mixpanel)
+
+    return {
+        "metadata": {
+            "period_id": ranges["period_id"],
+            "period_days": ranges["period_days"],
+            "current_window": {
+                "start": ranges["current_start"].isoformat(),
+                "end": ranges["current_end"].isoformat(),
+            },
+            "comparison_window": {
+                "start": ranges["prior_7_start"].isoformat(),
+                "end": ranges["prior_7_end"].isoformat(),
+                "label": ranges["comparison_label"],
+            },
+            "prior_30_window": {
+                "start": ranges["prior_30_start"].isoformat(),
+                "end": ranges["prior_30_end"].isoformat(),
+            },
+        },
+        "monetization": {**monetization, "config_funnel": config_funnel},
+        "acquisition": acquisition,
+        "retention": retention,
+        "engagement": engagement,
+    }
+
+
+def main() -> None:
+    env = load_env()
+    engine = mysql_engine(env)
+    today_ist = datetime.now(IST).date()
+    latest_complete_day = today_ist - timedelta(days=1)
+    current_end = latest_complete_day
+    period_ranges = {
+        "daily": make_ranges("daily", current_end, current_end),
+        "weekly": make_ranges("weekly", current_end - timedelta(days=6), current_end),
+    }
+    mixpanel_start = period_ranges["weekly"]["current_start"]
+    sql_lookup_start = period_ranges["weekly"]["prior_30_start"]
+
+    mixpanel_events = fetch_mixpanel_events(
+        env,
+        ["$ae_session", "Login Success", "Follow up Query", "App Opened from Notification"],
+        mixpanel_start,
+        current_end,
+    )
+
+    profiles = build_profiles(engine, latest_complete_day)
+    bot_lookup = build_bot_lookup(engine, sql_lookup_start, current_end)
+    periods = {
+        period_id: build_period_dashboard(
+            engine,
+            profiles,
+            mixpanel_events,
+            ranges,
+            bot_lookup,
+            latest_complete_day,
+        )
+        for period_id, ranges in period_ranges.items()
+    }
+    weekly = periods["weekly"]
+
     dashboard = {
         "metadata": {
             "generated_at_ist": datetime.now(IST).isoformat(timespec="seconds"),
-            "current_window": {"start": current_start.isoformat(), "end": current_end.isoformat()},
-            "prior_7_window": {"start": prior_7_start.isoformat(), "end": prior_7_end.isoformat()},
-            "prior_30_window": {"start": prior_30_start.isoformat(), "end": prior_30_end.isoformat()},
+            "default_period": "weekly",
+            "current_window": weekly["metadata"]["current_window"],
+            "prior_7_window": weekly["metadata"]["comparison_window"],
+            "prior_30_window": weekly["metadata"]["prior_30_window"],
+            "available_periods": [
+                {"id": "daily", "label": "Daily", **periods["daily"]["metadata"]},
+                {"id": "weekly", "label": "Weekly", **periods["weekly"]["metadata"]},
+            ],
             "timezone": "Asia/Kolkata",
             "source_notes": [
                 "Revenue comes from MySQL subscription_lifecycle_events and payment_orders.",
                 "Pay as you go means successful ADD_MONEY wallet payment orders.",
                 "Customized day pass means successful DAY_PASS payment orders.",
                 "Acquisition new users come from MySQL users.created_at; login success comes from Mixpanel.",
+                "Follow-up entity values are resolved to bot names using chat_session bot_id and normalized bot-name slugs.",
                 "Retention uses completed MySQL chat_session activity for new-user cohorts.",
                 "Engagement duration and BIM notification opens come from Mixpanel app events.",
             ],
         },
-        "monetization": {**monetization, "config_funnel": config_funnel},
-        "acquisition": acquisition,
-        "retention": retention,
-        "engagement": engagement,
+        "periods": periods,
+        "monetization": weekly["monetization"],
+        "acquisition": weekly["acquisition"],
+        "retention": weekly["retention"],
+        "engagement": weekly["engagement"],
     }
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -913,6 +1159,7 @@ def main() -> None:
                 "new_users": dashboard["acquisition"]["kpis"]["new_users"],
                 "retention_d1": dashboard["retention"]["curve"][1]["retention_pct"],
                 "engagement_sessions": dashboard["engagement"]["kpis"]["sessions"],
+                "periods": list(periods.keys()),
             },
             indent=2,
         ),
