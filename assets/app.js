@@ -10,6 +10,8 @@ const COLORS = {
   teal: "#0f766e",
   gold: "#c78118",
   rose: "#be3455",
+  green: "#15803d",
+  slate: "#334155",
   subscription: "#2563eb",
   pay_as_you_go: "#0f766e",
   day_pass: "#c78118",
@@ -187,6 +189,23 @@ function renderMonetization(data) {
     scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true } },
   });
 
+  const dailySummary = m.daily_summary || [];
+  chart("revenueRateChart", "line", {
+    labels: dailySummary.map((r) => shortDate(r.day)),
+    datasets: [
+      { label: "Revenue", data: dailySummary.map((r) => r.revenue), borderColor: COLORS.blue, backgroundColor: "rgba(37,99,235,0.12)", yAxisID: "y", tension: 0.25 },
+      { label: "Payers", data: dailySummary.map((r) => r.payers), borderColor: COLORS.teal, yAxisID: "y1", tension: 0.25 },
+      { label: "Avg txn", data: dailySummary.map((r) => r.avg_transaction), borderColor: COLORS.gold, yAxisID: "y1", tension: 0.25 },
+    ],
+  }, {
+    plugins: { title: { display: true, text: "Revenue, Payers and Avg Transaction Trend" } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Revenue" } },
+      y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Payers / Avg txn" } },
+    },
+  });
+
   chart("revenueFamilyChart", "doughnut", {
     labels: m.family.map((r) => r.family.replaceAll("_", " ")),
     datasets: [{ data: m.family.map((r) => r.revenue), backgroundColor: [COLORS.subscription, COLORS.pay_as_you_go, COLORS.day_pass] }],
@@ -200,6 +219,8 @@ function renderMonetization(data) {
     { key: "revenue", label: "Revenue", format: money },
     { key: "payers", label: "Payers", format: number },
     { key: "transactions", label: "Txns", format: number },
+    { key: "avg_transaction", label: "Avg Txn", format: money },
+    { key: "revenue_share_pct", label: "Day Share", format: pct },
   ], 30);
 
   table("revenueFamilyTable", m.family, [
@@ -208,6 +229,7 @@ function renderMonetization(data) {
     { key: "payers", label: "Payers", format: number },
     { key: "transactions", label: "Txns", format: number },
     { key: "avg_transaction", label: "Avg Txn", format: money },
+    { key: "revenue_share_pct", label: "Revenue Share", format: pct },
   ], 10);
 
   table("packTable", m.pack, [
@@ -219,7 +241,21 @@ function renderMonetization(data) {
     { key: "payers", label: "Payers", format: number },
     { key: "transactions", label: "Txns", format: number },
     { key: "avg_transaction", label: "Avg Txn", format: money },
+    { key: "revenue_share_pct", label: "Revenue Share", format: pct },
   ], 30);
+
+  chart("configFunnelRateChart", "bar", {
+    labels: m.config_funnel.map((r) => r.trial_type),
+    datasets: [
+      { label: "Assigned to follow-up %", data: m.config_funnel.map((r) => r.assigned_to_followup_pct), backgroundColor: COLORS.blue },
+      { label: "Follow-up to trial %", data: m.config_funnel.map((r) => r.followup_to_trial_pct), backgroundColor: COLORS.teal },
+      { label: "Trial to main %", data: m.config_funnel.map((r) => r.trial_to_main_pct), backgroundColor: COLORS.gold },
+      { label: "Follow-up to main %", data: m.config_funnel.map((r) => r.followup_to_main_pct), backgroundColor: COLORS.rose },
+    ],
+  }, {
+    plugins: { title: { display: true, text: "Config Funnel Percentage Comparison" } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, max: 100, grid: { color: "#eef2f6" } } },
+  });
 
   table("configFunnelTable", m.config_funnel, [
     { key: "trial_type", label: "Config", text: true },
@@ -229,10 +265,24 @@ function renderMonetization(data) {
     { key: "main_plan_buyers", label: "Main Buyers", format: number },
     { key: "main_199_buyers", label: "Rs 199", format: number },
     { key: "main_499_buyers", label: "Rs 499", format: number },
+    { key: "assigned_to_followup_pct", label: "Assigned to F", format: pct },
     { key: "followup_to_trial_pct", label: "F to Trial", format: pct },
     { key: "trial_to_main_pct", label: "Trial to Main", format: pct },
     { key: "followup_to_main_pct", label: "F to Main", format: pct },
   ]);
+
+  const entityRows = m.entity_distribution || [];
+  chart("entityConversionChart", "bar", {
+    labels: entityRows.slice(0, 10).map((r) => r.entity_label),
+    datasets: [
+      { label: "Conversion %", data: entityRows.slice(0, 10).map((r) => r.conversion_pct), backgroundColor: COLORS.teal },
+      { label: "Revenue share %", data: entityRows.slice(0, 10).map((r) => r.revenue_share_pct), backgroundColor: COLORS.gold },
+    ],
+  }, {
+    indexAxis: "y",
+    plugins: { title: { display: true, text: "Bot / Entity Conversion and Revenue Share" } },
+    scales: { x: { beginAtZero: true, grid: { color: "#eef2f6" } }, y: { grid: { display: false } } },
+  });
 
   table("entityTable", m.entity_distribution, [
     { key: "entity_label", label: "Bot / Entity", text: true },
@@ -240,8 +290,11 @@ function renderMonetization(data) {
     { key: "followup_users", label: "Follow-up Users", format: number },
     { key: "payers", label: "Payers", format: number },
     { key: "conversion_pct", label: "Conv.", format: pct },
+    { key: "revenue_share_pct", label: "Revenue Share", format: pct },
     { key: "transactions", label: "Txns", format: number },
     { key: "revenue", label: "Revenue", format: money },
+    { key: "avg_revenue_per_payer", label: "ARPP", format: money },
+    { key: "revenue_per_followup_user", label: "Rev/FU", format: money },
   ], 20);
 }
 
@@ -264,6 +317,18 @@ function renderAcquisition(data) {
     ],
   }, { plugins: { title: { display: true, text: "New User Daily Funnel" } } });
 
+  chart("acquisitionRateChart", "line", {
+    labels: a.daily.map((r) => shortDate(r.signup_date)),
+    datasets: [
+      { label: "Follow-up rate %", data: a.daily.map((r) => r.followup_rate_pct), borderColor: COLORS.teal, backgroundColor: "rgba(15,118,110,0.12)", tension: 0.25 },
+      { label: "Payment rate %", data: a.daily.map((r) => r.payer_rate_pct), borderColor: COLORS.gold, tension: 0.25 },
+      { label: "Follow-up to payer %", data: a.daily.map((r) => r.followup_to_payer_pct), borderColor: COLORS.rose, tension: 0.25 },
+    ],
+  }, {
+    plugins: { title: { display: true, text: "Daily Conversion Rate Trend" } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" } } },
+  });
+
   chart("acquisitionFunnelChart", "bar", {
     labels: a.funnel.map((r) => r.stage),
     datasets: [{ label: "Users", data: a.funnel.map((r) => r.users), backgroundColor: [COLORS.blue, COLORS.teal, COLORS.gold] }],
@@ -277,6 +342,9 @@ function renderAcquisition(data) {
     { key: "new_users", label: "New Users", format: number },
     { key: "followup_users", label: "Follow-up", format: number },
     { key: "payers", label: "Payers", format: number },
+    { key: "followup_rate_pct", label: "F Rate", format: pct },
+    { key: "payer_rate_pct", label: "Pay Rate", format: pct },
+    { key: "followup_to_payer_pct", label: "F to Pay", format: pct },
   ], 14);
 
   table("acquisitionFunnelTableDetail", a.funnel, [
@@ -294,6 +362,7 @@ function renderAcquisition(data) {
     { key: "payers", label: "Payers", format: number },
     { key: "followup_rate_pct", label: "Follow-up Rate", format: pct },
     { key: "payer_rate_pct", label: "Payer Rate", format: pct },
+    { key: "followup_to_payer_pct", label: "F to Pay", format: pct },
   ], 30);
 
   const entityRows = a.followup_entity_events || [];
@@ -422,6 +491,22 @@ function renderEngagement(data) {
     ],
   }, { plugins: { title: { display: true, text: "App Opened from Notification: BIM" } } });
 
+  chart("notificationTrendChart", "line", {
+    labels: e.bim_daily.map((r) => shortDate(r.date)),
+    datasets: [
+      { label: "BIM opens", data: e.bim_daily.map((r) => r.opens), borderColor: COLORS.rose, backgroundColor: "rgba(190,52,85,0.12)", tension: 0.25 },
+      { label: "BIM users", data: e.bim_daily.map((r) => r.users), borderColor: COLORS.blue, tension: 0.25 },
+      { label: "Opens/user", data: e.bim_daily.map((r) => r.opens_per_user), borderColor: COLORS.gold, yAxisID: "y1", tension: 0.25 },
+    ],
+  }, {
+    plugins: { title: { display: true, text: "BIM Notification Trend" } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Opens / users" } },
+      y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Opens per user" } },
+    },
+  });
+
   table("sessionPlatformTable", e.session_by_platform, [
     { key: "platform", label: "Platform", text: true },
     { key: "users", label: "Users", format: number },
@@ -434,13 +519,55 @@ function renderEngagement(data) {
     { key: "campaign", label: "Campaign", text: true },
     { key: "opens", label: "Opens", format: number },
     { key: "users", label: "Users", format: number },
+    { key: "opens_per_user", label: "Opens/User", format: (v) => Number(v || 0).toFixed(2) },
   ]);
 
   table("bimDailyTable", e.bim_daily, [
     { key: "date", label: "Date", text: true, format: shortDate },
     { key: "opens", label: "Opens", format: number },
     { key: "users", label: "Users", format: number },
+    { key: "opens_per_user", label: "Opens/User", format: (v) => Number(v || 0).toFixed(2) },
   ], 14);
+}
+
+function renderMetricCoverage(data) {
+  const coverage = data.metric_coverage || { rows: [], summary: [] };
+  const rows = coverage.rows || [];
+  const summary = coverage.summary || [];
+  const getStatusCount = (status) => summary.find((row) => row.status === status)?.metrics || 0;
+  const partialRows = rows.filter((row) => row.status !== "Available");
+  const avgCoverage = rows.length
+    ? rows.reduce((sum, row) => sum + Number(row.coverage_pct || 0), 0) / rows.length
+    : 0;
+
+  document.getElementById("metricCoverageCards").innerHTML = [
+    card("Available Metrics", number(getStatusCount("Available")), "Fully calculable from current sources"),
+    card("Partial Metrics", number(getStatusCount("Partial")), "Usable but with source/data gaps"),
+    card("Missing Metrics", number(getStatusCount("Missing source") + getStatusCount("Missing denominator")), "Need one more source or denominator"),
+    card("Avg Coverage", pct(avgCoverage), "Across tracked metric families"),
+  ].join("");
+
+  chart("metricCoverageChart", "bar", {
+    labels: summary.map((row) => row.status),
+    datasets: [{ label: "Metric count", data: summary.map((row) => row.metrics), backgroundColor: summary.map((row) => {
+      if (row.status === "Available") return COLORS.green;
+      if (row.status === "Partial") return COLORS.gold;
+      return COLORS.rose;
+    }) }],
+  }, {
+    indexAxis: "y",
+    plugins: { title: { display: true, text: "Metric Coverage Status" }, legend: { display: false } },
+    scales: { x: { beginAtZero: true, grid: { color: "#eef2f6" } }, y: { grid: { display: false } } },
+  });
+
+  table("metricCoverageTable", partialRows.length ? partialRows : rows, [
+    { key: "area", label: "Area", text: true },
+    { key: "metric", label: "Metric", text: true },
+    { key: "status", label: "Status", text: true },
+    { key: "coverage_pct", label: "Coverage", format: pct },
+    { key: "missing_detail", label: "Missing Detail", text: true },
+    { key: "next_data_needed", label: "Next Data Needed", text: true },
+  ], 20);
 }
 
 async function main() {
@@ -523,6 +650,7 @@ function renderDashboard() {
   renderAcquisition(data);
   renderRetention(data);
   renderEngagement(data);
+  renderMetricCoverage(data);
   renderDataPolicy(rootMeta);
   document.getElementById("sourceNotes").innerHTML = rootMeta.source_notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("");
 }

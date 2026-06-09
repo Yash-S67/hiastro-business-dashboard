@@ -59,6 +59,10 @@ def safe_div(num: float, den: float) -> float:
     return round(num / den * 100, 2) if den else 0.0
 
 
+def safe_ratio(num: float, den: float) -> float:
+    return round(num / den, 2) if den else 0.0
+
+
 def local_midnight(d: date) -> datetime:
     return datetime.combine(d, time.min, tzinfo=IST)
 
@@ -412,7 +416,12 @@ def aggregate_mixpanel(
 
     def open_rows(source: dict[str, dict[str, Any]], key_name: str) -> list[dict[str, Any]]:
         return [
-            {key_name: key, "opens": value["opens"], "users": len(value["users"])}
+            {
+                key_name: key,
+                "opens": value["opens"],
+                "users": len(value["users"]),
+                "opens_per_user": safe_ratio(value["opens"], len(value["users"])),
+            }
             for key, value in sorted(source.items())
         ]
 
@@ -569,26 +578,51 @@ def build_monetization(
         for key, value in prior30_kpis.items()
     }
 
-    daily = (
-        current.groupby(["day", "family"], as_index=False)
-        .agg(revenue=("revenue", "sum"), transactions=("transactions", "sum"), payers=("user_id", "nunique"))
-        .sort_values(["day", "family"])
-    )
+    if current.empty:
+        daily = pd.DataFrame(columns=["day", "family", "revenue", "transactions", "payers", "avg_transaction", "revenue_share_pct"])
+        daily_summary = pd.DataFrame(columns=["day", "revenue", "transactions", "payers", "avg_transaction", "avg_revenue_per_payer"])
+    else:
+        daily = (
+            current.groupby(["day", "family"], as_index=False)
+            .agg(revenue=("revenue", "sum"), transactions=("transactions", "sum"), payers=("user_id", "nunique"))
+            .sort_values(["day", "family"])
+        )
+        daily_totals = daily.groupby("day")["revenue"].transform("sum")
+        daily["avg_transaction"] = (daily["revenue"] / daily["transactions"]).round(2)
+        daily["revenue_share_pct"] = (daily["revenue"] / daily_totals * 100).round(2)
+
+        daily_summary = (
+            current.groupby("day", as_index=False)
+            .agg(revenue=("revenue", "sum"), transactions=("transactions", "sum"), payers=("user_id", "nunique"))
+            .sort_values("day")
+        )
+        daily_summary["avg_transaction"] = (daily_summary["revenue"] / daily_summary["transactions"]).round(2)
+        daily_summary["avg_revenue_per_payer"] = (daily_summary["revenue"] / daily_summary["payers"]).round(2)
+
     daily["day"] = daily["day"].astype(str)
+    daily_summary["day"] = daily_summary["day"].astype(str)
 
     family = (
         current.groupby("family", as_index=False)
         .agg(revenue=("revenue", "sum"), transactions=("transactions", "sum"), payers=("user_id", "nunique"))
         .sort_values("revenue", ascending=False)
     )
-    family["avg_transaction"] = (family["revenue"] / family["transactions"]).round(2)
+    if family.empty:
+        family = pd.DataFrame(columns=["family", "revenue", "transactions", "payers", "avg_transaction", "revenue_share_pct"])
+    else:
+        family["avg_transaction"] = (family["revenue"] / family["transactions"]).round(2)
+        family["revenue_share_pct"] = (family["revenue"] / family["revenue"].sum() * 100).round(2)
 
     pack = (
         current.groupby(["family", "pack", "plan_code", "amount"], as_index=False)
         .agg(revenue=("revenue", "sum"), transactions=("transactions", "sum"), payers=("user_id", "nunique"))
         .sort_values("revenue", ascending=False)
     )
-    pack["avg_transaction"] = (pack["revenue"] / pack["transactions"]).round(2)
+    if pack.empty:
+        pack = pd.DataFrame(columns=["family", "pack", "plan_code", "amount", "revenue", "transactions", "payers", "avg_transaction", "revenue_share_pct"])
+    else:
+        pack["avg_transaction"] = (pack["revenue"] / pack["transactions"]).round(2)
+        pack["revenue_share_pct"] = (pack["revenue"] / pack["revenue"].sum() * 100).round(2)
 
     user_revenue = (
         current.groupby("user_id", as_index=False)
@@ -621,6 +655,9 @@ def build_monetization(
                 "transactions",
                 "revenue",
                 "conversion_pct",
+                "revenue_share_pct",
+                "avg_revenue_per_payer",
+                "revenue_per_followup_user",
             ]
         )
     else:
@@ -638,6 +675,16 @@ def build_monetization(
         entity_distribution["conversion_pct"] = (
             entity_distribution["payers"] / entity_distribution["followup_users"] * 100
         ).round(2)
+        total_entity_revenue = float(entity_distribution["revenue"].sum())
+        entity_distribution["revenue_share_pct"] = (
+            entity_distribution["revenue"] / total_entity_revenue * 100 if total_entity_revenue else 0
+        ).round(2)
+        entity_distribution["avg_revenue_per_payer"] = (
+            entity_distribution["revenue"] / entity_distribution["payers"]
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        entity_distribution["revenue_per_followup_user"] = (
+            entity_distribution["revenue"] / entity_distribution["followup_users"]
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
 
     return {
         "kpis": {
@@ -658,6 +705,7 @@ def build_monetization(
             },
         },
         "daily": records(daily),
+        "daily_summary": records(daily_summary),
         "family": records(family),
         "pack": records(pack.head(30)),
         "entity_distribution": records(entity_distribution),
@@ -757,6 +805,14 @@ def build_acquisition(
         .agg(new_users=("user_id", "nunique"), followup_users=("had_followup", "sum"), payers=("paid", "sum"))
         .sort_values("signup_date")
     )
+    if daily.empty:
+        daily = pd.DataFrame(columns=["signup_date", "new_users", "followup_users", "payers", "followup_rate_pct", "payer_rate_pct", "followup_to_payer_pct"])
+    else:
+        daily["followup_rate_pct"] = (daily["followup_users"] / daily["new_users"] * 100).round(2)
+        daily["payer_rate_pct"] = (daily["payers"] / daily["new_users"] * 100).round(2)
+        daily["followup_to_payer_pct"] = (daily["payers"] / daily["followup_users"] * 100).replace(
+            [float("inf"), -float("inf")], 0
+        ).fillna(0).round(2)
     daily["signup_date"] = daily["signup_date"].astype(str)
 
     segment_rows = []
@@ -770,6 +826,9 @@ def build_acquisition(
         seg["segment"] = field
         seg["followup_rate_pct"] = (seg["followup_users"] / seg["new_users"] * 100).round(2)
         seg["payer_rate_pct"] = (seg["payers"] / seg["new_users"] * 100).round(2)
+        seg["followup_to_payer_pct"] = (seg["payers"] / seg["followup_users"] * 100).replace(
+            [float("inf"), -float("inf")], 0
+        ).fillna(0).round(2)
         segment_rows.append(seg)
     segments = pd.concat(segment_rows, ignore_index=True) if segment_rows else pd.DataFrame()
 
@@ -855,6 +914,7 @@ def build_config_funnel(engine, ranges: dict[str, Any], followup_user_ids: set[s
                 "main_plan_buyers": len(main_ids),
                 "main_199_buyers": len(main_199_ids),
                 "main_499_buyers": len(main_499_ids),
+                "assigned_to_followup_pct": safe_div(len(follow_ids), len(cohort_ids)),
                 "followup_to_trial_pct": safe_div(len(trial_ids), len(follow_ids)),
                 "trial_to_main_pct": safe_div(len(main_ids), len(trial_ids)),
                 "followup_to_main_pct": safe_div(len(main_ids), len(follow_ids)),
@@ -1038,6 +1098,131 @@ def build_engagement(mixpanel: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def bucket_pct(rows: list[dict[str, Any]], bucket_name: str) -> float:
+    for row in rows:
+        if str(row.get("bucket", "")).lower() == bucket_name.lower():
+            return float(row.get("pct") or 0)
+    return 0.0
+
+
+def build_metric_coverage(period_dashboard: dict[str, Any]) -> dict[str, Any]:
+    acquisition = period_dashboard["acquisition"]
+    monetization = period_dashboard["monetization"]
+    engagement = period_dashboard["engagement"]
+
+    demographics = acquisition.get("followup_demographics", {})
+    unknown_gender_pct = bucket_pct(demographics.get("gender", []), "unknown")
+    unknown_age_pct = bucket_pct(demographics.get("age_bucket", []), "unknown")
+    followup_entities = acquisition.get("followup_entity_events", [])
+    total_entity_events = sum(row.get("followup_events", 0) for row in followup_entities)
+    unmapped_entity_events = sum(
+        row.get("followup_events", 0)
+        for row in followup_entities
+        if row.get("entity_match_type") == "unmapped"
+    )
+    unmapped_entity_pct = safe_div(unmapped_entity_events, total_entity_events)
+    bim_opens = engagement["kpis"].get("bim_notification_opens", 0)
+
+    rows = [
+        {
+            "area": "Monetization",
+            "metric": "Revenue, payer, transaction, avg transaction",
+            "status": "Available",
+            "coverage_pct": 100,
+            "missing_detail": "None",
+            "next_data_needed": "None",
+        },
+        {
+            "area": "Monetization",
+            "metric": "Revenue share by family, pack, bot/entity",
+            "status": "Available",
+            "coverage_pct": 100,
+            "missing_detail": "None",
+            "next_data_needed": "None",
+        },
+        {
+            "area": "Monetization",
+            "metric": "Rs 1 / Rs 49 config to trial and main plan funnel",
+            "status": "Partial",
+            "coverage_pct": 80,
+            "missing_detail": "Config assignment and purchases are available; exact paywall impression and click events are not in the current export.",
+            "next_data_needed": "Add paywall shown and trial CTA clicked events with config_id and pack amount.",
+        },
+        {
+            "area": "Acquisition",
+            "metric": "New user to follow-up to payment conversion",
+            "status": "Available",
+            "coverage_pct": 100,
+            "missing_detail": "None",
+            "next_data_needed": "None",
+        },
+        {
+            "area": "Acquisition",
+            "metric": "Marketing channel / campaign source conversion",
+            "status": "Missing source",
+            "coverage_pct": 0,
+            "missing_detail": "The current source set does not include campaign attribution or ad spend for new users.",
+            "next_data_needed": "Install/UTM attribution fields or an ad-spend export keyed by campaign/date.",
+        },
+        {
+            "area": "Persona",
+            "metric": "Follow-up user gender distribution",
+            "status": "Partial" if unknown_gender_pct >= 20 else "Available",
+            "coverage_pct": round(100 - unknown_gender_pct, 2),
+            "missing_detail": f"{unknown_gender_pct:.2f}% of follow-up users have unknown gender.",
+            "next_data_needed": "Improve profile gender collection or pass profile gender into Mixpanel user profiles.",
+        },
+        {
+            "area": "Persona",
+            "metric": "Follow-up user age distribution",
+            "status": "Partial" if unknown_age_pct >= 20 else "Available",
+            "coverage_pct": round(100 - unknown_age_pct, 2),
+            "missing_detail": f"{unknown_age_pct:.2f}% of follow-up users have unknown age/dob.",
+            "next_data_needed": "Improve DOB/profile coverage or pass age bucket into Mixpanel user profiles.",
+        },
+        {
+            "area": "Bot / Entity",
+            "metric": "Follow-up query bot name mapping",
+            "status": "Partial" if unmapped_entity_pct > 5 else "Available",
+            "coverage_pct": round(100 - unmapped_entity_pct, 2),
+            "missing_detail": f"{unmapped_entity_pct:.2f}% of follow-up query events are unmapped to a bot name.",
+            "next_data_needed": "Keep bot_id/entity slug mapping in chat_session or a dedicated bot dimension table.",
+        },
+        {
+            "area": "Retention",
+            "metric": "D0-D7 chat retention by platform and bot repeat usage",
+            "status": "Available",
+            "coverage_pct": 100,
+            "missing_detail": "None",
+            "next_data_needed": "None",
+        },
+        {
+            "area": "Engagement",
+            "metric": "Average time, session depth, BIM opens",
+            "status": "Available" if bim_opens else "Partial",
+            "coverage_pct": 100 if bim_opens else 70,
+            "missing_detail": "BIM open counts exist, but delivered/impression denominators are not present.",
+            "next_data_needed": "Notification delivered/impression event to calculate true open rate.",
+        },
+        {
+            "area": "Engagement",
+            "metric": "Notification open rate",
+            "status": "Missing denominator",
+            "coverage_pct": 0,
+            "missing_detail": "App Opened from Notification is available, but notification delivered/sent count is not.",
+            "next_data_needed": "Notification sent/delivered event by campaign_name, user_id, date, and platform.",
+        },
+    ]
+    status_counts = Counter(row["status"] for row in rows)
+    return {
+        "rows": rows,
+        "summary": [
+            {"status": status, "metrics": count}
+            for status, count in sorted(status_counts.items())
+        ],
+    }
+
+
 def build_period_dashboard(
     engine,
     profiles: pd.DataFrame,
@@ -1058,8 +1243,7 @@ def build_period_dashboard(
     config_funnel = build_config_funnel(engine, ranges, set(mixpanel["followup_users"].keys()))
     retention = build_retention(engine, profiles, ranges)
     engagement = build_engagement(mixpanel)
-
-    return {
+    period_dashboard = {
         "metadata": {
             "period_id": ranges["period_id"],
             "period_days": ranges["period_days"],
@@ -1082,6 +1266,8 @@ def build_period_dashboard(
         "retention": retention,
         "engagement": engagement,
     }
+    period_dashboard["metric_coverage"] = build_metric_coverage(period_dashboard)
+    return period_dashboard
 
 
 def write_latest_dashboard(dashboard: dict[str, Any]) -> None:
@@ -1153,6 +1339,7 @@ def main() -> None:
                 "Follow-up entity values are resolved to bot names using chat_session bot_id and normalized bot-name slugs.",
                 "Retention uses completed MySQL chat_session activity for new-user cohorts.",
                 "Engagement duration and BIM notification opens come from Mixpanel app events.",
+                "Metric coverage flags show where a dashboard metric is partial or missing because a denominator/source is unavailable.",
             ],
         },
         "periods": periods,
@@ -1160,6 +1347,7 @@ def main() -> None:
         "acquisition": weekly["acquisition"],
         "retention": weekly["retention"],
         "engagement": weekly["engagement"],
+        "metric_coverage": weekly["metric_coverage"],
     }
 
     write_latest_dashboard(dashboard)

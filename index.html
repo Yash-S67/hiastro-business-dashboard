@@ -27,6 +27,7 @@
       <a href="#acquisition">Acquisition</a>
       <a href="#retention">Retention</a>
       <a href="#engagement">Engagement</a>
+      <a href="#coverage">Metric Coverage</a>
     </nav>
 
     <main>
@@ -50,17 +51,18 @@
         <div class="tab-panel active" id="monetization-overview">
           <div class="grid two">
             <div class="panel"><canvas id="revenueDailyChart"></canvas></div>
-            <div class="panel"><canvas id="revenueFamilyChart"></canvas></div>
+            <div class="panel"><canvas id="revenueRateChart"></canvas></div>
           </div>
           <div class="grid two">
+            <div class="panel"><canvas id="revenueFamilyChart"></canvas></div>
             <div class="panel">
               <h3>Daily Revenue Detail</h3>
               <div id="revenueDailyTable"></div>
             </div>
-            <div class="panel">
-              <h3>Revenue Family Detail</h3>
-              <div id="revenueFamilyTable"></div>
-            </div>
+          </div>
+          <div class="panel">
+            <h3>Revenue Family Detail</h3>
+            <div id="revenueFamilyTable"></div>
           </div>
         </div>
         <div class="tab-panel" id="monetization-packs">
@@ -70,15 +72,21 @@
           </div>
         </div>
         <div class="tab-panel" id="monetization-funnels">
-          <div class="panel">
-            <h3>Trial Funnel by Config</h3>
-            <div id="configFunnelTable"></div>
+          <div class="grid two">
+            <div class="panel"><canvas id="configFunnelRateChart"></canvas></div>
+            <div class="panel">
+              <h3>Trial Funnel by Config</h3>
+              <div id="configFunnelTable"></div>
+            </div>
           </div>
         </div>
         <div class="tab-panel" id="monetization-entities">
-          <div class="panel">
-            <h3>Entity Wise Follow-up and Earning</h3>
-            <div id="entityTable"></div>
+          <div class="grid two">
+            <div class="panel"><canvas id="entityConversionChart"></canvas></div>
+            <div class="panel">
+              <h3>Entity Wise Follow-up and Earning</h3>
+              <div id="entityTable"></div>
+            </div>
           </div>
         </div>
       </section>
@@ -100,17 +108,18 @@
         <div class="tab-panel active" id="acquisition-overview">
           <div class="grid two">
             <div class="panel"><canvas id="newUsersChart"></canvas></div>
-            <div class="panel"><canvas id="acquisitionFunnelChart"></canvas></div>
+            <div class="panel"><canvas id="acquisitionRateChart"></canvas></div>
           </div>
           <div class="grid two">
+            <div class="panel"><canvas id="acquisitionFunnelChart"></canvas></div>
             <div class="panel">
               <h3>Daily New User Funnel</h3>
               <div id="acquisitionDailyTable"></div>
             </div>
-            <div class="panel">
-              <h3>Funnel Detail</h3>
-              <div id="acquisitionFunnelTableDetail"></div>
-            </div>
+          </div>
+          <div class="panel">
+            <h3>Funnel Detail</h3>
+            <div id="acquisitionFunnelTableDetail"></div>
           </div>
         </div>
         <div class="tab-panel" id="acquisition-segments">
@@ -202,6 +211,9 @@
         <div class="tab-panel" id="engagement-notifications">
           <div class="grid two">
             <div class="panel"><canvas id="bimDailyChart"></canvas></div>
+            <div class="panel"><canvas id="notificationTrendChart"></canvas></div>
+          </div>
+          <div class="grid two">
             <div class="panel">
               <h3>Notification Campaign Opens</h3>
               <div id="campaignTable"></div>
@@ -210,6 +222,24 @@
           <div class="panel">
             <h3>BIM Daily Detail</h3>
             <div id="bimDailyTable"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="band" id="coverage">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Available, Partial, Missing</p>
+            <h2>Metric Coverage</h2>
+          </div>
+          <p>Shows which datapoints are fully calculable today and which need another event, table, or denominator.</p>
+        </div>
+        <div class="kpi-grid compact" id="metricCoverageCards"></div>
+        <div class="grid two">
+          <div class="panel"><canvas id="metricCoverageChart"></canvas></div>
+          <div class="panel">
+            <h3>Missing and Partial Data Points</h3>
+            <div id="metricCoverageTable"></div>
           </div>
         </div>
       </section>

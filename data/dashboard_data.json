@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generated_at_ist": "2026-06-09T16:07:42+05:30",
+    "generated_at_ist": "2026-06-09T16:20:47+05:30",
     "default_period": "weekly",
     "current_window": {
       "start": "2026-06-02",
@@ -68,7 +68,8 @@
       "Acquisition new users come from MySQL users.created_at; login success comes from Mixpanel.",
       "Follow-up entity values are resolved to bot names using chat_session bot_id and normalized bot-name slugs.",
       "Retention uses completed MySQL chat_session activity for new-user cohorts.",
-      "Engagement duration and BIM notification opens come from Mixpanel app events."
+      "Engagement duration and BIM notification opens come from Mixpanel app events.",
+      "Metric coverage flags show where a dashboard metric is partial or missing because a denominator/source is unavailable."
     ]
   },
   "periods": {
@@ -141,21 +142,37 @@
             "family": "day_pass",
             "revenue": 637.0,
             "transactions": 13,
-            "payers": 13
+            "payers": 13,
+            "avg_transaction": 49.0,
+            "revenue_share_pct": 1.11
           },
           {
             "day": "2026-06-08",
             "family": "pay_as_you_go",
             "revenue": 24013.0,
             "transactions": 245,
-            "payers": 199
+            "payers": 199,
+            "avg_transaction": 98.01,
+            "revenue_share_pct": 41.94
           },
           {
             "day": "2026-06-08",
             "family": "subscription",
             "revenue": 32603.0,
             "transactions": 209,
-            "payers": 209
+            "payers": 209,
+            "avg_transaction": 156.0,
+            "revenue_share_pct": 56.95
+          }
+        ],
+        "daily_summary": [
+          {
+            "day": "2026-06-08",
+            "revenue": 57253.0,
+            "transactions": 467,
+            "payers": 420,
+            "avg_transaction": 122.6,
+            "avg_revenue_per_payer": 136.32
           }
         ],
         "family": [
@@ -164,21 +181,24 @@
             "revenue": 32603.0,
             "transactions": 209,
             "payers": 209,
-            "avg_transaction": 156.0
+            "avg_transaction": 156.0,
+            "revenue_share_pct": 56.95
           },
           {
             "family": "pay_as_you_go",
             "revenue": 24013.0,
             "transactions": 245,
             "payers": 199,
-            "avg_transaction": 98.01
+            "avg_transaction": 98.01,
+            "revenue_share_pct": 41.94
           },
           {
             "family": "day_pass",
             "revenue": 637.0,
             "transactions": 13,
             "payers": 13,
-            "avg_transaction": 49.0
+            "avg_transaction": 49.0,
+            "revenue_share_pct": 1.11
           }
         ],
         "pack": [
@@ -190,7 +210,8 @@
             "revenue": 20958.0,
             "transactions": 42,
             "payers": 42,
-            "avg_transaction": 499.0
+            "avg_transaction": 499.0,
+            "revenue_share_pct": 36.61
           },
           {
             "family": "pay_as_you_go",
@@ -200,7 +221,8 @@
             "revenue": 8850.0,
             "transactions": 75,
             "payers": 67,
-            "avg_transaction": 118.0
+            "avg_transaction": 118.0,
+            "revenue_share_pct": 15.46
           },
           {
             "family": "pay_as_you_go",
@@ -210,7 +232,8 @@
             "revenue": 8437.0,
             "transactions": 143,
             "payers": 116,
-            "avg_transaction": 59.0
+            "avg_transaction": 59.0,
+            "revenue_share_pct": 14.74
           },
           {
             "family": "subscription",
@@ -220,7 +243,8 @@
             "revenue": 7485.0,
             "transactions": 15,
             "payers": 15,
-            "avg_transaction": 499.0
+            "avg_transaction": 499.0,
+            "revenue_share_pct": 13.07
           },
           {
             "family": "pay_as_you_go",
@@ -230,7 +254,8 @@
             "revenue": 5428.0,
             "transactions": 23,
             "payers": 20,
-            "avg_transaction": 236.0
+            "avg_transaction": 236.0,
+            "revenue_share_pct": 9.48
           },
           {
             "family": "subscription",
@@ -240,7 +265,8 @@
             "revenue": 1393.0,
             "transactions": 7,
             "payers": 7,
-            "avg_transaction": 199.0
+            "avg_transaction": 199.0,
+            "revenue_share_pct": 2.43
           },
           {
             "family": "pay_as_you_go",
@@ -250,7 +276,8 @@
             "revenue": 1180.0,
             "transactions": 2,
             "payers": 2,
-            "avg_transaction": 590.0
+            "avg_transaction": 590.0,
+            "revenue_share_pct": 2.06
           },
           {
             "family": "subscription",
@@ -260,7 +287,8 @@
             "revenue": 1127.0,
             "transactions": 23,
             "payers": 23,
-            "avg_transaction": 49.0
+            "avg_transaction": 49.0,
+            "revenue_share_pct": 1.97
           },
           {
             "family": "subscription",
@@ -270,7 +298,8 @@
             "revenue": 995.0,
             "transactions": 5,
             "payers": 5,
-            "avg_transaction": 199.0
+            "avg_transaction": 199.0,
+            "revenue_share_pct": 1.74
           },
           {
             "family": "day_pass",
@@ -280,7 +309,8 @@
             "revenue": 637.0,
             "transactions": 13,
             "payers": 13,
-            "avg_transaction": 49.0
+            "avg_transaction": 49.0,
+            "revenue_share_pct": 1.11
           },
           {
             "family": "subscription",
@@ -290,7 +320,8 @@
             "revenue": 539.0,
             "transactions": 11,
             "payers": 11,
-            "avg_transaction": 49.0
+            "avg_transaction": 49.0,
+            "revenue_share_pct": 0.94
           },
           {
             "family": "subscription",
@@ -300,7 +331,8 @@
             "revenue": 91.0,
             "transactions": 91,
             "payers": 91,
-            "avg_transaction": 1.0
+            "avg_transaction": 1.0,
+            "revenue_share_pct": 0.16
           },
           {
             "family": "pay_as_you_go",
@@ -310,7 +342,8 @@
             "revenue": 60.18,
             "transactions": 1,
             "payers": 1,
-            "avg_transaction": 60.18
+            "avg_transaction": 60.18,
+            "revenue_share_pct": 0.11
           },
           {
             "family": "pay_as_you_go",
@@ -320,7 +353,8 @@
             "revenue": 57.82,
             "transactions": 1,
             "payers": 1,
-            "avg_transaction": 57.82
+            "avg_transaction": 57.82,
+            "revenue_share_pct": 0.1
           },
           {
             "family": "subscription",
@@ -330,7 +364,8 @@
             "revenue": 15.0,
             "transactions": 15,
             "payers": 15,
-            "avg_transaction": 1.0
+            "avg_transaction": 1.0,
+            "revenue_share_pct": 0.03
           }
         ],
         "entity_distribution": [
@@ -344,7 +379,10 @@
             "payers": 127,
             "transactions": 133,
             "revenue": 10143.0,
-            "conversion_pct": 3.61
+            "conversion_pct": 3.61,
+            "revenue_share_pct": 35.82,
+            "avg_revenue_per_payer": 79.87,
+            "revenue_per_followup_user": 2.88
           },
           {
             "entity_label": "Hemant",
@@ -356,7 +394,10 @@
             "payers": 37,
             "transactions": 44,
             "revenue": 4442.0,
-            "conversion_pct": 5.4
+            "conversion_pct": 5.4,
+            "revenue_share_pct": 15.69,
+            "avg_revenue_per_payer": 120.05,
+            "revenue_per_followup_user": 6.48
           },
           {
             "entity_label": "Avika Sharma",
@@ -368,7 +409,10 @@
             "payers": 45,
             "transactions": 46,
             "revenue": 3822.0,
-            "conversion_pct": 5.27
+            "conversion_pct": 5.27,
+            "revenue_share_pct": 13.5,
+            "avg_revenue_per_payer": 84.93,
+            "revenue_per_followup_user": 4.48
           },
           {
             "entity_label": "Naina Banerjee",
@@ -380,7 +424,10 @@
             "payers": 24,
             "transactions": 32,
             "revenue": 3289.0,
-            "conversion_pct": 6.59
+            "conversion_pct": 6.59,
+            "revenue_share_pct": 11.61,
+            "avg_revenue_per_payer": 137.04,
+            "revenue_per_followup_user": 9.04
           },
           {
             "entity_label": "Vivek",
@@ -392,7 +439,10 @@
             "payers": 22,
             "transactions": 25,
             "revenue": 2901.0,
-            "conversion_pct": 4.64
+            "conversion_pct": 4.64,
+            "revenue_share_pct": 10.24,
+            "avg_revenue_per_payer": 131.86,
+            "revenue_per_followup_user": 6.12
           },
           {
             "entity_label": "Chandrikaa",
@@ -404,7 +454,10 @@
             "payers": 22,
             "transactions": 23,
             "revenue": 2310.0,
-            "conversion_pct": 5.7
+            "conversion_pct": 5.7,
+            "revenue_share_pct": 8.16,
+            "avg_revenue_per_payer": 105.0,
+            "revenue_per_followup_user": 5.98
           },
           {
             "entity_label": "Raj",
@@ -416,7 +469,10 @@
             "payers": 14,
             "transactions": 21,
             "revenue": 1174.0,
-            "conversion_pct": 4.73
+            "conversion_pct": 4.73,
+            "revenue_share_pct": 4.15,
+            "avg_revenue_per_payer": 83.86,
+            "revenue_per_followup_user": 3.97
           },
           {
             "entity_label": "Moniika",
@@ -428,7 +484,10 @@
             "payers": 2,
             "transactions": 2,
             "revenue": 177.0,
-            "conversion_pct": 66.67
+            "conversion_pct": 66.67,
+            "revenue_share_pct": 0.63,
+            "avg_revenue_per_payer": 88.5,
+            "revenue_per_followup_user": 59.0
           },
           {
             "entity_label": "Prem",
@@ -440,7 +499,10 @@
             "payers": 1,
             "transactions": 1,
             "revenue": 59.0,
-            "conversion_pct": 25.0
+            "conversion_pct": 25.0,
+            "revenue_share_pct": 0.21,
+            "avg_revenue_per_payer": 59.0,
+            "revenue_per_followup_user": 14.75
           },
           {
             "entity_label": "Vedansh",
@@ -452,7 +514,10 @@
             "payers": 1,
             "transactions": 1,
             "revenue": 1.0,
-            "conversion_pct": 100.0
+            "conversion_pct": 100.0,
+            "revenue_share_pct": 0.0,
+            "avg_revenue_per_payer": 1.0,
+            "revenue_per_followup_user": 1.0
           },
           {
             "entity_label": "Pandit Ajay Trivedi",
@@ -464,7 +529,10 @@
             "payers": 0,
             "transactions": 0,
             "revenue": 0.0,
-            "conversion_pct": 0.0
+            "conversion_pct": 0.0,
+            "revenue_share_pct": 0.0,
+            "avg_revenue_per_payer": 0.0,
+            "revenue_per_followup_user": 0.0
           },
           {
             "entity_label": "Vivek",
@@ -476,7 +544,10 @@
             "payers": 0,
             "transactions": 0,
             "revenue": 0.0,
-            "conversion_pct": 0.0
+            "conversion_pct": 0.0,
+            "revenue_share_pct": 0.0,
+            "avg_revenue_per_payer": 0.0,
+            "revenue_per_followup_user": 0.0
           },
           {
             "entity_label": "Naina Banerjee",
@@ -488,7 +559,10 @@
             "payers": 0,
             "transactions": 0,
             "revenue": 0.0,
-            "conversion_pct": 0.0
+            "conversion_pct": 0.0,
+            "revenue_share_pct": 0.0,
+            "avg_revenue_per_payer": 0.0,
+            "revenue_per_followup_user": 0.0
           },
           {
             "entity_label": "Avika Sharma",
@@ -500,7 +574,10 @@
             "payers": 0,
             "transactions": 0,
             "revenue": 0.0,
-            "conversion_pct": 0.0
+            "conversion_pct": 0.0,
+            "revenue_share_pct": 0.0,
+            "avg_revenue_per_payer": 0.0,
+            "revenue_per_followup_user": 0.0
           },
           {
             "entity_label": "Hemant",
@@ -512,7 +589,10 @@
             "payers": 0,
             "transactions": 0,
             "revenue": 0.0,
-            "conversion_pct": 0.0
+            "conversion_pct": 0.0,
+            "revenue_share_pct": 0.0,
+            "avg_revenue_per_payer": 0.0,
+            "revenue_per_followup_user": 0.0
           },
           {
             "entity_label": "Chandrikaa",
@@ -524,7 +604,10 @@
             "payers": 0,
             "transactions": 0,
             "revenue": 0.0,
-            "conversion_pct": 0.0
+            "conversion_pct": 0.0,
+            "revenue_share_pct": 0.0,
+            "avg_revenue_per_payer": 0.0,
+            "revenue_per_followup_user": 0.0
           },
           {
             "entity_label": "Raj",
@@ -536,7 +619,10 @@
             "payers": 0,
             "transactions": 0,
             "revenue": 0.0,
-            "conversion_pct": 0.0
+            "conversion_pct": 0.0,
+            "revenue_share_pct": 0.0,
+            "avg_revenue_per_payer": 0.0,
+            "revenue_per_followup_user": 0.0
           },
           {
             "entity_label": "Priyanka",
@@ -548,7 +634,10 @@
             "payers": 0,
             "transactions": 0,
             "revenue": 0.0,
-            "conversion_pct": 0.0
+            "conversion_pct": 0.0,
+            "revenue_share_pct": 0.0,
+            "avg_revenue_per_payer": 0.0,
+            "revenue_per_followup_user": 0.0
           },
           {
             "entity_label": "Harsh Dubey",
@@ -560,7 +649,10 @@
             "payers": 0,
             "transactions": 0,
             "revenue": 0.0,
-            "conversion_pct": 0.0
+            "conversion_pct": 0.0,
+            "revenue_share_pct": 0.0,
+            "avg_revenue_per_payer": 0.0,
+            "revenue_per_followup_user": 0.0
           },
           {
             "entity_label": "Sonam",
@@ -572,19 +664,23 @@
             "payers": 0,
             "transactions": 0,
             "revenue": 0.0,
-            "conversion_pct": 0.0
+            "conversion_pct": 0.0,
+            "revenue_share_pct": 0.0,
+            "avg_revenue_per_payer": 0.0,
+            "revenue_per_followup_user": 0.0
           }
         ],
         "config_funnel": [
           {
             "config_id": 18,
             "trial_type": "Rs 1 trial",
-            "assigned_users": 44556,
+            "assigned_users": 44569,
             "followup_users": 2045,
             "trial_buyers": 95,
             "main_plan_buyers": 17,
             "main_199_buyers": 2,
             "main_499_buyers": 15,
+            "assigned_to_followup_pct": 4.59,
             "followup_to_trial_pct": 4.65,
             "trial_to_main_pct": 17.89,
             "followup_to_main_pct": 0.83
@@ -592,12 +688,13 @@
           {
             "config_id": 20,
             "trial_type": "Rs 49 trial",
-            "assigned_users": 57970,
+            "assigned_users": 57991,
             "followup_users": 2344,
             "trial_buyers": 31,
             "main_plan_buyers": 7,
             "main_199_buyers": 2,
             "main_499_buyers": 5,
+            "assigned_to_followup_pct": 4.04,
             "followup_to_trial_pct": 1.32,
             "trial_to_main_pct": 22.58,
             "followup_to_main_pct": 0.3
@@ -616,7 +713,10 @@
             "signup_date": "2026-06-08",
             "new_users": 3722,
             "followup_users": 3350,
-            "payers": 135
+            "payers": 135,
+            "followup_rate_pct": 90.01,
+            "payer_rate_pct": 3.63,
+            "followup_to_payer_pct": 4.03
           }
         ],
         "login_daily": [
@@ -653,7 +753,8 @@
             "payers": 64,
             "segment": "age_bucket",
             "followup_rate_pct": 95.38,
-            "payer_rate_pct": 3.74
+            "payer_rate_pct": 3.74,
+            "followup_to_payer_pct": 3.93
           },
           {
             "bucket": "25-34",
@@ -662,7 +763,8 @@
             "payers": 53,
             "segment": "age_bucket",
             "followup_rate_pct": 93.47,
-            "payer_rate_pct": 4.55
+            "payer_rate_pct": 4.55,
+            "followup_to_payer_pct": 4.87
           },
           {
             "bucket": "<18",
@@ -671,7 +773,8 @@
             "payers": 5,
             "segment": "age_bucket",
             "followup_rate_pct": 94.91,
-            "payer_rate_pct": 1.27
+            "payer_rate_pct": 1.27,
+            "followup_to_payer_pct": 1.34
           },
           {
             "bucket": "35-44",
@@ -680,7 +783,8 @@
             "payers": 10,
             "segment": "age_bucket",
             "followup_rate_pct": 90.39,
-            "payer_rate_pct": 4.37
+            "payer_rate_pct": 4.37,
+            "followup_to_payer_pct": 4.83
           },
           {
             "bucket": "Unknown",
@@ -689,7 +793,8 @@
             "payers": 0,
             "segment": "age_bucket",
             "followup_rate_pct": 0.59,
-            "payer_rate_pct": 0.0
+            "payer_rate_pct": 0.0,
+            "followup_to_payer_pct": 0.0
           },
           {
             "bucket": "45-54",
@@ -698,7 +803,8 @@
             "payers": 3,
             "segment": "age_bucket",
             "followup_rate_pct": 90.24,
-            "payer_rate_pct": 7.32
+            "payer_rate_pct": 7.32,
+            "followup_to_payer_pct": 8.11
           },
           {
             "bucket": "55+",
@@ -707,7 +813,8 @@
             "payers": 0,
             "segment": "age_bucket",
             "followup_rate_pct": 82.35,
-            "payer_rate_pct": 0.0
+            "payer_rate_pct": 0.0,
+            "followup_to_payer_pct": 0.0
           },
           {
             "bucket": 18,
@@ -716,7 +823,8 @@
             "payers": 94,
             "segment": "config_id",
             "followup_rate_pct": 90.5,
-            "payer_rate_pct": 5.92
+            "payer_rate_pct": 5.92,
+            "followup_to_payer_pct": 6.54
           },
           {
             "bucket": 20,
@@ -725,7 +833,8 @@
             "payers": 28,
             "segment": "config_id",
             "followup_rate_pct": 91.38,
-            "payer_rate_pct": 1.81
+            "payer_rate_pct": 1.81,
+            "followup_to_payer_pct": 1.99
           },
           {
             "bucket": 8,
@@ -734,7 +843,8 @@
             "payers": 13,
             "segment": "config_id",
             "followup_rate_pct": 85.23,
-            "payer_rate_pct": 2.21
+            "payer_rate_pct": 2.21,
+            "followup_to_payer_pct": 2.59
           },
           {
             "bucket": 4,
@@ -743,7 +853,8 @@
             "payers": 0,
             "segment": "config_id",
             "followup_rate_pct": 0.0,
-            "payer_rate_pct": 0.0
+            "payer_rate_pct": 0.0,
+            "followup_to_payer_pct": 0.0
           },
           {
             "bucket": "female",
@@ -752,7 +863,8 @@
             "payers": 85,
             "segment": "gender",
             "followup_rate_pct": 95.33,
-            "payer_rate_pct": 3.4
+            "payer_rate_pct": 3.4,
+            "followup_to_payer_pct": 3.56
           },
           {
             "bucket": "male",
@@ -761,7 +873,8 @@
             "payers": 50,
             "segment": "gender",
             "followup_rate_pct": 92.02,
-            "payer_rate_pct": 4.81
+            "payer_rate_pct": 4.81,
+            "followup_to_payer_pct": 5.22
           },
           {
             "bucket": "unknown",
@@ -770,7 +883,8 @@
             "payers": 0,
             "segment": "gender",
             "followup_rate_pct": 0.59,
-            "payer_rate_pct": 0.0
+            "payer_rate_pct": 0.0,
+            "followup_to_payer_pct": 0.0
           },
           {
             "bucket": "other",
@@ -779,7 +893,8 @@
             "payers": 0,
             "segment": "gender",
             "followup_rate_pct": 60.0,
-            "payer_rate_pct": 0.0
+            "payer_rate_pct": 0.0,
+            "followup_to_payer_pct": 0.0
           },
           {
             "bucket": "android",
@@ -788,7 +903,8 @@
             "payers": 100,
             "segment": "platform",
             "followup_rate_pct": 90.61,
-            "payer_rate_pct": 3.34
+            "payer_rate_pct": 3.34,
+            "followup_to_payer_pct": 3.69
           },
           {
             "bucket": "unknown",
@@ -797,7 +913,8 @@
             "payers": 35,
             "segment": "platform",
             "followup_rate_pct": 87.5,
-            "payer_rate_pct": 4.81
+            "payer_rate_pct": 4.81,
+            "followup_to_payer_pct": 5.49
           }
         ],
         "followup_entity_events": [
@@ -1591,7 +1708,7 @@
         "kpis": {
           "active_users": 7408,
           "sessions": 24527,
-          "total_minutes": 56891.8,
+          "total_minutes": 56889.0,
           "avg_minutes_per_user": 7.68,
           "avg_minutes_per_session": 2.32,
           "bim_notification_opens": 1738,
@@ -1602,7 +1719,7 @@
             "date": "2026-06-08",
             "sessions": 24527,
             "users": 7408,
-            "total_minutes": 56891.8,
+            "total_minutes": 56889.0,
             "avg_minutes_per_user": 7.68,
             "avg_minutes_per_session": 2.32,
             "sessions_per_user": 3.31
@@ -1613,8 +1730,8 @@
             "platform": "android",
             "sessions": 22324,
             "users": 6848,
-            "total_minutes": 51531.8,
-            "avg_minutes_per_user": 7.53,
+            "total_minutes": 51528.9,
+            "avg_minutes_per_user": 7.52,
             "avg_minutes_per_session": 2.31,
             "sessions_per_user": 3.26
           },
@@ -1632,14 +1749,16 @@
           {
             "date": "2026-06-08",
             "opens": 1738,
-            "users": 1150
+            "users": 1150,
+            "opens_per_user": 1.51
           }
         ],
         "bim_by_platform": [
           {
             "platform": "android",
             "opens": 1738,
-            "users": 1150
+            "users": 1150,
+            "opens_per_user": 1.51
           }
         ],
         "notification_campaigns": [
@@ -1657,6 +1776,116 @@
             "campaign": "<null>",
             "opens": 49,
             "users": 43
+          }
+        ]
+      },
+      "metric_coverage": {
+        "rows": [
+          {
+            "area": "Monetization",
+            "metric": "Revenue, payer, transaction, avg transaction",
+            "status": "Available",
+            "coverage_pct": 100,
+            "missing_detail": "None",
+            "next_data_needed": "None"
+          },
+          {
+            "area": "Monetization",
+            "metric": "Revenue share by family, pack, bot/entity",
+            "status": "Available",
+            "coverage_pct": 100,
+            "missing_detail": "None",
+            "next_data_needed": "None"
+          },
+          {
+            "area": "Monetization",
+            "metric": "Rs 1 / Rs 49 config to trial and main plan funnel",
+            "status": "Partial",
+            "coverage_pct": 80,
+            "missing_detail": "Config assignment and purchases are available; exact paywall impression and click events are not in the current export.",
+            "next_data_needed": "Add paywall shown and trial CTA clicked events with config_id and pack amount."
+          },
+          {
+            "area": "Acquisition",
+            "metric": "New user to follow-up to payment conversion",
+            "status": "Available",
+            "coverage_pct": 100,
+            "missing_detail": "None",
+            "next_data_needed": "None"
+          },
+          {
+            "area": "Acquisition",
+            "metric": "Marketing channel / campaign source conversion",
+            "status": "Missing source",
+            "coverage_pct": 0,
+            "missing_detail": "The current source set does not include campaign attribution or ad spend for new users.",
+            "next_data_needed": "Install/UTM attribution fields or an ad-spend export keyed by campaign/date."
+          },
+          {
+            "area": "Persona",
+            "metric": "Follow-up user gender distribution",
+            "status": "Partial",
+            "coverage_pct": 43.87,
+            "missing_detail": "56.13% of follow-up users have unknown gender.",
+            "next_data_needed": "Improve profile gender collection or pass profile gender into Mixpanel user profiles."
+          },
+          {
+            "area": "Persona",
+            "metric": "Follow-up user age distribution",
+            "status": "Partial",
+            "coverage_pct": 43.87,
+            "missing_detail": "56.13% of follow-up users have unknown age/dob.",
+            "next_data_needed": "Improve DOB/profile coverage or pass age bucket into Mixpanel user profiles."
+          },
+          {
+            "area": "Bot / Entity",
+            "metric": "Follow-up query bot name mapping",
+            "status": "Available",
+            "coverage_pct": 100.0,
+            "missing_detail": "0.00% of follow-up query events are unmapped to a bot name.",
+            "next_data_needed": "Keep bot_id/entity slug mapping in chat_session or a dedicated bot dimension table."
+          },
+          {
+            "area": "Retention",
+            "metric": "D0-D7 chat retention by platform and bot repeat usage",
+            "status": "Available",
+            "coverage_pct": 100,
+            "missing_detail": "None",
+            "next_data_needed": "None"
+          },
+          {
+            "area": "Engagement",
+            "metric": "Average time, session depth, BIM opens",
+            "status": "Available",
+            "coverage_pct": 100,
+            "missing_detail": "BIM open counts exist, but delivered/impression denominators are not present.",
+            "next_data_needed": "Notification delivered/impression event to calculate true open rate."
+          },
+          {
+            "area": "Engagement",
+            "metric": "Notification open rate",
+            "status": "Missing denominator",
+            "coverage_pct": 0,
+            "missing_detail": "App Opened from Notification is available, but notification delivered/sent count is not.",
+            "next_data_needed": "Notification sent/delivered event by campaign_name, user_id, date, and platform."
+          }
+        ],
+        "summary": [
+          {
+            "status": "Available",
+            "metrics": 6
+          },
+          {
+            "status": "Missing denominator",
+            "metrics": 1
+          },
+          {
+            "status": "Missing source",
+            "metrics": 1
+          },
+          {
+            "status": "Partial",
+            "metrics": 3
           }
         ]
       }
@@ -1730,133 +1959,229 @@
             "family": "day_pass",
             "revenue": 49.0,
             "transactions": 1,
-            "payers": 1
+            "payers": 1,
+            "avg_transaction": 49.0,
+            "revenue_share_pct": 0.09
           },
           {
             "day": "2026-06-02",
             "family": "pay_as_you_go",
             "revenue": 30972.64,
             "transactions": 349,
-            "payers": 254
+            "payers": 254,
+            "avg_transaction": 88.75,
+            "revenue_share_pct": 58.01
           },
           {
             "day": "2026-06-02",
             "family": "subscription",
             "revenue": 22366.0,
             "transactions": 202,
-            "payers": 202
+            "payers": 202,
+            "avg_transaction": 110.72,
+            "revenue_share_pct": 41.89
           },
           {
             "day": "2026-06-03",
             "family": "pay_as_you_go",
             "revenue": 22738.6,
             "transactions": 288,
-            "payers": 205
+            "payers": 205,
+            "avg_transaction": 78.95,
+            "revenue_share_pct": 48.55
           },
           {
             "day": "2026-06-03",
             "family": "subscription",
             "revenue": 24100.0,
             "transactions": 238,
-            "payers": 237
+            "payers": 237,
+            "avg_transaction": 101.26,
+            "revenue_share_pct": 51.45
           },
           {
             "day": "2026-06-04",
             "family": "pay_as_you_go",
             "revenue": 24308.0,
             "transactions": 266,
-            "payers": 194
+            "payers": 194,
+            "avg_transaction": 91.38,
+            "revenue_share_pct": 39.5
           },
           {
             "day": "2026-06-04",
             "family": "subscription",
             "revenue": 37224.0,
             "transactions": 210,
-            "payers": 210
+            "payers": 210,
+            "avg_transaction": 177.26,
+            "revenue_share_pct": 60.5
           },
           {
             "day": "2026-06-05",
             "family": "day_pass",
             "revenue": 343.0,
             "transactions": 7,
-            "payers": 7
+            "payers": 7,
+            "avg_transaction": 49.0,
+            "revenue_share_pct": 0.68
           },
           {
             "day": "2026-06-05",
             "family": "pay_as_you_go",
             "revenue": 21358.0,
             "transactions": 239,
-            "payers": 177
+            "payers": 177,
+            "avg_transaction": 89.36,
+            "revenue_share_pct": 42.36
           },
           {
             "day": "2026-06-05",
             "family": "subscription",
             "revenue": 28725.0,
             "transactions": 225,
-            "payers": 225
+            "payers": 225,
+            "avg_transaction": 127.67,
+            "revenue_share_pct": 56.96
           },
           {
             "day": "2026-06-06",
             "family": "day_pass",
             "revenue": 539.0,
             "transactions": 11,
-            "payers": 11
+            "payers": 11,
+            "avg_transaction": 49.0,
+            "revenue_share_pct": 1.01
           },
           {
             "day": "2026-06-06",
             "family": "pay_as_you_go",
             "revenue": 22241.82,
             "transactions": 254,
-            "payers": 203
+            "payers": 203,
+            "avg_transaction": 87.57,
+            "revenue_share_pct": 41.53
           },
           {
             "day": "2026-06-06",
             "family": "subscription",
             "revenue": 30770.0,
             "transactions": 212,
-            "payers": 212
+            "payers": 212,
+            "avg_transaction": 145.14,
+            "revenue_share_pct": 57.46
           },
           {
             "day": "2026-06-07",
             "family": "day_pass",
             "revenue": 588.0,
             "transactions": 12,
-            "payers": 12
+            "payers": 12,
+            "avg_transaction": 49.0,
+            "revenue_share_pct": 1.11
           },
           {
             "day": "2026-06-07",
             "family": "pay_as_you_go",
             "revenue": 25901.0,
             "transactions": 273,
-            "payers": 212
+            "payers": 212,
+            "avg_transaction": 94.88,
+            "revenue_share_pct": 48.69
           },
           {
             "day": "2026-06-07",
             "family": "subscription",
             "revenue": 26709.0,
             "transactions": 243,
-            "payers": 243
+            "payers": 243,
+            "avg_transaction": 109.91,
+            "revenue_share_pct": 50.21
           },
           {
             "day": "2026-06-08",
             "family": "day_pass",
             "revenue": 637.0,
             "transactions": 13,
-            "payers": 13
+            "payers": 13,
+            "avg_transaction": 49.0,
+            "revenue_share_pct": 1.11
           },
           {
             "day": "2026-06-08",
             "family": "pay_as_you_go",
             "revenue": 24013.0,
             "transactions": 245,
-            "payers": 199
+            "payers": 199,
+            "avg_transaction": 98.01,
+            "revenue_share_pct": 41.94
           },
           {
             "day": "2026-06-08",
             "family": "subscription",
             "revenue": 32603.0,
             "transactions": 209,
-            "payers": 209
+            "payers": 209,
+            "avg_transaction": 156.0,
+            "revenue_share_pct": 56.95
+          }
+        ],
+        "daily_summary": [
+          {
+            "day": "2026-06-02",
+            "revenue": 53387.64,
+            "transactions": 552,
+            "payers": 457,
+            "avg_transaction": 96.72,
+            "avg_revenue_per_payer": 116.82
+          },
+          {
+            "day": "2026-06-03",
+            "revenue": 46838.6,
+            "transactions": 526,
+            "payers": 442,
+            "avg_transaction": 89.05,
+            "avg_revenue_per_payer": 105.97
+          },
+          {
+            "day": "2026-06-04",
+            "revenue": 61532.0,
+            "transactions": 476,
+            "payers": 404,
+            "avg_transaction": 129.27,
+            "avg_revenue_per_payer": 152.31
+          },
+          {
+            "day": "2026-06-05",
+            "revenue": 50426.0,
+            "transactions": 471,
+            "payers": 409,
+            "avg_transaction": 107.06,
+            "avg_revenue_per_payer": 123.29
+          },
+          {
+            "day": "2026-06-06",
+            "revenue": 53550.82,
+            "transactions": 477,
+            "payers": 425,
+            "avg_transaction": 112.27,
+            "avg_revenue_per_payer": 126.0
+          },
+          {
+            "day": "2026-06-07",
+            "revenue": 53198.0,
+            "transactions": 528,
+            "payers": 466,
+            "avg_transaction": 100.75,
+            "avg_revenue_per_payer": 114.16
+          },
+          {
+            "day": "2026-06-08",
+            "revenue": 57253.0,
+            "transactions": 467,
+            "payers": 420,
+            "avg_transaction": 122.6,
+            "avg_revenue_per_payer": 136.32
           }
         ],
         "family": [
@@ -1865,21 +2190,24 @@
             "revenue": 202497.0,
             "transactions": 1539,
             "payers": 1361,
-            "avg_transaction": 131.58
+            "avg_transaction": 131.58,
+            "revenue_share_pct": 53.83
           },
           {
             "family": "pay_as_you_go",
             "revenue": 171533.06,
             "transactions": 1914,
             "payers": 1099,
-            "avg_transaction": 89.62
+            "avg_transaction": 89.62,
+            "revenue_share_pct": 45.6
           },
           {
             "family": "day_pass",
             "revenue": 2156.0,
             "transactions": 44,
             "payers": 43,
-            "avg_transaction": 49.0
+            "avg_transaction": 49.0,
+            "revenue_share_pct": 0.57
           }
         ],
         "pack": [
@@ -1891,7 +2219,8 @@
             "revenue": 102794.0,
             "transactions": 206,
             "payers": 206,
-            "avg_transaction": 499.0
+            "avg_transaction": 499.0,
+            "revenue_share_pct": 27.33
           },
           {
             "family": "pay_as_you_go",
@@ -1901,7 +2230,8 @@
             "revenue": 76641.0,
             "transactions": 1299,
             "payers": 757,
-            "avg_transaction": 59.0
+            "avg_transaction": 59.0,
+            "revenue_share_pct": 20.37
           },
           {
             "family": "subscription",
@@ -1911,7 +2241,8 @@
             "revenue": 66866.0,
             "transactions": 134,
             "payers": 134,
-            "avg_transaction": 499.0
+            "avg_transaction": 499.0,
+            "revenue_share_pct": 17.77
           },
           {
             "family": "pay_as_you_go",
@@ -1921,7 +2252,8 @@
             "revenue": 54162.0,
             "transactions": 459,
             "payers": 320,
-            "avg_transaction": 118.0
+            "avg_transaction": 118.0,
+            "revenue_share_pct": 14.4
           },
           {
             "family": "pay_as_you_go",
@@ -1931,7 +2263,8 @@
             "revenue": 31860.0,
             "transactions": 135,
             "payers": 109,
-            "avg_transaction": 236.0
+            "avg_transaction": 236.0,
+            "revenue_share_pct": 8.47
           },
           {
             "family": "subscription",
@@ -1941,7 +2274,8 @@
             "revenue": 9950.0,
             "transactions": 50,
             "payers": 50,
-            "avg_transaction": 199.0
+            "avg_transaction": 199.0,
+            "revenue_share_pct": 2.64
           },
           {
             "family": "subscription",
@@ -1951,7 +2285,8 @@
             "revenue": 9555.0,
             "transactions": 195,
             "payers": 195,
-            "avg_transaction": 49.0
+            "avg_transaction": 49.0,
+            "revenue_share_pct": 2.54
           },
           {
             "family": "subscription",
@@ -1961,7 +2296,8 @@
             "revenue": 9353.0,
             "transactions": 47,
             "payers": 47,
-            "avg_transaction": 199.0
+            "avg_transaction": 199.0,
+            "revenue_share_pct": 2.49
           },
           {
             "family": "pay_as_you_go",
@@ -1971,7 +2307,8 @@
             "revenue": 5900.0,
             "transactions": 10,
             "payers": 10,
-            "avg_transaction": 590.0
+            "avg_transaction": 590.0,
+            "revenue_share_pct": 1.57
           },
           {
             "family": "subscription",
@@ -1981,7 +2318,8 @@
             "revenue": 3136.0,
             "transactions": 64,
             "payers": 64,
-            "avg_transaction": 49.0
+            "avg_transaction": 49.0,
+            "revenue_share_pct": 0.83
           },
           {
             "family": "pay_as_you_go",
@@ -1991,7 +2329,8 @@
             "revenue": 2360.0,
             "transactions": 2,
             "payers": 2,
-            "avg_transaction": 1180.0
+            "avg_transaction": 1180.0,
+            "revenue_share_pct": 0.63
           },
           {
             "family": "day_pass",
@@ -2001,7 +2340,8 @@
             "revenue": 2156.0,
             "transactions": 44,
             "payers": 43,
-            "avg_transaction": 49.0
+            "avg_transaction": 49.0,
+            "revenue_share_pct": 0.57
           },
           {
             "family": "subscription",
@@ -2011,7 +2351,8 @@
             "revenue": 686.0,
             "transactions": 686,
             "payers": 686,
-            "avg_transaction": 1.0
+            "avg_transaction": 1.0,
+            "revenue_share_pct": 0.18
           },
           {
             "family": "pay_as_you_go",
@@ -2021,7 +2362,8 @@
             "revenue": 231.28,
             "transactions": 4,
             "payers": 4,
-            "avg_transaction": 57.82
+            "avg_transaction": 57.82,
+            "revenue_share_pct": 0.06
           },
           {
             "family": "subscription",
@@ -2031,7 +2373,8 @@
             "revenue": 157.0,
             "transactions": 157,
             "payers": 156,
-            "avg_transaction": 1.0
+            "avg_transaction": 1.0,
+            "revenue_share_pct": 0.04
           },
           {
             "family": "pay_as_you_go",
@@ -2041,7 +2384,8 @@
             "revenue": 100.3,
             "transactions": 1,
             "payers": 1,
-            "avg_transaction": 100.3
+            "avg_transaction": 100.3,
+            "revenue_share_pct": 0.03
           },
           {
             "family": "pay_as_you_go",
@@ -2051,7 +2395,8 @@
             "revenue": 82.6,
             "transactions": 1,
             "payers": 1,
-            "avg_transaction": 82.6
+            "avg_transaction": 82.6,
+            "revenue_share_pct": 0.02
           },
           {
             "family": "pay_as_you_go",
@@ -2061,7 +2406,8 @@
             "revenue": 70.8,
             "transactions": 1,
             "payers": 1,
-            "avg_transaction": 70.8
+            "avg_transaction": 70.8,
+            "revenue_share_pct": 0.02
           },
           {
             "family": "pay_as_you_go",
@@ -2071,7 +2417,8 @@
             "revenue": 64.9,
             "transactions": 1,
             "payers": 1,
-            "avg_transaction": 64.9
+            "avg_transaction": 64.9,
+            "revenue_share_pct": 0.02
           },
           {
             "family": "pay_as_you_go",
@@ -2081,7 +2428,8 @@
             "revenue": 60.18,
             "transactions": 1,
             "payers": 1,
-            "avg_transaction": 60.18
+            "avg_transaction": 60.18,
+            "revenue_share_pct": 0.02
           }
         ],
         "entity_distribution": [
@@ -2095,7 +2443,10 @@
             "payers": 932,
             "transactions": 1162,
             "revenue": 130888.3,
-            "conversion_pct": 4.91
+            "conversion_pct": 4.91,
+            "revenue_share_pct": 47.73,
+            "avg_revenue_per_payer": 140.44,
+            "revenue_per_followup_user": 6.89
           },
           {
             "entity_label": "Hemant",
@@ -2107,7 +2458,10 @@
             "payers": 252,
             "transactions": 396,
             "revenue": 36789.82,
-            "conversion_pct": 7.19
+            "conversion_pct": 7.19,
+            "revenue_share_pct": 13.41,
+            "avg_revenue_per_payer": 145.99,
+            "revenue_per_followup_user": 10.5
           },
           {
             "entity_label": "Avika Sharma",
@@ -2119,7 +2473,10 @@
             "payers": 255,
             "transactions": 312,
             "revenue": 30487.0,
-            "conversion_pct": 6.78
+            "conversion_pct": 6.78,
+            "revenue_share_pct": 11.12,
+            "avg_revenue_per_payer": 119.56,
+            "revenue_per_followup_user": 8.11
           },
           {
             "entity_label": "Chandrikaa",
@@ -2131,7 +2488,10 @@
             "payers": 143,
             "transactions": 189,
             "revenue": 21274.0,
-            "conversion_pct": 8.12
+            "conversion_pct": 8.12,
+            "revenue_share_pct": 7.76,
+            "avg_revenue_per_payer": 148.77,
+            "revenue_per_followup_user": 12.09
           },
           {
             "entity_label": "Naina Banerjee",
@@ -2143,7 +2503,10 @@
             "payers": 125,
             "transactions": 188,
             "revenue": 18411.0,
-            "conversion_pct": 7.25
+            "conversion_pct": 7.25,
+            "revenue_share_pct": 6.71,
+            "avg_revenue_per_payer": 147.29,
+            "revenue_per_followup_user": 10.69
           },
           {
             "entity_label": "Vivek",
@@ -2155,7 +2518,10 @@
             "payers": 144,
             "transactions": 184,
             "revenue": 17558.0,
-            "conversion_pct": 6.12
+            "conversion_pct": 6.12,
+            "revenue_share_pct": 6.4,
+            "avg_revenue_per_payer": 121.93,
+            "revenue_per_followup_user": 7.46
           },
           {
             "entity_label": "Raj",
@@ -2167,7 +2533,10 @@
             "payers": 105,
             "transactions": 152,
             "revenue": 15444.82,
-            "conversion_pct": 6.77
+            "conversion_pct": 6.77,
+            "revenue_share_pct": 5.63,
+            "avg_revenue_per_payer": 147.09,
+            "revenue_per_followup_user": 9.96
           },
           {
             "entity_label": "Priyanka",
@@ -2179,7 +2548,10 @@
             "payers": 6,
             "transactions": 11,
             "revenue": 1062.0,
-            "conversion_pct": 10.53
+            "conversion_pct": 10.53,
+            "revenue_share_pct": 0.39,
+            "avg_revenue_per_payer": 177.0,
+            "revenue_per_followup_user": 18.63
           },
           {
             "entity_label": "Harsh Dubey",
@@ -2191,7 +2563,10 @@
             "payers": 6,
             "transactions": 9,
             "revenue": 826.0,
-            "conversion_pct": 8.96
+            "conversion_pct": 8.96,
+            "revenue_share_pct": 0.3,
+            "avg_revenue_per_payer": 137.67,
+            "revenue_per_followup_user": 12.33
           },
           {
             "entity_label": "Preeti",
@@ -2203,7 +2578,10 @@
             "payers": 1,
             "transactions": 2,
             "revenue": 500.0,
-            "conversion_pct": 12.5
+            "conversion_pct": 12.5,
+            "revenue_share_pct": 0.18,
+            "avg_revenue_per_payer": 500.0,
+            "revenue_per_followup_user": 62.5
           },
           {
             "entity_label": "Moniika",
@@ -2215,7 +2593,10 @@
             "payers": 4,
             "transactions": 5,
             "revenue": 413.0,
-            "conversion_pct": 20.0
+            "conversion_pct": 20.0,
+            "revenue_share_pct": 0.15,
+            "avg_revenue_per_payer": 103.25,
+            "revenue_per_followup_user": 20.65
           },
           {
             "entity_label": "Sonam",
@@ -2227,7 +2608,10 @@
             "payers": 5,
             "transactions": 5,
             "revenue": 355.0,
-            "conversion_pct": 7.81
+            "conversion_pct": 7.81,
+            "revenue_share_pct": 0.13,
+            "avg_revenue_per_payer": 71.0,
+            "revenue_per_followup_user": 5.55
           },
           {
             "entity_label": "Prem",
@@ -2239,7 +2623,10 @@
             "payers": 2,
             "transactions": 2,
             "revenue": 118.0,
-            "conversion_pct": 8.33
+            "conversion_pct": 8.33,
+            "revenue_share_pct": 0.04,
+            "avg_revenue_per_payer": 59.0,
+            "revenue_per_followup_user": 4.92
           },
           {
             "entity_label": "Amit",
@@ -2251,7 +2638,10 @@
             "payers": 1,
             "transactions": 2,
             "revenue": 118.0,
-            "conversion_pct": 25.0
+            "conversion_pct": 25.0,
+            "revenue_share_pct": 0.04,
+            "avg_revenue_per_payer": 118.0,
+            "revenue_per_followup_user": 29.5
           },
           {
             "entity_label": "Vedansh",
@@ -2263,7 +2653,10 @@
             "payers": 1,
             "transactions": 1,
             "revenue": 1.0,
-            "conversion_pct": 12.5
+            "conversion_pct": 12.5,
+            "revenue_share_pct": 0.0,
+            "avg_revenue_per_payer": 1.0,
+            "revenue_per_followup_user": 0.12
           },
           {
             "entity_label": "Pandit Ajay Trivedi",
@@ -2275,7 +2668,10 @@
             "payers": 0,
             "transactions": 0,
             "revenue": 0.0,
-            "conversion_pct": 0.0
+            "conversion_pct": 0.0,
+            "revenue_share_pct": 0.0,
+            "avg_revenue_per_payer": 0.0,
+            "revenue_per_followup_user": 0.0
           },
           {
             "entity_label": "Vivek",
@@ -2287,7 +2683,10 @@
             "payers": 0,
             "transactions": 0,
             "revenue": 0.0,
-            "conversion_pct": 0.0
+            "conversion_pct": 0.0,
+            "revenue_share_pct": 0.0,
+            "avg_revenue_per_payer": 0.0,
+            "revenue_per_followup_user": 0.0
           },
           {
             "entity_label": "Avika Sharma",
@@ -2299,7 +2698,10 @@
             "payers": 0,
             "transactions": 0,
             "revenue": 0.0,
-            "conversion_pct": 0.0
+            "conversion_pct": 0.0,
+            "revenue_share_pct": 0.0,
+            "avg_revenue_per_payer": 0.0,
+            "revenue_per_followup_user": 0.0
           },
           {
             "entity_label": "Naina Banerjee",
@@ -2311,7 +2713,10 @@
             "payers": 0,
             "transactions": 0,
             "revenue": 0.0,
-            "conversion_pct": 0.0
+            "conversion_pct": 0.0,
+            "revenue_share_pct": 0.0,
+            "avg_revenue_per_payer": 0.0,
+            "revenue_per_followup_user": 0.0
           },
           {
             "entity_label": "Hemant",
@@ -2323,19 +2728,23 @@
             "payers": 0,
             "transactions": 0,
             "revenue": 0.0,
-            "conversion_pct": 0.0
+            "conversion_pct": 0.0,
+            "revenue_share_pct": 0.0,
+            "avg_revenue_per_payer": 0.0,
+            "revenue_per_followup_user": 0.0
           }
         ],
         "config_funnel": [
           {
             "config_id": 18,
             "trial_type": "Rs 1 trial",
-            "assigned_users": 44557,
+            "assigned_users": 44569,
             "followup_users": 10378,
             "trial_buyers": 760,
             "main_plan_buyers": 197,
             "main_199_buyers": 27,
             "main_499_buyers": 170,
+            "assigned_to_followup_pct": 23.29,
             "followup_to_trial_pct": 7.32,
             "trial_to_main_pct": 25.92,
             "followup_to_main_pct": 1.9
@@ -2343,12 +2752,13 @@
           {
             "config_id": 20,
             "trial_type": "Rs 49 trial",
-            "assigned_users": 57972,
+            "assigned_users": 57992,
             "followup_users": 13051,
             "trial_buyers": 248,
             "main_plan_buyers": 155,
             "main_199_buyers": 45,
             "main_499_buyers": 110,
+            "assigned_to_followup_pct": 22.5,
             "followup_to_trial_pct": 1.9,
             "trial_to_main_pct": 62.5,
             "followup_to_main_pct": 1.19
@@ -2367,43 +2777,64 @@
             "signup_date": "2026-06-02",
             "new_users": 3197,
             "followup_users": 2430,
-            "payers": 147
+            "payers": 147,
+            "followup_rate_pct": 76.01,
+            "payer_rate_pct": 4.6,
+            "followup_to_payer_pct": 6.05
           },
           {
             "signup_date": "2026-06-03",
             "new_users": 4258,
             "followup_users": 3610,
-            "payers": 192
+            "payers": 192,
+            "followup_rate_pct": 84.78,
+            "payer_rate_pct": 4.51,
+            "followup_to_payer_pct": 5.32
           },
           {
             "signup_date": "2026-06-04",
             "new_users": 3070,
             "followup_users": 2576,
-            "payers": 138
+            "payers": 138,
+            "followup_rate_pct": 83.91,
+            "payer_rate_pct": 4.5,
+            "followup_to_payer_pct": 5.36
           },
           {
             "signup_date": "2026-06-05",
             "new_users": 3179,
             "followup_users": 2774,
-            "payers": 185
+            "payers": 185,
+            "followup_rate_pct": 87.26,
+            "payer_rate_pct": 5.82,
+            "followup_to_payer_pct": 6.67
           },
           {
             "signup_date": "2026-06-06",
             "new_users": 3521,
             "followup_users": 3145,
-            "payers": 167
+            "payers": 167,
+            "followup_rate_pct": 89.32,
+            "payer_rate_pct": 4.74,
+            "followup_to_payer_pct": 5.31
           },
           {
             "signup_date": "2026-06-07",
             "new_users": 3955,
             "followup_users": 3563,
-            "payers": 194
+            "payers": 194,
+            "followup_rate_pct": 90.09,
+            "payer_rate_pct": 4.91,
+            "followup_to_payer_pct": 5.44
           },
           {
             "signup_date": "2026-06-08",
             "new_users": 3722,
             "followup_users": 3354,
-            "payers": 135
+            "payers": 135,
+            "followup_rate_pct": 90.11,
+            "payer_rate_pct": 3.63,
+            "followup_to_payer_pct": 4.03
           }
         ],
         "login_daily": [
@@ -2464,7 +2895,8 @@
             "payers": 617,
             "segment": "age_bucket",
             "followup_rate_pct": 94.21,
-            "payer_rate_pct": 5.38
+            "payer_rate_pct": 5.38,
+            "followup_to_payer_pct": 5.71
           },
           {
             "bucket": "25-34",
@@ -2473,7 +2905,8 @@
             "payers": 372,
             "segment": "age_bucket",
             "followup_rate_pct": 92.45,
-            "payer_rate_pct": 5.27
+            "payer_rate_pct": 5.27,
+            "followup_to_payer_pct": 5.7
           },
           {
             "bucket": "<18",
@@ -2482,7 +2915,8 @@
             "payers": 61,
             "segment": "age_bucket",
             "followup_rate_pct": 93.17,
-            "payer_rate_pct": 2.28
+            "payer_rate_pct": 2.28,
+            "followup_to_payer_pct": 2.44
           },
           {
             "bucket": "Unknown",
@@ -2491,7 +2925,8 @@
             "payers": 0,
             "segment": "age_bucket",
             "followup_rate_pct": 0.16,
-            "payer_rate_pct": 0.0
+            "payer_rate_pct": 0.0,
+            "followup_to_payer_pct": 0.0
           },
           {
             "bucket": "35-44",
@@ -2500,7 +2935,8 @@
             "payers": 82,
             "segment": "age_bucket",
             "followup_rate_pct": 91.35,
-            "payer_rate_pct": 5.96
+            "payer_rate_pct": 5.96,
+            "followup_to_payer_pct": 6.52
           },
           {
             "bucket": "45-54",
@@ -2509,7 +2945,8 @@
             "payers": 17,
             "segment": "age_bucket",
             "followup_rate_pct": 87.34,
-            "payer_rate_pct": 5.38
+            "payer_rate_pct": 5.38,
+            "followup_to_payer_pct": 6.16
           },
           {
             "bucket": "55+",
@@ -2518,7 +2955,8 @@
             "payers": 9,
             "segment": "age_bucket",
             "followup_rate_pct": 75.23,
-            "payer_rate_pct": 8.26
+            "payer_rate_pct": 8.26,
+            "followup_to_payer_pct": 10.98
           },
           {
             "bucket": 20,
@@ -2527,7 +2965,8 @@
             "payers": 271,
             "segment": "config_id",
             "followup_rate_pct": 83.17,
-            "payer_rate_pct": 2.16
+            "payer_rate_pct": 2.16,
+            "followup_to_payer_pct": 2.6
           },
           {
             "bucket": 18,
@@ -2536,7 +2975,8 @@
             "payers": 850,
             "segment": "config_id",
             "followup_rate_pct": 89.72,
-            "payer_rate_pct": 8.01
+            "payer_rate_pct": 8.01,
+            "followup_to_payer_pct": 8.93
           },
           {
             "bucket": 8,
@@ -2545,7 +2985,8 @@
             "payers": 37,
             "segment": "config_id",
             "followup_rate_pct": 86.05,
-            "payer_rate_pct": 2.09
+            "payer_rate_pct": 2.09,
+            "followup_to_payer_pct": 2.43
           },
           {
             "bucket": 4,
@@ -2554,7 +2995,8 @@
             "payers": 0,
             "segment": "config_id",
             "followup_rate_pct": 0.0,
-            "payer_rate_pct": 0.0
+            "payer_rate_pct": 0.0,
+            "followup_to_payer_pct": 0.0
           },
           {
             "bucket": "female",
@@ -2563,7 +3005,8 @@
             "payers": 703,
             "segment": "gender",
             "followup_rate_pct": 94.65,
-            "payer_rate_pct": 4.51
+            "payer_rate_pct": 4.51,
+            "followup_to_payer_pct": 4.76
           },
           {
             "bucket": "male",
@@ -2572,7 +3015,8 @@
             "payers": 454,
             "segment": "gender",
             "followup_rate_pct": 90.2,
-            "payer_rate_pct": 6.19
+            "payer_rate_pct": 6.19,
+            "followup_to_payer_pct": 6.86
           },
           {
             "bucket": "unknown",
@@ -2581,7 +3025,8 @@
             "payers": 0,
             "segment": "gender",
             "followup_rate_pct": 0.16,
-            "payer_rate_pct": 0.0
+            "payer_rate_pct": 0.0,
+            "followup_to_payer_pct": 0.0
           },
           {
             "bucket": "other",
@@ -2590,7 +3035,8 @@
             "payers": 1,
             "segment": "gender",
             "followup_rate_pct": 83.72,
-            "payer_rate_pct": 1.16
+            "payer_rate_pct": 1.16,
+            "followup_to_payer_pct": 1.39
           },
           {
             "bucket": "android",
@@ -2599,7 +3045,8 @@
             "payers": 904,
             "segment": "platform",
             "followup_rate_pct": 89.31,
-            "payer_rate_pct": 4.33
+            "payer_rate_pct": 4.33,
+            "followup_to_payer_pct": 4.85
           },
           {
             "bucket": "unknown",
@@ -2608,7 +3055,8 @@
             "payers": 254,
             "segment": "platform",
             "followup_rate_pct": 69.86,
-            "payer_rate_pct": 6.27
+            "payer_rate_pct": 6.27,
+            "followup_to_payer_pct": 8.98
           }
         ],
         "followup_entity_events": [
@@ -3405,9 +3853,9 @@
       },
       "engagement": {
         "kpis": {
-          "active_users": 36174,
-          "sessions": 164541,
-          "total_minutes": 380623.7,
+          "active_users": 36175,
+          "sessions": 164545,
+          "total_minutes": 380622.3,
           "avg_minutes_per_user": 10.52,
           "avg_minutes_per_session": 2.31,
           "bim_notification_opens": 12960,
@@ -3461,9 +3909,9 @@
           },
           {
             "date": "2026-06-07",
-            "sessions": 23725,
-            "users": 7548,
-            "total_minutes": 57912.6,
+            "sessions": 23729,
+            "users": 7550,
+            "total_minutes": 57914.0,
             "avg_minutes_per_user": 7.67,
             "avg_minutes_per_session": 2.44,
             "sessions_per_user": 3.14
@@ -3472,7 +3920,7 @@
             "date": "2026-06-08",
             "sessions": 24527,
             "users": 7408,
-            "total_minutes": 56891.8,
+            "total_minutes": 56889.0,
             "avg_minutes_per_user": 7.68,
             "avg_minutes_per_session": 2.32,
             "sessions_per_user": 3.31
@@ -3481,9 +3929,9 @@
         "session_by_platform": [
           {
             "platform": "android",
-            "sessions": 149851,
-            "users": 33669,
-            "total_minutes": 345604.3,
+            "sessions": 149855,
+            "users": 33670,
+            "total_minutes": 345602.9,
             "avg_minutes_per_user": 10.26,
             "avg_minutes_per_session": 2.31,
             "sessions_per_user": 4.45
@@ -3511,51 +3959,59 @@
           {
             "date": "2026-06-02",
             "opens": 1911,
-            "users": 1241
+            "users": 1241,
+            "opens_per_user": 1.54
           },
           {
             "date": "2026-06-03",
             "opens": 1854,
-            "users": 1189
+            "users": 1189,
+            "opens_per_user": 1.56
           },
           {
             "date": "2026-06-04",
             "opens": 1978,
-            "users": 1281
+            "users": 1281,
+            "opens_per_user": 1.54
           },
           {
             "date": "2026-06-05",
             "opens": 1856,
-            "users": 1250
+            "users": 1250,
+            "opens_per_user": 1.48
           },
           {
             "date": "2026-06-06",
             "opens": 1854,
-            "users": 1210
+            "users": 1210,
+            "opens_per_user": 1.53
           },
           {
             "date": "2026-06-07",
             "opens": 1769,
-            "users": 1217
+            "users": 1217,
+            "opens_per_user": 1.45
           },
           {
             "date": "2026-06-08",
             "opens": 1738,
-            "users": 1150
+            "users": 1150,
+            "opens_per_user": 1.51
           }
         ],
         "bim_by_platform": [
           {
             "platform": "android",
             "opens": 12960,
-            "users": 5224
+            "users": 5224,
+            "opens_per_user": 2.48
           }
         ],
         "notification_campaigns": [
           {
             "campaign": "Unknown",
-            "opens": 64283,
-            "users": 20294
+            "opens": 64284,
+            "users": 20295
           },
           {
             "campaign": "Bot Initiated Messages",
@@ -3566,6 +4022,116 @@
             "campaign": "<null>",
             "opens": 411,
             "users": 240
+          }
+        ]
+      },
+      "metric_coverage": {
+        "rows": [
+          {
+            "area": "Monetization",
+            "metric": "Revenue, payer, transaction, avg transaction",
+            "status": "Available",
+            "coverage_pct": 100,
+            "missing_detail": "None",
+            "next_data_needed": "None"
+          },
+          {
+            "area": "Monetization",
+            "metric": "Revenue share by family, pack, bot/entity",
+            "status": "Available",
+            "coverage_pct": 100,
+            "missing_detail": "None",
+            "next_data_needed": "None"
+          },
+          {
+            "area": "Monetization",
+            "metric": "Rs 1 / Rs 49 config to trial and main plan funnel",
+            "status": "Partial",
+            "coverage_pct": 80,
+            "missing_detail": "Config assignment and purchases are available; exact paywall impression and click events are not in the current export.",
+            "next_data_needed": "Add paywall shown and trial CTA clicked events with config_id and pack amount."
+          },
+          {
+            "area": "Acquisition",
+            "metric": "New user to follow-up to payment conversion",
+            "status": "Available",
+            "coverage_pct": 100,
+            "missing_detail": "None",
+            "next_data_needed": "None"
+          },
+          {
+            "area": "Acquisition",
+            "metric": "Marketing channel / campaign source conversion",
+            "status": "Missing source",
+            "coverage_pct": 0,
+            "missing_detail": "The current source set does not include campaign attribution or ad spend for new users.",
+            "next_data_needed": "Install/UTM attribution fields or an ad-spend export keyed by campaign/date."
+          },
+          {
+            "area": "Persona",
+            "metric": "Follow-up user gender distribution",
+            "status": "Partial",
+            "coverage_pct": 46.82,
+            "missing_detail": "53.18% of follow-up users have unknown gender.",
+            "next_data_needed": "Improve profile gender collection or pass profile gender into Mixpanel user profiles."
+          },
+          {
+            "area": "Persona",
+            "metric": "Follow-up user age distribution",
+            "status": "Partial",
+            "coverage_pct": 46.82,
+            "missing_detail": "53.18% of follow-up users have unknown age/dob.",
+            "next_data_needed": "Improve DOB/profile coverage or pass age bucket into Mixpanel user profiles."
+          },
+          {
+            "area": "Bot / Entity",
+            "metric": "Follow-up query bot name mapping",
+            "status": "Available",
+            "coverage_pct": 100.0,
+            "missing_detail": "0.00% of follow-up query events are unmapped to a bot name.",
+            "next_data_needed": "Keep bot_id/entity slug mapping in chat_session or a dedicated bot dimension table."
+          },
+          {
+            "area": "Retention",
+            "metric": "D0-D7 chat retention by platform and bot repeat usage",
+            "status": "Available",
+            "coverage_pct": 100,
+            "missing_detail": "None",
+            "next_data_needed": "None"
+          },
+          {
+            "area": "Engagement",
+            "metric": "Average time, session depth, BIM opens",
+            "status": "Available",
+            "coverage_pct": 100,
+            "missing_detail": "BIM open counts exist, but delivered/impression denominators are not present.",
+            "next_data_needed": "Notification delivered/impression event to calculate true open rate."
+          },
+          {
+            "area": "Engagement",
+            "metric": "Notification open rate",
+            "status": "Missing denominator",
+            "coverage_pct": 0,
+            "missing_detail": "App Opened from Notification is available, but notification delivered/sent count is not.",
+            "next_data_needed": "Notification sent/delivered event by campaign_name, user_id, date, and platform."
+          }
+        ],
+        "summary": [
+          {
+            "status": "Available",
+            "metrics": 6
+          },
+          {
+            "status": "Missing denominator",
+            "metrics": 1
+          },
+          {
+            "status": "Missing source",
+            "metrics": 1
+          },
+          {
+            "status": "Partial",
+            "metrics": 3
           }
         ]
       }
@@ -3622,133 +4188,229 @@
         "family": "day_pass",
         "revenue": 49.0,
         "transactions": 1,
-        "payers": 1
+        "payers": 1,
+        "avg_transaction": 49.0,
+        "revenue_share_pct": 0.09
       },
       {
         "day": "2026-06-02",
         "family": "pay_as_you_go",
         "revenue": 30972.64,
         "transactions": 349,
-        "payers": 254
+        "payers": 254,
+        "avg_transaction": 88.75,
+        "revenue_share_pct": 58.01
       },
       {
         "day": "2026-06-02",
         "family": "subscription",
         "revenue": 22366.0,
         "transactions": 202,
-        "payers": 202
+        "payers": 202,
+        "avg_transaction": 110.72,
+        "revenue_share_pct": 41.89
       },
       {
         "day": "2026-06-03",
         "family": "pay_as_you_go",
         "revenue": 22738.6,
         "transactions": 288,
-        "payers": 205
+        "payers": 205,
+        "avg_transaction": 78.95,
+        "revenue_share_pct": 48.55
       },
       {
         "day": "2026-06-03",
         "family": "subscription",
         "revenue": 24100.0,
         "transactions": 238,
-        "payers": 237
+        "payers": 237,
+        "avg_transaction": 101.26,
+        "revenue_share_pct": 51.45
       },
       {
         "day": "2026-06-04",
         "family": "pay_as_you_go",
         "revenue": 24308.0,
         "transactions": 266,
-        "payers": 194
+        "payers": 194,
+        "avg_transaction": 91.38,
+        "revenue_share_pct": 39.5
       },
       {
         "day": "2026-06-04",
         "family": "subscription",
         "revenue": 37224.0,
         "transactions": 210,
-        "payers": 210
+        "payers": 210,
+        "avg_transaction": 177.26,
+        "revenue_share_pct": 60.5
       },
       {
         "day": "2026-06-05",
         "family": "day_pass",
         "revenue": 343.0,
         "transactions": 7,
-        "payers": 7
+        "payers": 7,
+        "avg_transaction": 49.0,
+        "revenue_share_pct": 0.68
       },
       {
         "day": "2026-06-05",
         "family": "pay_as_you_go",
         "revenue": 21358.0,
         "transactions": 239,
-        "payers": 177
+        "payers": 177,
+        "avg_transaction": 89.36,
+        "revenue_share_pct": 42.36
       },
       {
         "day": "2026-06-05",
         "family": "subscription",
         "revenue": 28725.0,
         "transactions": 225,
-        "payers": 225
+        "payers": 225,
+        "avg_transaction": 127.67,
+        "revenue_share_pct": 56.96
       },
       {
         "day": "2026-06-06",
         "family": "day_pass",
         "revenue": 539.0,
         "transactions": 11,
-        "payers": 11
+        "payers": 11,
+        "avg_transaction": 49.0,
+        "revenue_share_pct": 1.01
       },
       {
         "day": "2026-06-06",
         "family": "pay_as_you_go",
         "revenue": 22241.82,
         "transactions": 254,
-        "payers": 203
+        "payers": 203,
+        "avg_transaction": 87.57,
+        "revenue_share_pct": 41.53
       },
       {
         "day": "2026-06-06",
         "family": "subscription",
         "revenue": 30770.0,
         "transactions": 212,
-        "payers": 212
+        "payers": 212,
+        "avg_transaction": 145.14,
+        "revenue_share_pct": 57.46
       },
       {
         "day": "2026-06-07",
         "family": "day_pass",
         "revenue": 588.0,
         "transactions": 12,
-        "payers": 12
+        "payers": 12,
+        "avg_transaction": 49.0,
+        "revenue_share_pct": 1.11
       },
       {
         "day": "2026-06-07",
         "family": "pay_as_you_go",
         "revenue": 25901.0,
         "transactions": 273,
-        "payers": 212
+        "payers": 212,
+        "avg_transaction": 94.88,
+        "revenue_share_pct": 48.69
       },
       {
         "day": "2026-06-07",
         "family": "subscription",
         "revenue": 26709.0,
         "transactions": 243,
-        "payers": 243
+        "payers": 243,
+        "avg_transaction": 109.91,
+        "revenue_share_pct": 50.21
       },
       {
         "day": "2026-06-08",
         "family": "day_pass",
         "revenue": 637.0,
         "transactions": 13,
-        "payers": 13
+        "payers": 13,
+        "avg_transaction": 49.0,
+        "revenue_share_pct": 1.11
       },
       {
         "day": "2026-06-08",
         "family": "pay_as_you_go",
         "revenue": 24013.0,
         "transactions": 245,
-        "payers": 199
+        "payers": 199,
+        "avg_transaction": 98.01,
+        "revenue_share_pct": 41.94
       },
       {
         "day": "2026-06-08",
         "family": "subscription",
         "revenue": 32603.0,
         "transactions": 209,
-        "payers": 209
+        "payers": 209,
+        "avg_transaction": 156.0,
+        "revenue_share_pct": 56.95
+      }
+    ],
+    "daily_summary": [
+      {
+        "day": "2026-06-02",
+        "revenue": 53387.64,
+        "transactions": 552,
+        "payers": 457,
+        "avg_transaction": 96.72,
+        "avg_revenue_per_payer": 116.82
+      },
+      {
+        "day": "2026-06-03",
+        "revenue": 46838.6,
+        "transactions": 526,
+        "payers": 442,
+        "avg_transaction": 89.05,
+        "avg_revenue_per_payer": 105.97
+      },
+      {
+        "day": "2026-06-04",
+        "revenue": 61532.0,
+        "transactions": 476,
+        "payers": 404,
+        "avg_transaction": 129.27,
+        "avg_revenue_per_payer": 152.31
+      },
+      {
+        "day": "2026-06-05",
+        "revenue": 50426.0,
+        "transactions": 471,
+        "payers": 409,
+        "avg_transaction": 107.06,
+        "avg_revenue_per_payer": 123.29
+      },
+      {
+        "day": "2026-06-06",
+        "revenue": 53550.82,
+        "transactions": 477,
+        "payers": 425,
+        "avg_transaction": 112.27,
+        "avg_revenue_per_payer": 126.0
+      },
+      {
+        "day": "2026-06-07",
+        "revenue": 53198.0,
+        "transactions": 528,
+        "payers": 466,
+        "avg_transaction": 100.75,
+        "avg_revenue_per_payer": 114.16
+      },
+      {
+        "day": "2026-06-08",
+        "revenue": 57253.0,
+        "transactions": 467,
+        "payers": 420,
+        "avg_transaction": 122.6,
+        "avg_revenue_per_payer": 136.32
       }
     ],
     "family": [
@@ -3757,21 +4419,24 @@
         "revenue": 202497.0,
         "transactions": 1539,
         "payers": 1361,
-        "avg_transaction": 131.58
+        "avg_transaction": 131.58,
+        "revenue_share_pct": 53.83
       },
       {
         "family": "pay_as_you_go",
         "revenue": 171533.06,
         "transactions": 1914,
         "payers": 1099,
-        "avg_transaction": 89.62
+        "avg_transaction": 89.62,
+        "revenue_share_pct": 45.6
       },
       {
         "family": "day_pass",
         "revenue": 2156.0,
         "transactions": 44,
         "payers": 43,
-        "avg_transaction": 49.0
+        "avg_transaction": 49.0,
+        "revenue_share_pct": 0.57
       }
     ],
     "pack": [
@@ -3783,7 +4448,8 @@
         "revenue": 102794.0,
         "transactions": 206,
         "payers": 206,
-        "avg_transaction": 499.0
+        "avg_transaction": 499.0,
+        "revenue_share_pct": 27.33
       },
       {
         "family": "pay_as_you_go",
@@ -3793,7 +4459,8 @@
         "revenue": 76641.0,
         "transactions": 1299,
         "payers": 757,
-        "avg_transaction": 59.0
+        "avg_transaction": 59.0,
+        "revenue_share_pct": 20.37
       },
       {
         "family": "subscription",
@@ -3803,7 +4470,8 @@
         "revenue": 66866.0,
         "transactions": 134,
         "payers": 134,
-        "avg_transaction": 499.0
+        "avg_transaction": 499.0,
+        "revenue_share_pct": 17.77
       },
       {
         "family": "pay_as_you_go",
@@ -3813,7 +4481,8 @@
         "revenue": 54162.0,
         "transactions": 459,
         "payers": 320,
-        "avg_transaction": 118.0
+        "avg_transaction": 118.0,
+        "revenue_share_pct": 14.4
       },
       {
         "family": "pay_as_you_go",
@@ -3823,7 +4492,8 @@
         "revenue": 31860.0,
         "transactions": 135,
         "payers": 109,
-        "avg_transaction": 236.0
+        "avg_transaction": 236.0,
+        "revenue_share_pct": 8.47
       },
       {
         "family": "subscription",
@@ -3833,7 +4503,8 @@
         "revenue": 9950.0,
         "transactions": 50,
         "payers": 50,
-        "avg_transaction": 199.0
+        "avg_transaction": 199.0,
+        "revenue_share_pct": 2.64
       },
       {
         "family": "subscription",
@@ -3843,7 +4514,8 @@
         "revenue": 9555.0,
         "transactions": 195,
         "payers": 195,
-        "avg_transaction": 49.0
+        "avg_transaction": 49.0,
+        "revenue_share_pct": 2.54
       },
       {
         "family": "subscription",
@@ -3853,7 +4525,8 @@
         "revenue": 9353.0,
         "transactions": 47,
         "payers": 47,
-        "avg_transaction": 199.0
+        "avg_transaction": 199.0,
+        "revenue_share_pct": 2.49
       },
       {
         "family": "pay_as_you_go",
@@ -3863,7 +4536,8 @@
         "revenue": 5900.0,
         "transactions": 10,
         "payers": 10,
-        "avg_transaction": 590.0
+        "avg_transaction": 590.0,
+        "revenue_share_pct": 1.57
       },
       {
         "family": "subscription",
@@ -3873,7 +4547,8 @@
         "revenue": 3136.0,
         "transactions": 64,
         "payers": 64,
-        "avg_transaction": 49.0
+        "avg_transaction": 49.0,
+        "revenue_share_pct": 0.83
       },
       {
         "family": "pay_as_you_go",
@@ -3883,7 +4558,8 @@
         "revenue": 2360.0,
         "transactions": 2,
         "payers": 2,
-        "avg_transaction": 1180.0
+        "avg_transaction": 1180.0,
+        "revenue_share_pct": 0.63
       },
       {
         "family": "day_pass",
@@ -3893,7 +4569,8 @@
         "revenue": 2156.0,
         "transactions": 44,
         "payers": 43,
-        "avg_transaction": 49.0
+        "avg_transaction": 49.0,
+        "revenue_share_pct": 0.57
       },
       {
         "family": "subscription",
@@ -3903,7 +4580,8 @@
         "revenue": 686.0,
         "transactions": 686,
         "payers": 686,
-        "avg_transaction": 1.0
+        "avg_transaction": 1.0,
+        "revenue_share_pct": 0.18
       },
       {
         "family": "pay_as_you_go",
@@ -3913,7 +4591,8 @@
         "revenue": 231.28,
         "transactions": 4,
         "payers": 4,
-        "avg_transaction": 57.82
+        "avg_transaction": 57.82,
+        "revenue_share_pct": 0.06
       },
       {
         "family": "subscription",
@@ -3923,7 +4602,8 @@
         "revenue": 157.0,
         "transactions": 157,
         "payers": 156,
-        "avg_transaction": 1.0
+        "avg_transaction": 1.0,
+        "revenue_share_pct": 0.04
       },
       {
         "family": "pay_as_you_go",
@@ -3933,7 +4613,8 @@
         "revenue": 100.3,
         "transactions": 1,
         "payers": 1,
-        "avg_transaction": 100.3
+        "avg_transaction": 100.3,
+        "revenue_share_pct": 0.03
       },
       {
         "family": "pay_as_you_go",
@@ -3943,7 +4624,8 @@
         "revenue": 82.6,
         "transactions": 1,
         "payers": 1,
-        "avg_transaction": 82.6
+        "avg_transaction": 82.6,
+        "revenue_share_pct": 0.02
       },
       {
         "family": "pay_as_you_go",
@@ -3953,7 +4635,8 @@
         "revenue": 70.8,
         "transactions": 1,
         "payers": 1,
-        "avg_transaction": 70.8
+        "avg_transaction": 70.8,
+        "revenue_share_pct": 0.02
       },
       {
         "family": "pay_as_you_go",
@@ -3963,7 +4646,8 @@
         "revenue": 64.9,
         "transactions": 1,
         "payers": 1,
-        "avg_transaction": 64.9
+        "avg_transaction": 64.9,
+        "revenue_share_pct": 0.02
       },
       {
         "family": "pay_as_you_go",
@@ -3973,7 +4657,8 @@
         "revenue": 60.18,
         "transactions": 1,
         "payers": 1,
-        "avg_transaction": 60.18
+        "avg_transaction": 60.18,
+        "revenue_share_pct": 0.02
       }
     ],
     "entity_distribution": [
@@ -3987,7 +4672,10 @@
         "payers": 932,
         "transactions": 1162,
         "revenue": 130888.3,
-        "conversion_pct": 4.91
+        "conversion_pct": 4.91,
+        "revenue_share_pct": 47.73,
+        "avg_revenue_per_payer": 140.44,
+        "revenue_per_followup_user": 6.89
       },
       {
         "entity_label": "Hemant",
@@ -3999,7 +4687,10 @@
         "payers": 252,
         "transactions": 396,
         "revenue": 36789.82,
-        "conversion_pct": 7.19
+        "conversion_pct": 7.19,
+        "revenue_share_pct": 13.41,
+        "avg_revenue_per_payer": 145.99,
+        "revenue_per_followup_user": 10.5
       },
       {
         "entity_label": "Avika Sharma",
@@ -4011,7 +4702,10 @@
         "payers": 255,
         "transactions": 312,
         "revenue": 30487.0,
-        "conversion_pct": 6.78
+        "conversion_pct": 6.78,
+        "revenue_share_pct": 11.12,
+        "avg_revenue_per_payer": 119.56,
+        "revenue_per_followup_user": 8.11
       },
       {
         "entity_label": "Chandrikaa",
@@ -4023,7 +4717,10 @@
         "payers": 143,
         "transactions": 189,
         "revenue": 21274.0,
-        "conversion_pct": 8.12
+        "conversion_pct": 8.12,
+        "revenue_share_pct": 7.76,
+        "avg_revenue_per_payer": 148.77,
+        "revenue_per_followup_user": 12.09
       },
       {
         "entity_label": "Naina Banerjee",
@@ -4035,7 +4732,10 @@
         "payers": 125,
         "transactions": 188,
         "revenue": 18411.0,
-        "conversion_pct": 7.25
+        "conversion_pct": 7.25,
+        "revenue_share_pct": 6.71,
+        "avg_revenue_per_payer": 147.29,
+        "revenue_per_followup_user": 10.69
       },
       {
         "entity_label": "Vivek",
@@ -4047,7 +4747,10 @@
         "payers": 144,
         "transactions": 184,
         "revenue": 17558.0,
-        "conversion_pct": 6.12
+        "conversion_pct": 6.12,
+        "revenue_share_pct": 6.4,
+        "avg_revenue_per_payer": 121.93,
+        "revenue_per_followup_user": 7.46
       },
       {
         "entity_label": "Raj",
@@ -4059,7 +4762,10 @@
         "payers": 105,
         "transactions": 152,
         "revenue": 15444.82,
-        "conversion_pct": 6.77
+        "conversion_pct": 6.77,
+        "revenue_share_pct": 5.63,
+        "avg_revenue_per_payer": 147.09,
+        "revenue_per_followup_user": 9.96
       },
       {
         "entity_label": "Priyanka",
@@ -4071,7 +4777,10 @@
         "payers": 6,
         "transactions": 11,
         "revenue": 1062.0,
-        "conversion_pct": 10.53
+        "conversion_pct": 10.53,
+        "revenue_share_pct": 0.39,
+        "avg_revenue_per_payer": 177.0,
+        "revenue_per_followup_user": 18.63
       },
       {
         "entity_label": "Harsh Dubey",
@@ -4083,7 +4792,10 @@
         "payers": 6,
         "transactions": 9,
         "revenue": 826.0,
-        "conversion_pct": 8.96
+        "conversion_pct": 8.96,
+        "revenue_share_pct": 0.3,
+        "avg_revenue_per_payer": 137.67,
+        "revenue_per_followup_user": 12.33
       },
       {
         "entity_label": "Preeti",
@@ -4095,7 +4807,10 @@
         "payers": 1,
         "transactions": 2,
         "revenue": 500.0,
-        "conversion_pct": 12.5
+        "conversion_pct": 12.5,
+        "revenue_share_pct": 0.18,
+        "avg_revenue_per_payer": 500.0,
+        "revenue_per_followup_user": 62.5
       },
       {
         "entity_label": "Moniika",
@@ -4107,7 +4822,10 @@
         "payers": 4,
         "transactions": 5,
         "revenue": 413.0,
-        "conversion_pct": 20.0
+        "conversion_pct": 20.0,
+        "revenue_share_pct": 0.15,
+        "avg_revenue_per_payer": 103.25,
+        "revenue_per_followup_user": 20.65
       },
       {
         "entity_label": "Sonam",
@@ -4119,7 +4837,10 @@
         "payers": 5,
         "transactions": 5,
         "revenue": 355.0,
-        "conversion_pct": 7.81
+        "conversion_pct": 7.81,
+        "revenue_share_pct": 0.13,
+        "avg_revenue_per_payer": 71.0,
+        "revenue_per_followup_user": 5.55
       },
       {
         "entity_label": "Prem",
@@ -4131,7 +4852,10 @@
         "payers": 2,
         "transactions": 2,
         "revenue": 118.0,
-        "conversion_pct": 8.33
+        "conversion_pct": 8.33,
+        "revenue_share_pct": 0.04,
+        "avg_revenue_per_payer": 59.0,
+        "revenue_per_followup_user": 4.92
       },
       {
         "entity_label": "Amit",
@@ -4143,7 +4867,10 @@
         "payers": 1,
         "transactions": 2,
         "revenue": 118.0,
-        "conversion_pct": 25.0
+        "conversion_pct": 25.0,
+        "revenue_share_pct": 0.04,
+        "avg_revenue_per_payer": 118.0,
+        "revenue_per_followup_user": 29.5
       },
       {
         "entity_label": "Vedansh",
@@ -4155,7 +4882,10 @@
         "payers": 1,
         "transactions": 1,
         "revenue": 1.0,
-        "conversion_pct": 12.5
+        "conversion_pct": 12.5,
+        "revenue_share_pct": 0.0,
+        "avg_revenue_per_payer": 1.0,
+        "revenue_per_followup_user": 0.12
       },
       {
         "entity_label": "Pandit Ajay Trivedi",
@@ -4167,7 +4897,10 @@
         "payers": 0,
         "transactions": 0,
         "revenue": 0.0,
-        "conversion_pct": 0.0
+        "conversion_pct": 0.0,
+        "revenue_share_pct": 0.0,
+        "avg_revenue_per_payer": 0.0,
+        "revenue_per_followup_user": 0.0
       },
       {
         "entity_label": "Vivek",
@@ -4179,7 +4912,10 @@
         "payers": 0,
         "transactions": 0,
         "revenue": 0.0,
-        "conversion_pct": 0.0
+        "conversion_pct": 0.0,
+        "revenue_share_pct": 0.0,
+        "avg_revenue_per_payer": 0.0,
+        "revenue_per_followup_user": 0.0
       },
       {
         "entity_label": "Avika Sharma",
@@ -4191,7 +4927,10 @@
         "payers": 0,
         "transactions": 0,
         "revenue": 0.0,
-        "conversion_pct": 0.0
+        "conversion_pct": 0.0,
+        "revenue_share_pct": 0.0,
+        "avg_revenue_per_payer": 0.0,
+        "revenue_per_followup_user": 0.0
       },
       {
         "entity_label": "Naina Banerjee",
@@ -4203,7 +4942,10 @@
         "payers": 0,
         "transactions": 0,
         "revenue": 0.0,
-        "conversion_pct": 0.0
+        "conversion_pct": 0.0,
+        "revenue_share_pct": 0.0,
+        "avg_revenue_per_payer": 0.0,
+        "revenue_per_followup_user": 0.0
       },
       {
         "entity_label": "Hemant",
@@ -4215,19 +4957,23 @@
         "payers": 0,
         "transactions": 0,
         "revenue": 0.0,
-        "conversion_pct": 0.0
+        "conversion_pct": 0.0,
+        "revenue_share_pct": 0.0,
+        "avg_revenue_per_payer": 0.0,
+        "revenue_per_followup_user": 0.0
       }
     ],
     "config_funnel": [
       {
         "config_id": 18,
         "trial_type": "Rs 1 trial",
-        "assigned_users": 44557,
+        "assigned_users": 44569,
         "followup_users": 10378,
         "trial_buyers": 760,
         "main_plan_buyers": 197,
         "main_199_buyers": 27,
         "main_499_buyers": 170,
+        "assigned_to_followup_pct": 23.29,
         "followup_to_trial_pct": 7.32,
         "trial_to_main_pct": 25.92,
         "followup_to_main_pct": 1.9
@@ -4235,12 +4981,13 @@
       {
         "config_id": 20,
         "trial_type": "Rs 49 trial",
-        "assigned_users": 57972,
+        "assigned_users": 57992,
         "followup_users": 13051,
         "trial_buyers": 248,
         "main_plan_buyers": 155,
         "main_199_buyers": 45,
         "main_499_buyers": 110,
+        "assigned_to_followup_pct": 22.5,
         "followup_to_trial_pct": 1.9,
         "trial_to_main_pct": 62.5,
         "followup_to_main_pct": 1.19
@@ -4259,43 +5006,64 @@
         "signup_date": "2026-06-02",
         "new_users": 3197,
         "followup_users": 2430,
-        "payers": 147
+        "payers": 147,
+        "followup_rate_pct": 76.01,
+        "payer_rate_pct": 4.6,
+        "followup_to_payer_pct": 6.05
       },
       {
         "signup_date": "2026-06-03",
         "new_users": 4258,
         "followup_users": 3610,
-        "payers": 192
+        "payers": 192,
+        "followup_rate_pct": 84.78,
+        "payer_rate_pct": 4.51,
+        "followup_to_payer_pct": 5.32
       },
       {
         "signup_date": "2026-06-04",
         "new_users": 3070,
         "followup_users": 2576,
-        "payers": 138
+        "payers": 138,
+        "followup_rate_pct": 83.91,
+        "payer_rate_pct": 4.5,
+        "followup_to_payer_pct": 5.36
       },
       {
         "signup_date": "2026-06-05",
         "new_users": 3179,
         "followup_users": 2774,
-        "payers": 185
+        "payers": 185,
+        "followup_rate_pct": 87.26,
+        "payer_rate_pct": 5.82,
+        "followup_to_payer_pct": 6.67
       },
       {
         "signup_date": "2026-06-06",
         "new_users": 3521,
         "followup_users": 3145,
-        "payers": 167
+        "payers": 167,
+        "followup_rate_pct": 89.32,
+        "payer_rate_pct": 4.74,
+        "followup_to_payer_pct": 5.31
       },
       {
         "signup_date": "2026-06-07",
         "new_users": 3955,
         "followup_users": 3563,
-        "payers": 194
+        "payers": 194,
+        "followup_rate_pct": 90.09,
+        "payer_rate_pct": 4.91,
+        "followup_to_payer_pct": 5.44
       },
       {
         "signup_date": "2026-06-08",
         "new_users": 3722,
         "followup_users": 3354,
-        "payers": 135
+        "payers": 135,
+        "followup_rate_pct": 90.11,
+        "payer_rate_pct": 3.63,
+        "followup_to_payer_pct": 4.03
       }
     ],
     "login_daily": [
@@ -4356,7 +5124,8 @@
         "payers": 617,
         "segment": "age_bucket",
         "followup_rate_pct": 94.21,
-        "payer_rate_pct": 5.38
+        "payer_rate_pct": 5.38,
+        "followup_to_payer_pct": 5.71
       },
       {
         "bucket": "25-34",
@@ -4365,7 +5134,8 @@
         "payers": 372,
         "segment": "age_bucket",
         "followup_rate_pct": 92.45,
-        "payer_rate_pct": 5.27
+        "payer_rate_pct": 5.27,
+        "followup_to_payer_pct": 5.7
       },
       {
         "bucket": "<18",
@@ -4374,7 +5144,8 @@
         "payers": 61,
         "segment": "age_bucket",
         "followup_rate_pct": 93.17,
-        "payer_rate_pct": 2.28
+        "payer_rate_pct": 2.28,
+        "followup_to_payer_pct": 2.44
       },
       {
         "bucket": "Unknown",
@@ -4383,7 +5154,8 @@
         "payers": 0,
         "segment": "age_bucket",
         "followup_rate_pct": 0.16,
-        "payer_rate_pct": 0.0
+        "payer_rate_pct": 0.0,
+        "followup_to_payer_pct": 0.0
       },
       {
         "bucket": "35-44",
@@ -4392,7 +5164,8 @@
         "payers": 82,
         "segment": "age_bucket",
         "followup_rate_pct": 91.35,
-        "payer_rate_pct": 5.96
+        "payer_rate_pct": 5.96,
+        "followup_to_payer_pct": 6.52
       },
       {
         "bucket": "45-54",
@@ -4401,7 +5174,8 @@
         "payers": 17,
         "segment": "age_bucket",
         "followup_rate_pct": 87.34,
-        "payer_rate_pct": 5.38
+        "payer_rate_pct": 5.38,
+        "followup_to_payer_pct": 6.16
       },
       {
         "bucket": "55+",
@@ -4410,7 +5184,8 @@
         "payers": 9,
         "segment": "age_bucket",
         "followup_rate_pct": 75.23,
-        "payer_rate_pct": 8.26
+        "payer_rate_pct": 8.26,
+        "followup_to_payer_pct": 10.98
       },
       {
         "bucket": 20,
@@ -4419,7 +5194,8 @@
         "payers": 271,
         "segment": "config_id",
         "followup_rate_pct": 83.17,
-        "payer_rate_pct": 2.16
+        "payer_rate_pct": 2.16,
+        "followup_to_payer_pct": 2.6
       },
       {
         "bucket": 18,
@@ -4428,7 +5204,8 @@
         "payers": 850,
         "segment": "config_id",
         "followup_rate_pct": 89.72,
-        "payer_rate_pct": 8.01
+        "payer_rate_pct": 8.01,
+        "followup_to_payer_pct": 8.93
       },
       {
         "bucket": 8,
@@ -4437,7 +5214,8 @@
         "payers": 37,
         "segment": "config_id",
         "followup_rate_pct": 86.05,
-        "payer_rate_pct": 2.09
+        "payer_rate_pct": 2.09,
+        "followup_to_payer_pct": 2.43
       },
       {
         "bucket": 4,
@@ -4446,7 +5224,8 @@
         "payers": 0,
         "segment": "config_id",
         "followup_rate_pct": 0.0,
-        "payer_rate_pct": 0.0
+        "payer_rate_pct": 0.0,
+        "followup_to_payer_pct": 0.0
       },
       {
         "bucket": "female",
@@ -4455,7 +5234,8 @@
         "payers": 703,
         "segment": "gender",
         "followup_rate_pct": 94.65,
-        "payer_rate_pct": 4.51
+        "payer_rate_pct": 4.51,
+        "followup_to_payer_pct": 4.76
       },
       {
         "bucket": "male",
@@ -4464,7 +5244,8 @@
         "payers": 454,
         "segment": "gender",
         "followup_rate_pct": 90.2,
-        "payer_rate_pct": 6.19
+        "payer_rate_pct": 6.19,
+        "followup_to_payer_pct": 6.86
       },
       {
         "bucket": "unknown",
@@ -4473,7 +5254,8 @@
         "payers": 0,
         "segment": "gender",
         "followup_rate_pct": 0.16,
-        "payer_rate_pct": 0.0
+        "payer_rate_pct": 0.0,
+        "followup_to_payer_pct": 0.0
       },
       {
         "bucket": "other",
@@ -4482,7 +5264,8 @@
         "payers": 1,
         "segment": "gender",
         "followup_rate_pct": 83.72,
-        "payer_rate_pct": 1.16
+        "payer_rate_pct": 1.16,
+        "followup_to_payer_pct": 1.39
       },
       {
         "bucket": "android",
@@ -4491,7 +5274,8 @@
         "payers": 904,
         "segment": "platform",
         "followup_rate_pct": 89.31,
-        "payer_rate_pct": 4.33
+        "payer_rate_pct": 4.33,
+        "followup_to_payer_pct": 4.85
       },
       {
         "bucket": "unknown",
@@ -4500,7 +5284,8 @@
         "payers": 254,
         "segment": "platform",
         "followup_rate_pct": 69.86,
-        "payer_rate_pct": 6.27
+        "payer_rate_pct": 6.27,
+        "followup_to_payer_pct": 8.98
       }
     ],
     "followup_entity_events": [
@@ -5297,9 +6082,9 @@
   },
   "engagement": {
     "kpis": {
-      "active_users": 36174,
-      "sessions": 164541,
-      "total_minutes": 380623.7,
+      "active_users": 36175,
+      "sessions": 164545,
+      "total_minutes": 380622.3,
       "avg_minutes_per_user": 10.52,
       "avg_minutes_per_session": 2.31,
       "bim_notification_opens": 12960,
@@ -5353,9 +6138,9 @@
       },
       {
         "date": "2026-06-07",
-        "sessions": 23725,
-        "users": 7548,
-        "total_minutes": 57912.6,
+        "sessions": 23729,
+        "users": 7550,
+        "total_minutes": 57914.0,
         "avg_minutes_per_user": 7.67,
         "avg_minutes_per_session": 2.44,
         "sessions_per_user": 3.14
@@ -5364,7 +6149,7 @@
         "date": "2026-06-08",
         "sessions": 24527,
         "users": 7408,
-        "total_minutes": 56891.8,
+        "total_minutes": 56889.0,
         "avg_minutes_per_user": 7.68,
         "avg_minutes_per_session": 2.32,
         "sessions_per_user": 3.31
@@ -5373,9 +6158,9 @@
     "session_by_platform": [
       {
         "platform": "android",
-        "sessions": 149851,
-        "users": 33669,
-        "total_minutes": 345604.3,
+        "sessions": 149855,
+        "users": 33670,
+        "total_minutes": 345602.9,
         "avg_minutes_per_user": 10.26,
         "avg_minutes_per_session": 2.31,
         "sessions_per_user": 4.45
@@ -5403,51 +6188,59 @@
       {
         "date": "2026-06-02",
         "opens": 1911,
-        "users": 1241
+        "users": 1241,
+        "opens_per_user": 1.54
       },
       {
         "date": "2026-06-03",
         "opens": 1854,
-        "users": 1189
+        "users": 1189,
+        "opens_per_user": 1.56
       },
       {
         "date": "2026-06-04",
         "opens": 1978,
-        "users": 1281
+        "users": 1281,
+        "opens_per_user": 1.54
       },
       {
         "date": "2026-06-05",
         "opens": 1856,
-        "users": 1250
+        "users": 1250,
+        "opens_per_user": 1.48
       },
       {
         "date": "2026-06-06",
         "opens": 1854,
-        "users": 1210
+        "users": 1210,
+        "opens_per_user": 1.53
       },
       {
         "date": "2026-06-07",
         "opens": 1769,
-        "users": 1217
+        "users": 1217,
+        "opens_per_user": 1.45
       },
       {
         "date": "2026-06-08",
         "opens": 1738,
-        "users": 1150
+        "users": 1150,
+        "opens_per_user": 1.51
       }
     ],
     "bim_by_platform": [
       {
         "platform": "android",
         "opens": 12960,
-        "users": 5224
+        "users": 5224,
+        "opens_per_user": 2.48
       }
     ],
     "notification_campaigns": [
       {
         "campaign": "Unknown",
-        "opens": 64283,
-        "users": 20294
+        "opens": 64284,
+        "users": 20295
       },
       {
         "campaign": "Bot Initiated Messages",
@@ -5458,6 +6251,116 @@
         "campaign": "<null>",
         "opens": 411,
         "users": 240
+      }
+    ]
+  },
+  "metric_coverage": {
+    "rows": [
+      {
+        "area": "Monetization",
+        "metric": "Revenue, payer, transaction, avg transaction",
+        "status": "Available",
+        "coverage_pct": 100,
+        "missing_detail": "None",
+        "next_data_needed": "None"
+      },
+      {
+        "area": "Monetization",
+        "metric": "Revenue share by family, pack, bot/entity",
+        "status": "Available",
+        "coverage_pct": 100,
+        "missing_detail": "None",
+        "next_data_needed": "None"
+      },
+      {
+        "area": "Monetization",
+        "metric": "Rs 1 / Rs 49 config to trial and main plan funnel",
+        "status": "Partial",
+        "coverage_pct": 80,
+        "missing_detail": "Config assignment and purchases are available; exact paywall impression and click events are not in the current export.",
+        "next_data_needed": "Add paywall shown and trial CTA clicked events with config_id and pack amount."
+      },
+      {
+        "area": "Acquisition",
+        "metric": "New user to follow-up to payment conversion",
+        "status": "Available",
+        "coverage_pct": 100,
+        "missing_detail": "None",
+        "next_data_needed": "None"
+      },
+      {
+        "area": "Acquisition",
+        "metric": "Marketing channel / campaign source conversion",
+        "status": "Missing source",
+        "coverage_pct": 0,
+        "missing_detail": "The current source set does not include campaign attribution or ad spend for new users.",
+        "next_data_needed": "Install/UTM attribution fields or an ad-spend export keyed by campaign/date."
+      },
+      {
+        "area": "Persona",
+        "metric": "Follow-up user gender distribution",
+        "status": "Partial",
+        "coverage_pct": 46.82,
+        "missing_detail": "53.18% of follow-up users have unknown gender.",
+        "next_data_needed": "Improve profile gender collection or pass profile gender into Mixpanel user profiles."
+      },
+      {
+        "area": "Persona",
+        "metric": "Follow-up user age distribution",
+        "status": "Partial",
+        "coverage_pct": 46.82,
+        "missing_detail": "53.18% of follow-up users have unknown age/dob.",
+        "next_data_needed": "Improve DOB/profile coverage or pass age bucket into Mixpanel user profiles."
+      },
+      {
+        "area": "Bot / Entity",
+        "metric": "Follow-up query bot name mapping",
+        "status": "Available",
+        "coverage_pct": 100.0,
+        "missing_detail": "0.00% of follow-up query events are unmapped to a bot name.",
+        "next_data_needed": "Keep bot_id/entity slug mapping in chat_session or a dedicated bot dimension table."
+      },
+      {
+        "area": "Retention",
+        "metric": "D0-D7 chat retention by platform and bot repeat usage",
+        "status": "Available",
+        "coverage_pct": 100,
+        "missing_detail": "None",
+        "next_data_needed": "None"
+      },
+      {
+        "area": "Engagement",
+        "metric": "Average time, session depth, BIM opens",
+        "status": "Available",
+        "coverage_pct": 100,
+        "missing_detail": "BIM open counts exist, but delivered/impression denominators are not present.",
+        "next_data_needed": "Notification delivered/impression event to calculate true open rate."
+      },
+      {
+        "area": "Engagement",
+        "metric": "Notification open rate",
+        "status": "Missing denominator",
+        "coverage_pct": 0,
+        "missing_detail": "App Opened from Notification is available, but notification delivered/sent count is not.",
+        "next_data_needed": "Notification sent/delivered event by campaign_name, user_id, date, and platform."
+      }
+    ],
+    "summary": [
+      {
+        "status": "Available",
+        "metrics": 6
+      },
+      {
+        "status": "Missing denominator",
+        "metrics": 1
+      },
+      {
+        "status": "Missing source",
+        "metrics": 1
+      },
+      {
+        "status": "Partial",
+        "metrics": 3
       }
     ]
   }
