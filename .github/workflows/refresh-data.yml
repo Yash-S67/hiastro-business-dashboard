@@ -1,9 +1,6 @@
 name: Refresh dashboard data
 
 on:
-  schedule:
-    # 08:30 IST every day. Uses the latest complete IST day in the refresh script.
-    - cron: "0 3 * * *"
   workflow_dispatch:
 
 permissions:

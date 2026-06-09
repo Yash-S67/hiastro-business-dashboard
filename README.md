@@ -29,9 +29,23 @@ Open `http://localhost:8080`.
 
 This folder is ready to push as a static GitHub Pages site. Do not commit credentials; the dashboard only includes aggregated JSON.
 
-## Daily update on GitHub
+## Daily update
 
-The workflow `.github/workflows/refresh-data.yml` refreshes `data/dashboard_data.json` every day at **08:30 IST** and commits the updated aggregate data. The Pages workflow redeploys after that commit.
+The dashboard refresh is installed as a Mac LaunchAgent because GitHub-hosted runners cannot reach the MySQL server. It runs every day at **08:30 IST**, refreshes `data/dashboard_data.json`, commits the updated aggregate data, and pushes it to GitHub. GitHub Pages redeploys after that push.
+
+Installed LaunchAgent:
+
+```text
+~/Library/LaunchAgents/com.hiastro.business-dashboard-refresh.plist
+```
+
+Manual refresh:
+
+```bash
+/Users/yashs/Documents/WorkDirectory/hiastro-business-dashboard/scripts/refresh_and_push.sh
+```
+
+The workflow `.github/workflows/refresh-data.yml` remains available for manual runs if the database is ever opened to GitHub runners or moved behind a reachable analytics endpoint.
 
 Add these repository secrets in GitHub before enabling the hosted refresh:
 
