@@ -28,3 +28,20 @@ Open `http://localhost:8080`.
 ## GitHub Pages
 
 This folder is ready to push as a static GitHub Pages site. Do not commit credentials; the dashboard only includes aggregated JSON.
+
+## Daily update on GitHub
+
+The workflow `.github/workflows/refresh-data.yml` refreshes `data/dashboard_data.json` every day at **08:30 IST** and commits the updated aggregate data. The Pages workflow redeploys after that commit.
+
+Add these repository secrets in GitHub before enabling the hosted refresh:
+
+```text
+MYSQL_HOST
+MYSQL_PORT
+MYSQL_USER
+MYSQL_PASSWORD
+MYSQL_DATABASE
+MIXPANEL_PROJECT_ID
+MIXPANEL_SERVICE_ACCOUNT_USERNAME
+MIXPANEL_SERVICE_ACCOUNT_SECRET
+```
