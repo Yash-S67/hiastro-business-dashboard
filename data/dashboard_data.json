@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generated_at_ist": "2026-06-09T12:07:49+05:30",
+    "generated_at_ist": "2026-06-09T13:45:54+05:30",
     "current_window": {
       "start": "2026-06-02",
       "end": "2026-06-08"
@@ -424,7 +424,7 @@
     "entity_distribution": [
       {
         "entity": "69c3ba990cf1489b17b2adc9",
-        "followup_users": 18990,
+        "followup_users": 18991,
         "payers": 932,
         "transactions": 1162,
         "revenue": 130888.3,
@@ -432,7 +432,7 @@
       },
       {
         "entity": "68792542fcf00df3749da528",
-        "followup_users": 3505,
+        "followup_users": 3504,
         "payers": 252,
         "transactions": 396,
         "revenue": 36789.82,
@@ -587,7 +587,7 @@
       {
         "config_id": 18,
         "trial_type": "Rs 1 trial",
-        "assigned_users": 44222,
+        "assigned_users": 44360,
         "followup_users": 10378,
         "trial_buyers": 760,
         "main_plan_buyers": 197,
@@ -600,7 +600,7 @@
       {
         "config_id": 20,
         "trial_type": "Rs 49 trial",
-        "assigned_users": 57652,
+        "assigned_users": 57794,
         "followup_users": 13051,
         "trial_buyers": 248,
         "main_plan_buyers": 155,
@@ -716,21 +716,21 @@
     "segments": [
       {
         "bucket": "18-24",
-        "new_users": 11473,
+        "new_users": 11474,
         "followup_users": 10810,
         "payers": 617,
         "segment": "age_bucket",
-        "followup_rate_pct": 94.22,
+        "followup_rate_pct": 94.21,
         "payer_rate_pct": 5.38
       },
       {
         "bucket": "25-34",
-        "new_users": 7056,
-        "followup_users": 6524,
-        "payers": 371,
+        "new_users": 7058,
+        "followup_users": 6526,
+        "payers": 372,
         "segment": "age_bucket",
         "followup_rate_pct": 92.46,
-        "payer_rate_pct": 5.26
+        "payer_rate_pct": 5.27
       },
       {
         "bucket": "<18",
@@ -743,7 +743,7 @@
       },
       {
         "bucket": "Unknown",
-        "new_users": 1890,
+        "new_users": 1889,
         "followup_users": 4,
         "payers": 0,
         "segment": "age_bucket",
@@ -752,21 +752,21 @@
       },
       {
         "bucket": "35-44",
-        "new_users": 1379,
-        "followup_users": 1260,
-        "payers": 83,
+        "new_users": 1376,
+        "followup_users": 1257,
+        "payers": 82,
         "segment": "age_bucket",
-        "followup_rate_pct": 91.37,
-        "payer_rate_pct": 6.02
+        "followup_rate_pct": 91.35,
+        "payer_rate_pct": 5.96
       },
       {
         "bucket": "45-54",
-        "new_users": 314,
-        "followup_users": 274,
+        "new_users": 315,
+        "followup_users": 275,
         "payers": 17,
         "segment": "age_bucket",
-        "followup_rate_pct": 87.26,
-        "payer_rate_pct": 5.41
+        "followup_rate_pct": 87.3,
+        "payer_rate_pct": 5.4
       },
       {
         "bucket": "55+",
@@ -816,24 +816,24 @@
       {
         "bucket": "female",
         "new_users": 15593,
-        "followup_users": 14760,
-        "payers": 703,
+        "followup_users": 14759,
+        "payers": 704,
         "segment": "gender",
-        "followup_rate_pct": 94.66,
+        "followup_rate_pct": 94.65,
         "payer_rate_pct": 4.51
       },
       {
         "bucket": "male",
-        "new_users": 7333,
-        "followup_users": 6616,
-        "payers": 454,
+        "new_users": 7334,
+        "followup_users": 6617,
+        "payers": 453,
         "segment": "gender",
         "followup_rate_pct": 90.22,
-        "payer_rate_pct": 6.19
+        "payer_rate_pct": 6.18
       },
       {
         "bucket": "unknown",
-        "new_users": 1890,
+        "new_users": 1889,
         "followup_users": 4,
         "payers": 0,
         "segment": "gender",
@@ -851,8 +851,8 @@
       },
       {
         "bucket": "android",
-        "new_users": 20854,
-        "followup_users": 18624,
+        "new_users": 20855,
+        "followup_users": 18625,
         "payers": 904,
         "segment": "platform",
         "followup_rate_pct": 89.31,
@@ -860,12 +860,12 @@
       },
       {
         "bucket": "unknown",
-        "new_users": 4048,
-        "followup_users": 2828,
+        "new_users": 4047,
+        "followup_users": 2827,
         "payers": 254,
         "segment": "platform",
-        "followup_rate_pct": 69.86,
-        "payer_rate_pct": 6.27
+        "followup_rate_pct": 69.85,
+        "payer_rate_pct": 6.28
       }
     ]
   },
@@ -928,42 +928,42 @@
       {
         "platform": "android",
         "day_n": 1,
-        "cohort_users": 78642,
+        "cohort_users": 78644,
         "retained_users": 5086,
         "retention_pct": 6.47
       },
       {
         "platform": "android",
         "day_n": 3,
-        "cohort_users": 78642,
+        "cohort_users": 78644,
         "retained_users": 1771,
         "retention_pct": 2.25
       },
       {
         "platform": "android",
         "day_n": 7,
-        "cohort_users": 78642,
+        "cohort_users": 78644,
         "retained_users": 709,
         "retention_pct": 0.9
       },
       {
         "platform": "unknown",
         "day_n": 1,
-        "cohort_users": 21933,
+        "cohort_users": 21931,
         "retained_users": 919,
         "retention_pct": 4.19
       },
       {
         "platform": "unknown",
         "day_n": 3,
-        "cohort_users": 21933,
+        "cohort_users": 21931,
         "retained_users": 271,
         "retention_pct": 1.24
       },
       {
         "platform": "unknown",
         "day_n": 7,
-        "cohort_users": 21933,
+        "cohort_users": 21931,
         "retained_users": 155,
         "retention_pct": 0.71
       }
@@ -1153,12 +1153,12 @@
   },
   "engagement": {
     "kpis": {
-      "active_users": 36173,
-      "sessions": 164491,
-      "total_minutes": 380518.5,
+      "active_users": 36174,
+      "sessions": 164510,
+      "total_minutes": 380525.6,
       "avg_minutes_per_user": 10.52,
       "avg_minutes_per_session": 2.31,
-      "bim_notification_opens": 12960,
+      "bim_notification_opens": 12959,
       "bim_notification_users": 5223
     },
     "session_daily": [
@@ -1182,45 +1182,45 @@
       },
       {
         "date": "2026-06-04",
-        "sessions": 22581,
-        "users": 7173,
-        "total_minutes": 51144.6,
+        "sessions": 22582,
+        "users": 7174,
+        "total_minutes": 51145.5,
         "avg_minutes_per_user": 7.13,
         "avg_minutes_per_session": 2.26,
         "sessions_per_user": 3.15
       },
       {
         "date": "2026-06-05",
-        "sessions": 22160,
+        "sessions": 22162,
         "users": 6671,
-        "total_minutes": 48854.0,
+        "total_minutes": 48855.2,
         "avg_minutes_per_user": 7.32,
         "avg_minutes_per_session": 2.2,
         "sessions_per_user": 3.32
       },
       {
         "date": "2026-06-06",
-        "sessions": 23248,
+        "sessions": 23249,
         "users": 7273,
-        "total_minutes": 55385.9,
+        "total_minutes": 55385.8,
         "avg_minutes_per_user": 7.62,
         "avg_minutes_per_session": 2.38,
         "sessions_per_user": 3.2
       },
       {
         "date": "2026-06-07",
-        "sessions": 23718,
-        "users": 7547,
-        "total_minutes": 57861.8,
-        "avg_minutes_per_user": 7.67,
+        "sessions": 23715,
+        "users": 7546,
+        "total_minutes": 57835.9,
+        "avg_minutes_per_user": 7.66,
         "avg_minutes_per_session": 2.44,
         "sessions_per_user": 3.14
       },
       {
         "date": "2026-06-08",
-        "sessions": 24491,
-        "users": 7400,
-        "total_minutes": 56835.4,
+        "sessions": 24509,
+        "users": 7405,
+        "total_minutes": 56866.4,
         "avg_minutes_per_user": 7.68,
         "avg_minutes_per_session": 2.32,
         "sessions_per_user": 3.31
@@ -1229,9 +1229,9 @@
     "session_by_platform": [
       {
         "platform": "android",
-        "sessions": 149802,
-        "users": 33668,
-        "total_minutes": 345501.2,
+        "sessions": 149821,
+        "users": 33669,
+        "total_minutes": 345508.3,
         "avg_minutes_per_user": 10.26,
         "avg_minutes_per_session": 2.31,
         "sessions_per_user": 4.45
@@ -1288,26 +1288,26 @@
       },
       {
         "date": "2026-06-08",
-        "opens": 1739,
+        "opens": 1738,
         "users": 1150
       }
     ],
     "bim_by_platform": [
       {
         "platform": "android",
-        "opens": 12960,
+        "opens": 12959,
         "users": 5223
       }
     ],
     "notification_campaigns": [
       {
         "campaign": "Unknown",
-        "opens": 64272,
+        "opens": 64274,
         "users": 20292
       },
       {
         "campaign": "Bot Initiated Messages",
-        "opens": 12960,
+        "opens": 12959,
         "users": 5223
       },
       {
