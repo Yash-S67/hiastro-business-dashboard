@@ -1,0 +1,1320 @@
+{
+  "metadata": {
+    "generated_at_ist": "2026-06-09T12:07:49+05:30",
+    "current_window": {
+      "start": "2026-06-02",
+      "end": "2026-06-08"
+    },
+    "prior_7_window": {
+      "start": "2026-05-26",
+      "end": "2026-06-01"
+    },
+    "prior_30_window": {
+      "start": "2026-05-03",
+      "end": "2026-06-01"
+    },
+    "timezone": "Asia/Kolkata",
+    "source_notes": [
+      "Revenue comes from MySQL subscription_lifecycle_events and payment_orders.",
+      "Pay as you go means successful ADD_MONEY wallet payment orders.",
+      "Customized day pass means successful DAY_PASS payment orders.",
+      "Acquisition new users come from MySQL users.created_at; login success comes from Mixpanel.",
+      "Retention uses completed MySQL chat_session activity for new-user cohorts.",
+      "Engagement duration and BIM notification opens come from Mixpanel app events."
+    ]
+  },
+  "monetization": {
+    "kpis": {
+      "current": {
+        "revenue": 376186.06,
+        "payers": 2491,
+        "transactions": 3497,
+        "avg_transaction": 107.57,
+        "avg_revenue_per_payer": 151.02
+      },
+      "prior_7": {
+        "revenue": 302488.12,
+        "payers": 1873,
+        "transactions": 2897,
+        "avg_transaction": 104.41,
+        "avg_revenue_per_payer": 161.5
+      },
+      "prior_30": {
+        "revenue": 1593821.52,
+        "payers": 8205,
+        "transactions": 17055,
+        "avg_transaction": 93.45,
+        "avg_revenue_per_payer": 194.25
+      },
+      "growth_vs_prior_7": {
+        "revenue": 24.36,
+        "payers": 33.0,
+        "transactions": 20.71,
+        "avg_transaction": 3.03,
+        "avg_revenue_per_payer": -6.49
+      },
+      "growth_vs_prior_30_7day_baseline": {
+        "revenue": 1.15,
+        "payers": 30.11,
+        "transactions": -12.12,
+        "avg_transaction": 15.11,
+        "avg_revenue_per_payer": -22.25
+      }
+    },
+    "daily": [
+      {
+        "day": "2026-06-02",
+        "family": "day_pass",
+        "revenue": 49.0,
+        "transactions": 1,
+        "payers": 1
+      },
+      {
+        "day": "2026-06-02",
+        "family": "pay_as_you_go",
+        "revenue": 30972.64,
+        "transactions": 349,
+        "payers": 254
+      },
+      {
+        "day": "2026-06-02",
+        "family": "subscription",
+        "revenue": 22366.0,
+        "transactions": 202,
+        "payers": 202
+      },
+      {
+        "day": "2026-06-03",
+        "family": "pay_as_you_go",
+        "revenue": 22738.6,
+        "transactions": 288,
+        "payers": 205
+      },
+      {
+        "day": "2026-06-03",
+        "family": "subscription",
+        "revenue": 24100.0,
+        "transactions": 238,
+        "payers": 237
+      },
+      {
+        "day": "2026-06-04",
+        "family": "pay_as_you_go",
+        "revenue": 24308.0,
+        "transactions": 266,
+        "payers": 194
+      },
+      {
+        "day": "2026-06-04",
+        "family": "subscription",
+        "revenue": 37224.0,
+        "transactions": 210,
+        "payers": 210
+      },
+      {
+        "day": "2026-06-05",
+        "family": "day_pass",
+        "revenue": 343.0,
+        "transactions": 7,
+        "payers": 7
+      },
+      {
+        "day": "2026-06-05",
+        "family": "pay_as_you_go",
+        "revenue": 21358.0,
+        "transactions": 239,
+        "payers": 177
+      },
+      {
+        "day": "2026-06-05",
+        "family": "subscription",
+        "revenue": 28725.0,
+        "transactions": 225,
+        "payers": 225
+      },
+      {
+        "day": "2026-06-06",
+        "family": "day_pass",
+        "revenue": 539.0,
+        "transactions": 11,
+        "payers": 11
+      },
+      {
+        "day": "2026-06-06",
+        "family": "pay_as_you_go",
+        "revenue": 22241.82,
+        "transactions": 254,
+        "payers": 203
+      },
+      {
+        "day": "2026-06-06",
+        "family": "subscription",
+        "revenue": 30770.0,
+        "transactions": 212,
+        "payers": 212
+      },
+      {
+        "day": "2026-06-07",
+        "family": "day_pass",
+        "revenue": 588.0,
+        "transactions": 12,
+        "payers": 12
+      },
+      {
+        "day": "2026-06-07",
+        "family": "pay_as_you_go",
+        "revenue": 25901.0,
+        "transactions": 273,
+        "payers": 212
+      },
+      {
+        "day": "2026-06-07",
+        "family": "subscription",
+        "revenue": 26709.0,
+        "transactions": 243,
+        "payers": 243
+      },
+      {
+        "day": "2026-06-08",
+        "family": "day_pass",
+        "revenue": 637.0,
+        "transactions": 13,
+        "payers": 13
+      },
+      {
+        "day": "2026-06-08",
+        "family": "pay_as_you_go",
+        "revenue": 24013.0,
+        "transactions": 245,
+        "payers": 199
+      },
+      {
+        "day": "2026-06-08",
+        "family": "subscription",
+        "revenue": 32603.0,
+        "transactions": 209,
+        "payers": 209
+      }
+    ],
+    "family": [
+      {
+        "family": "subscription",
+        "revenue": 202497.0,
+        "transactions": 1539,
+        "payers": 1361,
+        "avg_transaction": 131.58
+      },
+      {
+        "family": "pay_as_you_go",
+        "revenue": 171533.06,
+        "transactions": 1914,
+        "payers": 1099,
+        "avg_transaction": 89.62
+      },
+      {
+        "family": "day_pass",
+        "revenue": 2156.0,
+        "transactions": 44,
+        "payers": 43,
+        "avg_transaction": 49.0
+      }
+    ],
+    "pack": [
+      {
+        "family": "subscription",
+        "pack": "Main Rs 499",
+        "plan_code": "ALL_1_RS",
+        "amount": 499.0,
+        "revenue": 102794.0,
+        "transactions": 206,
+        "payers": 206,
+        "avg_transaction": 499.0
+      },
+      {
+        "family": "pay_as_you_go",
+        "pack": "Wallet Rs 59",
+        "plan_code": "wallet_recharge",
+        "amount": 59.0,
+        "revenue": 76641.0,
+        "transactions": 1299,
+        "payers": 757,
+        "avg_transaction": 59.0
+      },
+      {
+        "family": "subscription",
+        "pack": "Main Rs 499",
+        "plan_code": "All Access Pack",
+        "amount": 499.0,
+        "revenue": 66866.0,
+        "transactions": 134,
+        "payers": 134,
+        "avg_transaction": 499.0
+      },
+      {
+        "family": "pay_as_you_go",
+        "pack": "Wallet Rs 118",
+        "plan_code": "wallet_recharge",
+        "amount": 118.0,
+        "revenue": 54162.0,
+        "transactions": 459,
+        "payers": 320,
+        "avg_transaction": 118.0
+      },
+      {
+        "family": "pay_as_you_go",
+        "pack": "Wallet Rs 236",
+        "plan_code": "wallet_recharge",
+        "amount": 236.0,
+        "revenue": 31860.0,
+        "transactions": 135,
+        "payers": 109,
+        "avg_transaction": 236.0
+      },
+      {
+        "family": "subscription",
+        "pack": "Main Rs 199",
+        "plan_code": "Chat Only Pack",
+        "amount": 199.0,
+        "revenue": 9950.0,
+        "transactions": 50,
+        "payers": 50,
+        "avg_transaction": 199.0
+      },
+      {
+        "family": "subscription",
+        "pack": "Trial Rs 49",
+        "plan_code": "All Access Pack",
+        "amount": 49.0,
+        "revenue": 9555.0,
+        "transactions": 195,
+        "payers": 195,
+        "avg_transaction": 49.0
+      },
+      {
+        "family": "subscription",
+        "pack": "Main Rs 199",
+        "plan_code": "CHAT_1_RS",
+        "amount": 199.0,
+        "revenue": 9353.0,
+        "transactions": 47,
+        "payers": 47,
+        "avg_transaction": 199.0
+      },
+      {
+        "family": "pay_as_you_go",
+        "pack": "Wallet Rs 590",
+        "plan_code": "wallet_recharge",
+        "amount": 590.0,
+        "revenue": 5900.0,
+        "transactions": 10,
+        "payers": 10,
+        "avg_transaction": 590.0
+      },
+      {
+        "family": "subscription",
+        "pack": "Trial Rs 49",
+        "plan_code": "Chat Only Pack",
+        "amount": 49.0,
+        "revenue": 3136.0,
+        "transactions": 64,
+        "payers": 64,
+        "avg_transaction": 49.0
+      },
+      {
+        "family": "pay_as_you_go",
+        "pack": "Wallet Rs 1180",
+        "plan_code": "wallet_recharge",
+        "amount": 1180.0,
+        "revenue": 2360.0,
+        "transactions": 2,
+        "payers": 2,
+        "avg_transaction": 1180.0
+      },
+      {
+        "family": "day_pass",
+        "pack": "Day Pass Rs 49",
+        "plan_code": "custom_day_pass",
+        "amount": 49.0,
+        "revenue": 2156.0,
+        "transactions": 44,
+        "payers": 43,
+        "avg_transaction": 49.0
+      },
+      {
+        "family": "subscription",
+        "pack": "Trial Rs 1",
+        "plan_code": "ALL_1_RS",
+        "amount": 1.0,
+        "revenue": 686.0,
+        "transactions": 686,
+        "payers": 686,
+        "avg_transaction": 1.0
+      },
+      {
+        "family": "pay_as_you_go",
+        "pack": "Wallet Rs 58",
+        "plan_code": "wallet_recharge",
+        "amount": 57.82,
+        "revenue": 231.28,
+        "transactions": 4,
+        "payers": 4,
+        "avg_transaction": 57.82
+      },
+      {
+        "family": "subscription",
+        "pack": "Trial Rs 1",
+        "plan_code": "CHAT_1_RS",
+        "amount": 1.0,
+        "revenue": 157.0,
+        "transactions": 157,
+        "payers": 156,
+        "avg_transaction": 1.0
+      },
+      {
+        "family": "pay_as_you_go",
+        "pack": "Wallet Rs 100",
+        "plan_code": "wallet_recharge",
+        "amount": 100.3,
+        "revenue": 100.3,
+        "transactions": 1,
+        "payers": 1,
+        "avg_transaction": 100.3
+      },
+      {
+        "family": "pay_as_you_go",
+        "pack": "Wallet Rs 83",
+        "plan_code": "wallet_recharge",
+        "amount": 82.6,
+        "revenue": 82.6,
+        "transactions": 1,
+        "payers": 1,
+        "avg_transaction": 82.6
+      },
+      {
+        "family": "pay_as_you_go",
+        "pack": "Wallet Rs 71",
+        "plan_code": "wallet_recharge",
+        "amount": 70.8,
+        "revenue": 70.8,
+        "transactions": 1,
+        "payers": 1,
+        "avg_transaction": 70.8
+      },
+      {
+        "family": "pay_as_you_go",
+        "pack": "Wallet Rs 65",
+        "plan_code": "wallet_recharge",
+        "amount": 64.9,
+        "revenue": 64.9,
+        "transactions": 1,
+        "payers": 1,
+        "avg_transaction": 64.9
+      },
+      {
+        "family": "pay_as_you_go",
+        "pack": "Wallet Rs 60",
+        "plan_code": "wallet_recharge",
+        "amount": 60.18,
+        "revenue": 60.18,
+        "transactions": 1,
+        "payers": 1,
+        "avg_transaction": 60.18
+      }
+    ],
+    "entity_distribution": [
+      {
+        "entity": "69c3ba990cf1489b17b2adc9",
+        "followup_users": 18990,
+        "payers": 932,
+        "transactions": 1162,
+        "revenue": 130888.3,
+        "conversion_pct": 4.91
+      },
+      {
+        "entity": "68792542fcf00df3749da528",
+        "followup_users": 3505,
+        "payers": 252,
+        "transactions": 396,
+        "revenue": 36789.82,
+        "conversion_pct": 7.19
+      },
+      {
+        "entity": "68792536fcf00df3749da4d3",
+        "followup_users": 3759,
+        "payers": 255,
+        "transactions": 312,
+        "revenue": 30487.0,
+        "conversion_pct": 6.78
+      },
+      {
+        "entity": "6879253ffcf00df3749da516",
+        "followup_users": 1760,
+        "payers": 143,
+        "transactions": 189,
+        "revenue": 21274.0,
+        "conversion_pct": 8.12
+      },
+      {
+        "entity": "6879253ffcf00df3749da51c",
+        "followup_users": 1723,
+        "payers": 125,
+        "transactions": 188,
+        "revenue": 18411.0,
+        "conversion_pct": 7.25
+      },
+      {
+        "entity": "6879253ffcf00df3749da512",
+        "followup_users": 2353,
+        "payers": 144,
+        "transactions": 184,
+        "revenue": 17558.0,
+        "conversion_pct": 6.12
+      },
+      {
+        "entity": "6879253cfcf00df3749da502",
+        "followup_users": 1550,
+        "payers": 105,
+        "transactions": 152,
+        "revenue": 15444.82,
+        "conversion_pct": 6.77
+      },
+      {
+        "entity": "6879253dfcf00df3749da50c",
+        "followup_users": 57,
+        "payers": 6,
+        "transactions": 11,
+        "revenue": 1062.0,
+        "conversion_pct": 10.53
+      },
+      {
+        "entity": "68792536fcf00df3749da4c5",
+        "followup_users": 67,
+        "payers": 6,
+        "transactions": 9,
+        "revenue": 826.0,
+        "conversion_pct": 8.96
+      },
+      {
+        "entity": "68792b4d174977d8b2e14a93",
+        "followup_users": 8,
+        "payers": 1,
+        "transactions": 2,
+        "revenue": 500.0,
+        "conversion_pct": 12.5
+      },
+      {
+        "entity": "68792540fcf00df3749da51e",
+        "followup_users": 20,
+        "payers": 4,
+        "transactions": 5,
+        "revenue": 413.0,
+        "conversion_pct": 20.0
+      },
+      {
+        "entity": "68792542fcf00df3749da524",
+        "followup_users": 64,
+        "payers": 5,
+        "transactions": 5,
+        "revenue": 355.0,
+        "conversion_pct": 7.81
+      },
+      {
+        "entity": "68792542fcf00df3749da526",
+        "followup_users": 24,
+        "payers": 2,
+        "transactions": 2,
+        "revenue": 118.0,
+        "conversion_pct": 8.33
+      },
+      {
+        "entity": "6879253ffcf00df3749da51a",
+        "followup_users": 4,
+        "payers": 1,
+        "transactions": 2,
+        "revenue": 118.0,
+        "conversion_pct": 25.0
+      },
+      {
+        "entity": "68792536fcf00df3749da4c9",
+        "followup_users": 8,
+        "payers": 1,
+        "transactions": 1,
+        "revenue": 1.0,
+        "conversion_pct": 12.5
+      },
+      {
+        "entity": "ajaytrivedi",
+        "followup_users": 8731,
+        "payers": 0,
+        "transactions": 0,
+        "revenue": 0.0,
+        "conversion_pct": 0.0
+      },
+      {
+        "entity": "vivek",
+        "followup_users": 2906,
+        "payers": 0,
+        "transactions": 0,
+        "revenue": 0.0,
+        "conversion_pct": 0.0
+      },
+      {
+        "entity": "avika",
+        "followup_users": 2565,
+        "payers": 0,
+        "transactions": 0,
+        "revenue": 0.0,
+        "conversion_pct": 0.0
+      },
+      {
+        "entity": "naina",
+        "followup_users": 2486,
+        "payers": 0,
+        "transactions": 0,
+        "revenue": 0.0,
+        "conversion_pct": 0.0
+      },
+      {
+        "entity": "hemant",
+        "followup_users": 1968,
+        "payers": 0,
+        "transactions": 0,
+        "revenue": 0.0,
+        "conversion_pct": 0.0
+      }
+    ],
+    "config_funnel": [
+      {
+        "config_id": 18,
+        "trial_type": "Rs 1 trial",
+        "assigned_users": 44222,
+        "followup_users": 10378,
+        "trial_buyers": 760,
+        "main_plan_buyers": 197,
+        "main_199_buyers": 27,
+        "main_499_buyers": 170,
+        "followup_to_trial_pct": 7.32,
+        "trial_to_main_pct": 25.92,
+        "followup_to_main_pct": 1.9
+      },
+      {
+        "config_id": 20,
+        "trial_type": "Rs 49 trial",
+        "assigned_users": 57652,
+        "followup_users": 13051,
+        "trial_buyers": 248,
+        "main_plan_buyers": 155,
+        "main_199_buyers": 45,
+        "main_499_buyers": 110,
+        "followup_to_trial_pct": 1.9,
+        "trial_to_main_pct": 62.5,
+        "followup_to_main_pct": 1.19
+      }
+    ]
+  },
+  "acquisition": {
+    "kpis": {
+      "new_users": 24902,
+      "login_success_users": 33325,
+      "new_user_to_followup_pct": 86.15,
+      "new_user_to_payment_pct": 4.65
+    },
+    "daily": [
+      {
+        "signup_date": "2026-06-02",
+        "new_users": 3197,
+        "followup_users": 2430,
+        "payers": 147
+      },
+      {
+        "signup_date": "2026-06-03",
+        "new_users": 4258,
+        "followup_users": 3610,
+        "payers": 192
+      },
+      {
+        "signup_date": "2026-06-04",
+        "new_users": 3070,
+        "followup_users": 2576,
+        "payers": 138
+      },
+      {
+        "signup_date": "2026-06-05",
+        "new_users": 3179,
+        "followup_users": 2774,
+        "payers": 185
+      },
+      {
+        "signup_date": "2026-06-06",
+        "new_users": 3521,
+        "followup_users": 3145,
+        "payers": 167
+      },
+      {
+        "signup_date": "2026-06-07",
+        "new_users": 3955,
+        "followup_users": 3563,
+        "payers": 194
+      },
+      {
+        "signup_date": "2026-06-08",
+        "new_users": 3722,
+        "followup_users": 3354,
+        "payers": 135
+      }
+    ],
+    "login_daily": [
+      {
+        "date": "2026-06-02",
+        "login_success_users": 4110
+      },
+      {
+        "date": "2026-06-03",
+        "login_success_users": 5675
+      },
+      {
+        "date": "2026-06-04",
+        "login_success_users": 4306
+      },
+      {
+        "date": "2026-06-05",
+        "login_success_users": 4260
+      },
+      {
+        "date": "2026-06-06",
+        "login_success_users": 4744
+      },
+      {
+        "date": "2026-06-07",
+        "login_success_users": 5229
+      },
+      {
+        "date": "2026-06-08",
+        "login_success_users": 5001
+      }
+    ],
+    "funnel": [
+      {
+        "stage": "New users",
+        "users": 24902,
+        "conversion_from_previous_pct": 100.0,
+        "conversion_from_start_pct": 100.0
+      },
+      {
+        "stage": "Follow up",
+        "users": 21452,
+        "conversion_from_previous_pct": 86.15,
+        "conversion_from_start_pct": 86.15
+      },
+      {
+        "stage": "Any payment",
+        "users": 1158,
+        "conversion_from_previous_pct": 5.4,
+        "conversion_from_start_pct": 4.65
+      }
+    ],
+    "segments": [
+      {
+        "bucket": "18-24",
+        "new_users": 11473,
+        "followup_users": 10810,
+        "payers": 617,
+        "segment": "age_bucket",
+        "followup_rate_pct": 94.22,
+        "payer_rate_pct": 5.38
+      },
+      {
+        "bucket": "25-34",
+        "new_users": 7056,
+        "followup_users": 6524,
+        "payers": 371,
+        "segment": "age_bucket",
+        "followup_rate_pct": 92.46,
+        "payer_rate_pct": 5.26
+      },
+      {
+        "bucket": "<18",
+        "new_users": 2680,
+        "followup_users": 2497,
+        "payers": 61,
+        "segment": "age_bucket",
+        "followup_rate_pct": 93.17,
+        "payer_rate_pct": 2.28
+      },
+      {
+        "bucket": "Unknown",
+        "new_users": 1890,
+        "followup_users": 4,
+        "payers": 0,
+        "segment": "age_bucket",
+        "followup_rate_pct": 0.21,
+        "payer_rate_pct": 0.0
+      },
+      {
+        "bucket": "35-44",
+        "new_users": 1379,
+        "followup_users": 1260,
+        "payers": 83,
+        "segment": "age_bucket",
+        "followup_rate_pct": 91.37,
+        "payer_rate_pct": 6.02
+      },
+      {
+        "bucket": "45-54",
+        "new_users": 314,
+        "followup_users": 274,
+        "payers": 17,
+        "segment": "age_bucket",
+        "followup_rate_pct": 87.26,
+        "payer_rate_pct": 5.41
+      },
+      {
+        "bucket": "55+",
+        "new_users": 110,
+        "followup_users": 83,
+        "payers": 9,
+        "segment": "age_bucket",
+        "followup_rate_pct": 75.45,
+        "payer_rate_pct": 8.18
+      },
+      {
+        "bucket": 20,
+        "new_users": 12518,
+        "followup_users": 10411,
+        "payers": 271,
+        "segment": "config_id",
+        "followup_rate_pct": 83.17,
+        "payer_rate_pct": 2.16
+      },
+      {
+        "bucket": 18,
+        "new_users": 10609,
+        "followup_users": 9518,
+        "payers": 850,
+        "segment": "config_id",
+        "followup_rate_pct": 89.72,
+        "payer_rate_pct": 8.01
+      },
+      {
+        "bucket": 8,
+        "new_users": 1770,
+        "followup_users": 1523,
+        "payers": 37,
+        "segment": "config_id",
+        "followup_rate_pct": 86.05,
+        "payer_rate_pct": 2.09
+      },
+      {
+        "bucket": 4,
+        "new_users": 5,
+        "followup_users": 0,
+        "payers": 0,
+        "segment": "config_id",
+        "followup_rate_pct": 0.0,
+        "payer_rate_pct": 0.0
+      },
+      {
+        "bucket": "female",
+        "new_users": 15593,
+        "followup_users": 14760,
+        "payers": 703,
+        "segment": "gender",
+        "followup_rate_pct": 94.66,
+        "payer_rate_pct": 4.51
+      },
+      {
+        "bucket": "male",
+        "new_users": 7333,
+        "followup_users": 6616,
+        "payers": 454,
+        "segment": "gender",
+        "followup_rate_pct": 90.22,
+        "payer_rate_pct": 6.19
+      },
+      {
+        "bucket": "unknown",
+        "new_users": 1890,
+        "followup_users": 4,
+        "payers": 0,
+        "segment": "gender",
+        "followup_rate_pct": 0.21,
+        "payer_rate_pct": 0.0
+      },
+      {
+        "bucket": "other",
+        "new_users": 86,
+        "followup_users": 72,
+        "payers": 1,
+        "segment": "gender",
+        "followup_rate_pct": 83.72,
+        "payer_rate_pct": 1.16
+      },
+      {
+        "bucket": "android",
+        "new_users": 20854,
+        "followup_users": 18624,
+        "payers": 904,
+        "segment": "platform",
+        "followup_rate_pct": 89.31,
+        "payer_rate_pct": 4.33
+      },
+      {
+        "bucket": "unknown",
+        "new_users": 4048,
+        "followup_users": 2828,
+        "payers": 254,
+        "segment": "platform",
+        "followup_rate_pct": 69.86,
+        "payer_rate_pct": 6.27
+      }
+    ]
+  },
+  "retention": {
+    "cohort_window": {
+      "start": "2026-05-03",
+      "end": "2026-06-01"
+    },
+    "curve": [
+      {
+        "day_n": 0,
+        "cohort_users": 100575,
+        "retained_users": 82293,
+        "retention_pct": 81.82
+      },
+      {
+        "day_n": 1,
+        "cohort_users": 100575,
+        "retained_users": 6005,
+        "retention_pct": 5.97
+      },
+      {
+        "day_n": 2,
+        "cohort_users": 100575,
+        "retained_users": 3973,
+        "retention_pct": 3.95
+      },
+      {
+        "day_n": 3,
+        "cohort_users": 100575,
+        "retained_users": 2042,
+        "retention_pct": 2.03
+      },
+      {
+        "day_n": 4,
+        "cohort_users": 100575,
+        "retained_users": 1489,
+        "retention_pct": 1.48
+      },
+      {
+        "day_n": 5,
+        "cohort_users": 100575,
+        "retained_users": 1198,
+        "retention_pct": 1.19
+      },
+      {
+        "day_n": 6,
+        "cohort_users": 100575,
+        "retained_users": 1008,
+        "retention_pct": 1.0
+      },
+      {
+        "day_n": 7,
+        "cohort_users": 100575,
+        "retained_users": 864,
+        "retention_pct": 0.86
+      }
+    ],
+    "platform": [
+      {
+        "platform": "android",
+        "day_n": 1,
+        "cohort_users": 78642,
+        "retained_users": 5086,
+        "retention_pct": 6.47
+      },
+      {
+        "platform": "android",
+        "day_n": 3,
+        "cohort_users": 78642,
+        "retained_users": 1771,
+        "retention_pct": 2.25
+      },
+      {
+        "platform": "android",
+        "day_n": 7,
+        "cohort_users": 78642,
+        "retained_users": 709,
+        "retention_pct": 0.9
+      },
+      {
+        "platform": "unknown",
+        "day_n": 1,
+        "cohort_users": 21933,
+        "retained_users": 919,
+        "retention_pct": 4.19
+      },
+      {
+        "platform": "unknown",
+        "day_n": 3,
+        "cohort_users": 21933,
+        "retained_users": 271,
+        "retention_pct": 1.24
+      },
+      {
+        "platform": "unknown",
+        "day_n": 7,
+        "cohort_users": 21933,
+        "retained_users": 155,
+        "retention_pct": 0.71
+      }
+    ],
+    "bot": [
+      {
+        "bot_name": "Pandit Ajay Trivedi",
+        "active_users": 19550,
+        "repeat_users_2plus_days": 1684.0,
+        "sessions": 29597.0,
+        "minutes": 88676.0,
+        "repeat_rate_pct": 8.61,
+        "minutes_per_user": 4.54
+      },
+      {
+        "bot_name": "Avika Sharma",
+        "active_users": 4593,
+        "repeat_users_2plus_days": 393.0,
+        "sessions": 8276.0,
+        "minutes": 31862.0,
+        "repeat_rate_pct": 8.56,
+        "minutes_per_user": 6.94
+      },
+      {
+        "bot_name": "Hemant",
+        "active_users": 3575,
+        "repeat_users_2plus_days": 353.0,
+        "sessions": 6142.0,
+        "minutes": 21983.0,
+        "repeat_rate_pct": 9.87,
+        "minutes_per_user": 6.15
+      },
+      {
+        "bot_name": "Vivek",
+        "active_users": 3358,
+        "repeat_users_2plus_days": 230.0,
+        "sessions": 5025.0,
+        "minutes": 17458.0,
+        "repeat_rate_pct": 6.85,
+        "minutes_per_user": 5.2
+      },
+      {
+        "bot_name": "Naina Banerjee",
+        "active_users": 2280,
+        "repeat_users_2plus_days": 217.0,
+        "sessions": 4104.0,
+        "minutes": 15588.0,
+        "repeat_rate_pct": 9.52,
+        "minutes_per_user": 6.84
+      },
+      {
+        "bot_name": "Chandrikaa",
+        "active_users": 2235,
+        "repeat_users_2plus_days": 223.0,
+        "sessions": 4179.0,
+        "minutes": 16438.0,
+        "repeat_rate_pct": 9.98,
+        "minutes_per_user": 7.35
+      },
+      {
+        "bot_name": "Raj",
+        "active_users": 1973,
+        "repeat_users_2plus_days": 213.0,
+        "sessions": 3697.0,
+        "minutes": 13769.0,
+        "repeat_rate_pct": 10.8,
+        "minutes_per_user": 6.98
+      },
+      {
+        "bot_name": "Priyanka",
+        "active_users": 192,
+        "repeat_users_2plus_days": 10.0,
+        "sessions": 275.0,
+        "minutes": 1262.0,
+        "repeat_rate_pct": 5.21,
+        "minutes_per_user": 6.57
+      },
+      {
+        "bot_name": "Harsh Dubey",
+        "active_users": 90,
+        "repeat_users_2plus_days": 10.0,
+        "sessions": 166.0,
+        "minutes": 625.0,
+        "repeat_rate_pct": 11.11,
+        "minutes_per_user": 6.94
+      },
+      {
+        "bot_name": "Prem",
+        "active_users": 90,
+        "repeat_users_2plus_days": 9.0,
+        "sessions": 155.0,
+        "minutes": 599.0,
+        "repeat_rate_pct": 10.0,
+        "minutes_per_user": 6.66
+      },
+      {
+        "bot_name": "Sonam",
+        "active_users": 73,
+        "repeat_users_2plus_days": 5.0,
+        "sessions": 145.0,
+        "minutes": 409.0,
+        "repeat_rate_pct": 6.85,
+        "minutes_per_user": 5.6
+      },
+      {
+        "bot_name": "Pooja",
+        "active_users": 45,
+        "repeat_users_2plus_days": 2.0,
+        "sessions": 90.0,
+        "minutes": 352.0,
+        "repeat_rate_pct": 4.44,
+        "minutes_per_user": 7.82
+      },
+      {
+        "bot_name": "Moniika",
+        "active_users": 45,
+        "repeat_users_2plus_days": 7.0,
+        "sessions": 111.0,
+        "minutes": 419.0,
+        "repeat_rate_pct": 15.56,
+        "minutes_per_user": 9.31
+      },
+      {
+        "bot_name": "Amit",
+        "active_users": 42,
+        "repeat_users_2plus_days": 5.0,
+        "sessions": 139.0,
+        "minutes": 346.0,
+        "repeat_rate_pct": 11.9,
+        "minutes_per_user": 8.24
+      },
+      {
+        "bot_name": "Mohit",
+        "active_users": 41,
+        "repeat_users_2plus_days": 4.0,
+        "sessions": 219.0,
+        "minutes": 413.0,
+        "repeat_rate_pct": 9.76,
+        "minutes_per_user": 10.07
+      },
+      {
+        "bot_name": "Vedansh",
+        "active_users": 33,
+        "repeat_users_2plus_days": 4.0,
+        "sessions": 49.0,
+        "minutes": 222.0,
+        "repeat_rate_pct": 12.12,
+        "minutes_per_user": 6.73
+      },
+      {
+        "bot_name": "ज्योतिष गीतांजलि",
+        "active_users": 26,
+        "repeat_users_2plus_days": 0.0,
+        "sessions": 33.0,
+        "minutes": 131.0,
+        "repeat_rate_pct": 0.0,
+        "minutes_per_user": 5.04
+      },
+      {
+        "bot_name": "Preeti",
+        "active_users": 25,
+        "repeat_users_2plus_days": 2.0,
+        "sessions": 31.0,
+        "minutes": 218.0,
+        "repeat_rate_pct": 8.0,
+        "minutes_per_user": 8.72
+      },
+      {
+        "bot_name": "Naina",
+        "active_users": 16,
+        "repeat_users_2plus_days": 4.0,
+        "sessions": 29.0,
+        "minutes": 42.0,
+        "repeat_rate_pct": 25.0,
+        "minutes_per_user": 2.62
+      },
+      {
+        "bot_name": "Guruji",
+        "active_users": 12,
+        "repeat_users_2plus_days": 2.0,
+        "sessions": 16.0,
+        "minutes": 42.0,
+        "repeat_rate_pct": 16.67,
+        "minutes_per_user": 3.5
+      }
+    ]
+  },
+  "engagement": {
+    "kpis": {
+      "active_users": 36173,
+      "sessions": 164491,
+      "total_minutes": 380518.5,
+      "avg_minutes_per_user": 10.52,
+      "avg_minutes_per_session": 2.31,
+      "bim_notification_opens": 12960,
+      "bim_notification_users": 5223
+    },
+    "session_daily": [
+      {
+        "date": "2026-06-02",
+        "sessions": 22195,
+        "users": 7018,
+        "total_minutes": 46754.0,
+        "avg_minutes_per_user": 6.66,
+        "avg_minutes_per_session": 2.11,
+        "sessions_per_user": 3.16
+      },
+      {
+        "date": "2026-06-03",
+        "sessions": 26098,
+        "users": 8096,
+        "total_minutes": 63682.8,
+        "avg_minutes_per_user": 7.87,
+        "avg_minutes_per_session": 2.44,
+        "sessions_per_user": 3.22
+      },
+      {
+        "date": "2026-06-04",
+        "sessions": 22581,
+        "users": 7173,
+        "total_minutes": 51144.6,
+        "avg_minutes_per_user": 7.13,
+        "avg_minutes_per_session": 2.26,
+        "sessions_per_user": 3.15
+      },
+      {
+        "date": "2026-06-05",
+        "sessions": 22160,
+        "users": 6671,
+        "total_minutes": 48854.0,
+        "avg_minutes_per_user": 7.32,
+        "avg_minutes_per_session": 2.2,
+        "sessions_per_user": 3.32
+      },
+      {
+        "date": "2026-06-06",
+        "sessions": 23248,
+        "users": 7273,
+        "total_minutes": 55385.9,
+        "avg_minutes_per_user": 7.62,
+        "avg_minutes_per_session": 2.38,
+        "sessions_per_user": 3.2
+      },
+      {
+        "date": "2026-06-07",
+        "sessions": 23718,
+        "users": 7547,
+        "total_minutes": 57861.8,
+        "avg_minutes_per_user": 7.67,
+        "avg_minutes_per_session": 2.44,
+        "sessions_per_user": 3.14
+      },
+      {
+        "date": "2026-06-08",
+        "sessions": 24491,
+        "users": 7400,
+        "total_minutes": 56835.4,
+        "avg_minutes_per_user": 7.68,
+        "avg_minutes_per_session": 2.32,
+        "sessions_per_user": 3.31
+      }
+    ],
+    "session_by_platform": [
+      {
+        "platform": "android",
+        "sessions": 149802,
+        "users": 33668,
+        "total_minutes": 345501.2,
+        "avg_minutes_per_user": 10.26,
+        "avg_minutes_per_session": 2.31,
+        "sessions_per_user": 4.45
+      },
+      {
+        "platform": "ios",
+        "sessions": 14687,
+        "users": 2519,
+        "total_minutes": 35003.8,
+        "avg_minutes_per_user": 13.9,
+        "avg_minutes_per_session": 2.38,
+        "sessions_per_user": 5.83
+      },
+      {
+        "platform": "ipados",
+        "sessions": 2,
+        "users": 2,
+        "total_minutes": 13.5,
+        "avg_minutes_per_user": 6.77,
+        "avg_minutes_per_session": 6.77,
+        "sessions_per_user": 1.0
+      }
+    ],
+    "bim_daily": [
+      {
+        "date": "2026-06-02",
+        "opens": 1911,
+        "users": 1241
+      },
+      {
+        "date": "2026-06-03",
+        "opens": 1854,
+        "users": 1189
+      },
+      {
+        "date": "2026-06-04",
+        "opens": 1978,
+        "users": 1281
+      },
+      {
+        "date": "2026-06-05",
+        "opens": 1856,
+        "users": 1250
+      },
+      {
+        "date": "2026-06-06",
+        "opens": 1854,
+        "users": 1210
+      },
+      {
+        "date": "2026-06-07",
+        "opens": 1768,
+        "users": 1216
+      },
+      {
+        "date": "2026-06-08",
+        "opens": 1739,
+        "users": 1150
+      }
+    ],
+    "bim_by_platform": [
+      {
+        "platform": "android",
+        "opens": 12960,
+        "users": 5223
+      }
+    ],
+    "notification_campaigns": [
+      {
+        "campaign": "Unknown",
+        "opens": 64272,
+        "users": 20292
+      },
+      {
+        "campaign": "Bot Initiated Messages",
+        "opens": 12960,
+        "users": 5223
+      },
+      {
+        "campaign": "<null>",
+        "opens": 411,
+        "users": 240
+      }
+    ]
+  }
+}

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HiAstro Business Dashboard</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">HiAstro Operating Metrics</p>
+        <h1>Business Dashboard</h1>
+      </div>
+      <div class="freshness" id="freshness">Loading data...</div>
+    </header>
+
+    <nav class="section-nav" aria-label="Dashboard sections">
+      <a href="#monetization">Monetization</a>
+      <a href="#acquisition">Acquisition</a>
+      <a href="#retention">Retention</a>
+      <a href="#engagement">Engagement</a>
+    </nav>
+
+    <main>
+      <section class="kpi-grid" id="overviewCards"></section>
+
+      <section class="band" id="monetization">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Revenue, Payers, Packs, Funnels</p>
+            <h2>Monetization</h2>
+          </div>
+          <p id="monetizationNote"></p>
+        </div>
+        <div class="kpi-grid compact" id="monetizationCards"></div>
+        <div class="grid two">
+          <div class="panel"><canvas id="revenueDailyChart"></canvas></div>
+          <div class="panel"><canvas id="revenueFamilyChart"></canvas></div>
+        </div>
+        <div class="grid two">
+          <div class="panel">
+            <h3>Pack Revenue</h3>
+            <div id="packTable"></div>
+          </div>
+          <div class="panel">
+            <h3>Trial Funnel by Config</h3>
+            <div id="configFunnelTable"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Entity Wise Follow-up and Earning</h3>
+          <div id="entityTable"></div>
+        </div>
+      </section>
+
+      <section class="band" id="acquisition">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">New Login to Follow-up to Payment</p>
+            <h2>Acquisition</h2>
+          </div>
+          <p id="acquisitionNote"></p>
+        </div>
+        <div class="kpi-grid compact" id="acquisitionCards"></div>
+        <div class="grid two">
+          <div class="panel"><canvas id="newUsersChart"></canvas></div>
+          <div class="panel"><canvas id="acquisitionFunnelChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <h3>New User Funnel by Segment</h3>
+          <div id="acquisitionSegmentTable"></div>
+        </div>
+      </section>
+
+      <section class="band" id="retention">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Cohort Retention and Repeat Bot Usage</p>
+            <h2>Retention</h2>
+          </div>
+          <p id="retentionNote"></p>
+        </div>
+        <div class="grid two">
+          <div class="panel"><canvas id="retentionCurveChart"></canvas></div>
+          <div class="panel"><canvas id="retentionPlatformChart"></canvas></div>
+        </div>
+        <div class="grid two">
+          <div class="panel"><canvas id="botRepeatChart"></canvas></div>
+          <div class="panel">
+            <h3>Bot Repeat Usage</h3>
+            <div id="botTable"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="band" id="engagement">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Time in App and Notification Opens</p>
+            <h2>Engagement</h2>
+          </div>
+          <p id="engagementNote"></p>
+        </div>
+        <div class="kpi-grid compact" id="engagementCards"></div>
+        <div class="grid two">
+          <div class="panel"><canvas id="engagementDailyChart"></canvas></div>
+          <div class="panel"><canvas id="bimDailyChart"></canvas></div>
+        </div>
+        <div class="grid two">
+          <div class="panel">
+            <h3>Session Time by Platform</h3>
+            <div id="sessionPlatformTable"></div>
+          </div>
+          <div class="panel">
+            <h3>Notification Campaign Opens</h3>
+            <div id="campaignTable"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="source-note">
+        <h2>Sources</h2>
+        <ul id="sourceNotes"></ul>
+      </section>
+    </main>
+
+    <script src="assets/app.js"></script>
+  </body>
+</html>

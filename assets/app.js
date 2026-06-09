@@ -1,0 +1,343 @@
+const INR = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 0,
+});
+const NUM = new Intl.NumberFormat("en-IN");
+
+const COLORS = {
+  blue: "#2563eb",
+  teal: "#0f766e",
+  gold: "#c78118",
+  rose: "#be3455",
+  subscription: "#2563eb",
+  pay_as_you_go: "#0f766e",
+  day_pass: "#c78118",
+  accent: "#be3455",
+  muted: "#94a3b8",
+};
+
+Chart.defaults.font.family = 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+Chart.defaults.color = "#475569";
+Chart.defaults.plugins.legend.labels.boxWidth = 10;
+Chart.defaults.plugins.tooltip.backgroundColor = "#111827";
+
+function money(value) {
+  return INR.format(Number(value || 0));
+}
+
+function number(value) {
+  return NUM.format(Number(value || 0));
+}
+
+function pct(value) {
+  if (value === null || value === undefined) return "n/a";
+  return `${Number(value).toFixed(2)}%`;
+}
+
+function shortDate(value) {
+  const d = new Date(`${value}T00:00:00`);
+  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+}
+
+function trend(value) {
+  if (value === null || value === undefined) return "";
+  const direction = Number(value) >= 0 ? "up" : "down";
+  const sign = Number(value) >= 0 ? "+" : "";
+  return `<span class="trend ${direction}">${sign}${Number(value).toFixed(1)}%</span>`;
+}
+
+function card(label, value, sub = "") {
+  return `
+    <article class="kpi-card">
+      <div class="kpi-label">${label}</div>
+      <div class="kpi-value">${value}</div>
+      <div class="kpi-sub">${sub}</div>
+    </article>
+  `;
+}
+
+function table(containerId, rows, columns, limit = 12) {
+  const container = document.getElementById(containerId);
+  const sliced = rows.slice(0, limit);
+  if (!sliced.length) {
+    container.innerHTML = `<div class="kpi-sub">No data in this window.</div>`;
+    return;
+  }
+  container.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>${columns.map((c) => `<th class="${c.text ? "text" : ""}">${c.label}</th>`).join("")}</tr>
+        </thead>
+        <tbody>
+          ${sliced
+            .map(
+              (row) => `
+                <tr>
+                  ${columns
+                    .map((c) => `<td class="${c.text ? "text" : ""}">${c.format ? c.format(row[c.key], row) : row[c.key]}</td>`)
+                    .join("")}
+                </tr>
+              `,
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function groupedDaily(rows, familyKey = "family", valueKey = "revenue") {
+  const labels = [...new Set(rows.map((r) => r.day))].sort();
+  const families = [...new Set(rows.map((r) => r[familyKey]))];
+  return {
+    labels,
+    datasets: families.map((family) => ({
+      label: family.replaceAll("_", " "),
+      data: labels.map((day) => {
+        const row = rows.find((r) => r.day === day && r[familyKey] === family);
+        return row ? Number(row[valueKey]) : 0;
+      }),
+      backgroundColor: COLORS[family] || COLORS.muted,
+      borderColor: COLORS[family] || COLORS.muted,
+      borderWidth: 1,
+    })),
+  };
+}
+
+function chart(id, type, data, options = {}) {
+  const el = document.getElementById(id);
+  return new Chart(el, {
+    type,
+    data,
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "bottom" },
+      },
+      scales: type === "doughnut" ? {} : {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, grid: { color: "#eef2f6" } },
+      },
+      ...options,
+    },
+  });
+}
+
+function renderOverview(data) {
+  const m = data.monetization.kpis.current;
+  const g7 = data.monetization.kpis.growth_vs_prior_7;
+  const a = data.acquisition.kpis;
+  const r = data.retention.curve.find((x) => x.day_n === 1);
+  const e = data.engagement.kpis;
+  document.getElementById("overviewCards").innerHTML = [
+    card("Revenue", money(m.revenue), `vs prior 7 days ${trend(g7.revenue)}`),
+    card("Payers", number(m.payers), `vs prior 7 days ${trend(g7.payers)}`),
+    card("Avg Transaction", money(m.avg_transaction), `vs prior 7 days ${trend(g7.avg_transaction)}`),
+    card("New Users", number(a.new_users), `${pct(a.new_user_to_followup_pct)} reached follow-up`),
+    card("D1 Chat Retention", pct(r?.retention_pct || 0), `${number(r?.retained_users || 0)} retained users`),
+    card("Avg Time / User", `${e.avg_minutes_per_user}m`, `${number(e.sessions)} app sessions`),
+    card("BIM Opens", number(e.bim_notification_opens), `${number(e.bim_notification_users)} users`),
+  ].join("");
+}
+
+function renderMonetization(data) {
+  const meta = data.metadata;
+  const m = data.monetization;
+  const k = m.kpis.current;
+  const g7 = m.kpis.growth_vs_prior_7;
+  const g30 = m.kpis.growth_vs_prior_30_7day_baseline;
+  document.getElementById("monetizationNote").textContent = `${meta.current_window.start} to ${meta.current_window.end}; growth vs ${meta.prior_7_window.start} to ${meta.prior_7_window.end}.`;
+  document.getElementById("monetizationCards").innerHTML = [
+    card("Revenue", money(k.revenue), `7-day ${trend(g7.revenue)} | 30-day baseline ${trend(g30.revenue)}`),
+    card("Payers", number(k.payers), `7-day ${trend(g7.payers)} | 30-day baseline ${trend(g30.payers)}`),
+    card("Transactions", number(k.transactions), `7-day ${trend(g7.transactions)} | 30-day baseline ${trend(g30.transactions)}`),
+    card("Avg Transaction", money(k.avg_transaction), `7-day ${trend(g7.avg_transaction)} | 30-day avg ${trend(g30.avg_transaction)}`),
+  ].join("");
+
+  const daily = groupedDaily(m.daily);
+  daily.labels = daily.labels.map(shortDate);
+  chart("revenueDailyChart", "bar", daily, {
+    plugins: { title: { display: true, text: "Daily Revenue by Family" }, legend: { position: "bottom" } },
+    scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true } },
+  });
+
+  chart("revenueFamilyChart", "doughnut", {
+    labels: m.family.map((r) => r.family.replaceAll("_", " ")),
+    datasets: [{ data: m.family.map((r) => r.revenue), backgroundColor: [COLORS.subscription, COLORS.pay_as_you_go, COLORS.day_pass] }],
+  }, {
+    plugins: { title: { display: true, text: "Revenue Mix" }, legend: { position: "bottom" } },
+  });
+
+  table("packTable", m.pack, [
+    { key: "pack", label: "Pack", text: true },
+    { key: "family", label: "Family", text: true, format: (v) => String(v).replaceAll("_", " ") },
+    { key: "revenue", label: "Revenue", format: money },
+    { key: "payers", label: "Payers", format: number },
+    { key: "transactions", label: "Txns", format: number },
+    { key: "avg_transaction", label: "Avg Txn", format: money },
+  ], 15);
+
+  table("configFunnelTable", m.config_funnel, [
+    { key: "trial_type", label: "Config", text: true },
+    { key: "followup_users", label: "Follow-up", format: number },
+    { key: "trial_buyers", label: "Trial Buyers", format: number },
+    { key: "main_plan_buyers", label: "Main Buyers", format: number },
+    { key: "followup_to_trial_pct", label: "F to Trial", format: pct },
+    { key: "trial_to_main_pct", label: "Trial to Main", format: pct },
+  ]);
+
+  table("entityTable", m.entity_distribution, [
+    { key: "entity", label: "Entity", text: true },
+    { key: "followup_users", label: "Follow-up Users", format: number },
+    { key: "payers", label: "Payers", format: number },
+    { key: "conversion_pct", label: "Conv.", format: pct },
+    { key: "transactions", label: "Txns", format: number },
+    { key: "revenue", label: "Revenue", format: money },
+  ], 20);
+}
+
+function renderAcquisition(data) {
+  const a = data.acquisition;
+  document.getElementById("acquisitionNote").textContent = "New users are from SQL signups; Login Success is shown from Mixpanel for cross-check.";
+  document.getElementById("acquisitionCards").innerHTML = [
+    card("New Users", number(a.kpis.new_users), `${number(a.kpis.login_success_users)} Login Success users`),
+    card("Follow-up Rate", pct(a.kpis.new_user_to_followup_pct), "New user to Follow up Query"),
+    card("Payment Rate", pct(a.kpis.new_user_to_payment_pct), "New user to any payment"),
+    card("Payment Users", number(a.funnel[2].users), `${pct(a.funnel[2].conversion_from_previous_pct)} from follow-up`),
+  ].join("");
+
+  chart("newUsersChart", "bar", {
+    labels: a.daily.map((r) => shortDate(r.signup_date)),
+    datasets: [
+      { label: "New users", data: a.daily.map((r) => r.new_users), backgroundColor: COLORS.blue },
+      { label: "Follow-up users", data: a.daily.map((r) => r.followup_users), backgroundColor: COLORS.teal },
+      { label: "Payers", data: a.daily.map((r) => r.payers), backgroundColor: COLORS.gold },
+    ],
+  }, { plugins: { title: { display: true, text: "New User Daily Funnel" } } });
+
+  chart("acquisitionFunnelChart", "bar", {
+    labels: a.funnel.map((r) => r.stage),
+    datasets: [{ label: "Users", data: a.funnel.map((r) => r.users), backgroundColor: [COLORS.blue, COLORS.teal, COLORS.gold] }],
+  }, {
+    indexAxis: "y",
+    plugins: { title: { display: true, text: "New Login to Follow-up to Payment" }, legend: { display: false } },
+  });
+
+  table("acquisitionSegmentTable", a.segments, [
+    { key: "segment", label: "Segment", text: true },
+    { key: "bucket", label: "Bucket", text: true },
+    { key: "new_users", label: "New Users", format: number },
+    { key: "followup_users", label: "Follow-up", format: number },
+    { key: "payers", label: "Payers", format: number },
+    { key: "followup_rate_pct", label: "Follow-up Rate", format: pct },
+    { key: "payer_rate_pct", label: "Payer Rate", format: pct },
+  ], 30);
+}
+
+function renderRetention(data) {
+  const r = data.retention;
+  document.getElementById("retentionNote").textContent = `Cohorts: ${r.cohort_window.start} to ${r.cohort_window.end}; retained means completed chat/call session on day N.`;
+
+  chart("retentionCurveChart", "line", {
+    labels: r.curve.map((x) => `D${x.day_n}`),
+    datasets: [{
+      label: "Retention %",
+      data: r.curve.map((x) => x.retention_pct),
+      borderColor: COLORS.teal,
+      backgroundColor: "rgba(15,118,110,0.14)",
+      fill: true,
+      tension: 0.25,
+    }],
+  }, { plugins: { title: { display: true, text: "New User Retention Curve" } } });
+
+  const platforms = [...new Set(r.platform.map((x) => x.platform))];
+  chart("retentionPlatformChart", "bar", {
+    labels: platforms,
+    datasets: [1, 3, 7].map((day, idx) => ({
+      label: `D${day}`,
+      data: platforms.map((platform) => r.platform.find((x) => x.platform === platform && x.day_n === day)?.retention_pct || 0),
+      backgroundColor: [COLORS.blue, COLORS.teal, COLORS.gold][idx],
+    })),
+  }, { plugins: { title: { display: true, text: "Retention by Platform" } } });
+
+  chart("botRepeatChart", "bar", {
+    labels: r.bot.slice(0, 10).map((x) => x.bot_name),
+    datasets: [{ label: "Repeat rate %", data: r.bot.slice(0, 10).map((x) => x.repeat_rate_pct), backgroundColor: COLORS.teal }],
+  }, {
+    indexAxis: "y",
+    plugins: { title: { display: true, text: "Top Bots by Repeat Usage" }, legend: { display: false } },
+  });
+
+  table("botTable", r.bot, [
+    { key: "bot_name", label: "Bot", text: true },
+    { key: "active_users", label: "Users", format: number },
+    { key: "repeat_users_2plus_days", label: "Repeat Users", format: number },
+    { key: "repeat_rate_pct", label: "Repeat Rate", format: pct },
+    { key: "sessions", label: "Sessions", format: number },
+    { key: "minutes_per_user", label: "Min/User", format: (v) => Number(v || 0).toFixed(2) },
+  ], 15);
+}
+
+function renderEngagement(data) {
+  const e = data.engagement;
+  document.getElementById("engagementNote").textContent = "Average time uses Mixpanel $ae_session_length; BIM is campaign_name = Bot Initiated Messages.";
+  document.getElementById("engagementCards").innerHTML = [
+    card("Active Users", number(e.kpis.active_users), `${number(e.kpis.sessions)} app sessions`),
+    card("Avg Time / User", `${e.kpis.avg_minutes_per_user}m`, `${e.kpis.avg_minutes_per_session}m per session`),
+    card("Total Time", `${number(e.kpis.total_minutes)}m`, "Across app sessions"),
+    card("BIM Opens", number(e.kpis.bim_notification_opens), `${number(e.kpis.bim_notification_users)} users`),
+  ].join("");
+
+  chart("engagementDailyChart", "line", {
+    labels: e.session_daily.map((r) => shortDate(r.date)),
+    datasets: [
+      { label: "Avg min/user", data: e.session_daily.map((r) => r.avg_minutes_per_user), borderColor: COLORS.teal, tension: 0.25 },
+      { label: "Sessions / user", data: e.session_daily.map((r) => r.sessions_per_user), borderColor: COLORS.gold, tension: 0.25 },
+    ],
+  }, { plugins: { title: { display: true, text: "Daily Engagement Depth" } } });
+
+  chart("bimDailyChart", "bar", {
+    labels: e.bim_daily.map((r) => shortDate(r.date)),
+    datasets: [
+      { label: "BIM opens", data: e.bim_daily.map((r) => r.opens), backgroundColor: COLORS.rose },
+      { label: "Users", data: e.bim_daily.map((r) => r.users), backgroundColor: COLORS.blue },
+    ],
+  }, { plugins: { title: { display: true, text: "App Opened from Notification: BIM" } } });
+
+  table("sessionPlatformTable", e.session_by_platform, [
+    { key: "platform", label: "Platform", text: true },
+    { key: "users", label: "Users", format: number },
+    { key: "sessions", label: "Sessions", format: number },
+    { key: "avg_minutes_per_user", label: "Avg Min/User", format: (v) => Number(v || 0).toFixed(2) },
+    { key: "sessions_per_user", label: "Sessions/User", format: (v) => Number(v || 0).toFixed(2) },
+  ]);
+
+  table("campaignTable", e.notification_campaigns, [
+    { key: "campaign", label: "Campaign", text: true },
+    { key: "opens", label: "Opens", format: number },
+    { key: "users", label: "Users", format: number },
+  ]);
+}
+
+async function main() {
+  try {
+    const response = await fetch("data/dashboard_data.json");
+    const data = await response.json();
+    const meta = data.metadata;
+    document.getElementById("freshness").textContent = `Generated ${new Date(meta.generated_at_ist).toLocaleString("en-IN")} IST | ${meta.current_window.start} to ${meta.current_window.end}`;
+    renderOverview(data);
+    renderMonetization(data);
+    renderAcquisition(data);
+    renderRetention(data);
+    renderEngagement(data);
+    document.getElementById("sourceNotes").innerHTML = meta.source_notes.map((note) => `<li>${note}</li>`).join("");
+  } catch (error) {
+    document.getElementById("freshness").textContent = "Could not load dashboard data.";
+    document.body.insertAdjacentHTML("afterbegin", `<div class="panel" style="margin:16px">Data load failed: ${error.message}</div>`);
+  }
+}
+
+main();
