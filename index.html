@@ -41,23 +41,45 @@
           <p id="monetizationNote"></p>
         </div>
         <div class="kpi-grid compact" id="monetizationCards"></div>
-        <div class="grid two">
-          <div class="panel"><canvas id="revenueDailyChart"></canvas></div>
-          <div class="panel"><canvas id="revenueFamilyChart"></canvas></div>
+        <div class="section-tabs" data-tab-group="monetization">
+          <button type="button" class="active" data-tab-target="monetization-overview">Overview</button>
+          <button type="button" data-tab-target="monetization-packs">Packs</button>
+          <button type="button" data-tab-target="monetization-funnels">Funnels</button>
+          <button type="button" data-tab-target="monetization-entities">Entities</button>
         </div>
-        <div class="grid two">
+        <div class="tab-panel active" id="monetization-overview">
+          <div class="grid two">
+            <div class="panel"><canvas id="revenueDailyChart"></canvas></div>
+            <div class="panel"><canvas id="revenueFamilyChart"></canvas></div>
+          </div>
+          <div class="grid two">
+            <div class="panel">
+              <h3>Daily Revenue Detail</h3>
+              <div id="revenueDailyTable"></div>
+            </div>
+            <div class="panel">
+              <h3>Revenue Family Detail</h3>
+              <div id="revenueFamilyTable"></div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-panel" id="monetization-packs">
           <div class="panel">
             <h3>Pack Revenue</h3>
             <div id="packTable"></div>
           </div>
+        </div>
+        <div class="tab-panel" id="monetization-funnels">
           <div class="panel">
             <h3>Trial Funnel by Config</h3>
             <div id="configFunnelTable"></div>
           </div>
         </div>
-        <div class="panel">
-          <h3>Entity Wise Follow-up and Earning</h3>
-          <div id="entityTable"></div>
+        <div class="tab-panel" id="monetization-entities">
+          <div class="panel">
+            <h3>Entity Wise Follow-up and Earning</h3>
+            <div id="entityTable"></div>
+          </div>
         </div>
       </section>
 
@@ -70,24 +92,45 @@
           <p id="acquisitionNote"></p>
         </div>
         <div class="kpi-grid compact" id="acquisitionCards"></div>
-        <div class="grid two">
-          <div class="panel"><canvas id="newUsersChart"></canvas></div>
-          <div class="panel"><canvas id="acquisitionFunnelChart"></canvas></div>
+        <div class="section-tabs" data-tab-group="acquisition">
+          <button type="button" class="active" data-tab-target="acquisition-overview">Overview</button>
+          <button type="button" data-tab-target="acquisition-segments">Segments</button>
+          <button type="button" data-tab-target="acquisition-followup">Follow-up Query</button>
         </div>
-        <div class="panel">
-          <h3>New User Funnel by Segment</h3>
-          <div id="acquisitionSegmentTable"></div>
-        </div>
-        <div class="grid two">
-          <div class="panel"><canvas id="followupEntityChart"></canvas></div>
-          <div class="panel">
-            <h3>Follow-up Query Demographics</h3>
-            <div id="followupDemoTable"></div>
+        <div class="tab-panel active" id="acquisition-overview">
+          <div class="grid two">
+            <div class="panel"><canvas id="newUsersChart"></canvas></div>
+            <div class="panel"><canvas id="acquisitionFunnelChart"></canvas></div>
+          </div>
+          <div class="grid two">
+            <div class="panel">
+              <h3>Daily New User Funnel</h3>
+              <div id="acquisitionDailyTable"></div>
+            </div>
+            <div class="panel">
+              <h3>Funnel Detail</h3>
+              <div id="acquisitionFunnelTableDetail"></div>
+            </div>
           </div>
         </div>
-        <div class="panel">
-          <h3>Follow-up Query Entity Detail</h3>
-          <div id="followupEntityTable"></div>
+        <div class="tab-panel" id="acquisition-segments">
+          <div class="panel">
+            <h3>New User Funnel by Segment</h3>
+            <div id="acquisitionSegmentTable"></div>
+          </div>
+        </div>
+        <div class="tab-panel" id="acquisition-followup">
+          <div class="grid two">
+            <div class="panel"><canvas id="followupEntityChart"></canvas></div>
+            <div class="panel">
+              <h3>Follow-up Query Demographics</h3>
+              <div id="followupDemoTable"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>Follow-up Query Entity Detail</h3>
+            <div id="followupEntityTable"></div>
+          </div>
         </div>
       </section>
 
@@ -99,15 +142,33 @@
           </div>
           <p id="retentionNote"></p>
         </div>
-        <div class="grid two">
-          <div class="panel"><canvas id="retentionCurveChart"></canvas></div>
-          <div class="panel"><canvas id="retentionPlatformChart"></canvas></div>
+        <div class="section-tabs" data-tab-group="retention">
+          <button type="button" class="active" data-tab-target="retention-cohort">Cohort</button>
+          <button type="button" data-tab-target="retention-bots">Bots</button>
         </div>
-        <div class="grid two">
-          <div class="panel"><canvas id="botRepeatChart"></canvas></div>
-          <div class="panel">
-            <h3>Bot Repeat Usage</h3>
-            <div id="botTable"></div>
+        <div class="tab-panel active" id="retention-cohort">
+          <div class="grid two">
+            <div class="panel"><canvas id="retentionCurveChart"></canvas></div>
+            <div class="panel"><canvas id="retentionPlatformChart"></canvas></div>
+          </div>
+          <div class="grid two">
+            <div class="panel">
+              <h3>Retention Curve Detail</h3>
+              <div id="retentionCurveTable"></div>
+            </div>
+            <div class="panel">
+              <h3>Retention by Platform Detail</h3>
+              <div id="retentionPlatformTable"></div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-panel" id="retention-bots">
+          <div class="grid two">
+            <div class="panel"><canvas id="botRepeatChart"></canvas></div>
+            <div class="panel">
+              <h3>Bot Repeat Usage</h3>
+              <div id="botTable"></div>
+            </div>
           </div>
         </div>
       </section>
@@ -121,20 +182,41 @@
           <p id="engagementNote"></p>
         </div>
         <div class="kpi-grid compact" id="engagementCards"></div>
-        <div class="grid two">
-          <div class="panel"><canvas id="engagementDailyChart"></canvas></div>
-          <div class="panel"><canvas id="bimDailyChart"></canvas></div>
+        <div class="section-tabs" data-tab-group="engagement">
+          <button type="button" class="active" data-tab-target="engagement-sessions">Sessions</button>
+          <button type="button" data-tab-target="engagement-notifications">Notifications</button>
         </div>
-        <div class="grid two">
-          <div class="panel">
-            <h3>Session Time by Platform</h3>
-            <div id="sessionPlatformTable"></div>
+        <div class="tab-panel active" id="engagement-sessions">
+          <div class="grid two">
+            <div class="panel"><canvas id="engagementDailyChart"></canvas></div>
+            <div class="panel">
+              <h3>Session Time by Platform</h3>
+              <div id="sessionPlatformTable"></div>
+            </div>
           </div>
           <div class="panel">
-            <h3>Notification Campaign Opens</h3>
-            <div id="campaignTable"></div>
+            <h3>Daily Session Detail</h3>
+            <div id="sessionDailyTable"></div>
           </div>
         </div>
+        <div class="tab-panel" id="engagement-notifications">
+          <div class="grid two">
+            <div class="panel"><canvas id="bimDailyChart"></canvas></div>
+            <div class="panel">
+              <h3>Notification Campaign Opens</h3>
+              <div id="campaignTable"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>BIM Daily Detail</h3>
+            <div id="bimDailyTable"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="source-note">
+        <h2>Data Handling</h2>
+        <div id="dataPolicy" class="policy-grid"></div>
       </section>
 
       <section class="source-note">

@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generated_at_ist": "2026-06-09T15:56:06+05:30",
+    "generated_at_ist": "2026-06-09T16:07:42+05:30",
     "default_period": "weekly",
     "current_window": {
       "start": "2026-06-02",
@@ -56,6 +56,11 @@
       }
     ],
     "timezone": "Asia/Kolkata",
+    "data_retention_policy": {
+      "storage": "Latest aggregate dashboard JSON only",
+      "refresh_behavior": "Each refresh replaces the previous dashboard_data.json file; old aggregate output is not appended or archived.",
+      "raw_data": "Raw SQL rows, Mixpanel event exports, user-level funnel rows, and credentials are not stored in this repo."
+    },
     "source_notes": [
       "Revenue comes from MySQL subscription_lifecycle_events and payment_orders.",
       "Pay as you go means successful ADD_MONEY wallet payment orders.",
@@ -574,7 +579,7 @@
           {
             "config_id": 18,
             "trial_type": "Rs 1 trial",
-            "assigned_users": 44545,
+            "assigned_users": 44556,
             "followup_users": 2045,
             "trial_buyers": 95,
             "main_plan_buyers": 17,
@@ -587,7 +592,7 @@
           {
             "config_id": 20,
             "trial_type": "Rs 49 trial",
-            "assigned_users": 57961,
+            "assigned_users": 57970,
             "followup_users": 2344,
             "trial_buyers": 31,
             "main_plan_buyers": 7,
@@ -989,10 +994,10 @@
             "followup_events": 21
           },
           {
-            "entity_slug": "mohit",
-            "bot_id": "68792536fcf00df3749da4d9",
-            "bot_name": "Mohit",
-            "entity_label": "Mohit",
+            "entity_slug": "prem",
+            "bot_id": "68792542fcf00df3749da526",
+            "bot_name": "Prem",
+            "entity_label": "Prem",
             "entity_match_type": "slug",
             "followup_events": 11
           }
@@ -1127,8 +1132,8 @@
             },
             {
               "bucket": "Haryana",
-              "users": 502,
-              "pct": 5.05
+              "users": 503,
+              "pct": 5.06
             },
             {
               "bucket": "Bihar",
@@ -1182,8 +1187,8 @@
             },
             {
               "bucket": "Chandigarh",
-              "users": 163,
-              "pct": 1.64
+              "users": 162,
+              "pct": 1.63
             },
             {
               "bucket": "Chhattisgarh",
@@ -1284,8 +1289,8 @@
             },
             {
               "bucket": "Chandigarh",
-              "users": 163,
-              "pct": 1.64
+              "users": 162,
+              "pct": 1.63
             },
             {
               "bucket": "Kanpur",
@@ -1359,42 +1364,42 @@
           {
             "platform": "android",
             "day_n": 1,
-            "cohort_users": 61876,
+            "cohort_users": 61877,
             "retained_users": 3801,
             "retention_pct": 6.14
           },
           {
             "platform": "android",
             "day_n": 3,
-            "cohort_users": 61876,
+            "cohort_users": 61877,
             "retained_users": 1323,
             "retention_pct": 2.14
           },
           {
             "platform": "android",
             "day_n": 7,
-            "cohort_users": 61876,
+            "cohort_users": 61877,
             "retained_users": 547,
             "retention_pct": 0.88
           },
           {
             "platform": "unknown",
             "day_n": 1,
-            "cohort_users": 16001,
+            "cohort_users": 16000,
             "retained_users": 633,
             "retention_pct": 3.96
           },
           {
             "platform": "unknown",
             "day_n": 3,
-            "cohort_users": 16001,
+            "cohort_users": 16000,
             "retained_users": 173,
             "retention_pct": 1.08
           },
           {
             "platform": "unknown",
             "day_n": 7,
-            "cohort_users": 16001,
+            "cohort_users": 16000,
             "retained_users": 110,
             "retention_pct": 0.69
           }
@@ -1585,8 +1590,8 @@
       "engagement": {
         "kpis": {
           "active_users": 7408,
-          "sessions": 24526,
-          "total_minutes": 56887.6,
+          "sessions": 24527,
+          "total_minutes": 56891.8,
           "avg_minutes_per_user": 7.68,
           "avg_minutes_per_session": 2.32,
           "bim_notification_opens": 1738,
@@ -1595,9 +1600,9 @@
         "session_daily": [
           {
             "date": "2026-06-08",
-            "sessions": 24526,
+            "sessions": 24527,
             "users": 7408,
-            "total_minutes": 56887.6,
+            "total_minutes": 56891.8,
             "avg_minutes_per_user": 7.68,
             "avg_minutes_per_session": 2.32,
             "sessions_per_user": 3.31
@@ -1606,10 +1611,10 @@
         "session_by_platform": [
           {
             "platform": "android",
-            "sessions": 22323,
+            "sessions": 22324,
             "users": 6848,
-            "total_minutes": 51527.5,
-            "avg_minutes_per_user": 7.52,
+            "total_minutes": 51531.8,
+            "avg_minutes_per_user": 7.53,
             "avg_minutes_per_session": 2.31,
             "sessions_per_user": 3.26
           },
@@ -1640,7 +1645,7 @@
         "notification_campaigns": [
           {
             "campaign": "Unknown",
-            "opens": 9992,
+            "opens": 9991,
             "users": 4201
           },
           {
@@ -2325,7 +2330,7 @@
           {
             "config_id": 18,
             "trial_type": "Rs 1 trial",
-            "assigned_users": 44545,
+            "assigned_users": 44557,
             "followup_users": 10378,
             "trial_buyers": 760,
             "main_plan_buyers": 197,
@@ -2338,7 +2343,7 @@
           {
             "config_id": 20,
             "trial_type": "Rs 49 trial",
-            "assigned_users": 57962,
+            "assigned_users": 57972,
             "followup_users": 13051,
             "trial_buyers": 248,
             "main_plan_buyers": 155,
@@ -2621,7 +2626,7 @@
             "bot_name": "Avika Sharma",
             "entity_label": "Avika Sharma",
             "entity_match_type": "bot_id",
-            "followup_events": 46148
+            "followup_events": 46147
           },
           {
             "entity_slug": "68792542fcf00df3749da528",
@@ -3175,42 +3180,42 @@
           {
             "platform": "android",
             "day_n": 1,
-            "cohort_users": 78645,
+            "cohort_users": 78646,
             "retained_users": 5086,
             "retention_pct": 6.47
           },
           {
             "platform": "android",
             "day_n": 3,
-            "cohort_users": 78645,
+            "cohort_users": 78646,
             "retained_users": 1771,
             "retention_pct": 2.25
           },
           {
             "platform": "android",
             "day_n": 7,
-            "cohort_users": 78645,
+            "cohort_users": 78646,
             "retained_users": 709,
             "retention_pct": 0.9
           },
           {
             "platform": "unknown",
             "day_n": 1,
-            "cohort_users": 21930,
+            "cohort_users": 21929,
             "retained_users": 919,
             "retention_pct": 4.19
           },
           {
             "platform": "unknown",
             "day_n": 3,
-            "cohort_users": 21930,
+            "cohort_users": 21929,
             "retained_users": 271,
             "retention_pct": 1.24
           },
           {
             "platform": "unknown",
             "day_n": 7,
-            "cohort_users": 21930,
+            "cohort_users": 21929,
             "retained_users": 155,
             "retention_pct": 0.71
           }
@@ -3400,9 +3405,9 @@
       },
       "engagement": {
         "kpis": {
-          "active_users": 36175,
-          "sessions": 164539,
-          "total_minutes": 380607.0,
+          "active_users": 36174,
+          "sessions": 164541,
+          "total_minutes": 380623.7,
           "avg_minutes_per_user": 10.52,
           "avg_minutes_per_session": 2.31,
           "bim_notification_opens": 12960,
@@ -3438,10 +3443,10 @@
           },
           {
             "date": "2026-06-05",
-            "sessions": 22163,
-            "users": 6672,
-            "total_minutes": 48857.5,
-            "avg_minutes_per_user": 7.32,
+            "sessions": 22164,
+            "users": 6671,
+            "total_minutes": 48870.0,
+            "avg_minutes_per_user": 7.33,
             "avg_minutes_per_session": 2.2,
             "sessions_per_user": 3.32
           },
@@ -3465,9 +3470,9 @@
           },
           {
             "date": "2026-06-08",
-            "sessions": 24526,
+            "sessions": 24527,
             "users": 7408,
-            "total_minutes": 56887.6,
+            "total_minutes": 56891.8,
             "avg_minutes_per_user": 7.68,
             "avg_minutes_per_session": 2.32,
             "sessions_per_user": 3.31
@@ -3476,9 +3481,9 @@
         "session_by_platform": [
           {
             "platform": "android",
-            "sessions": 149849,
-            "users": 33670,
-            "total_minutes": 345587.6,
+            "sessions": 149851,
+            "users": 33669,
+            "total_minutes": 345604.3,
             "avg_minutes_per_user": 10.26,
             "avg_minutes_per_session": 2.31,
             "sessions_per_user": 4.45
@@ -3549,7 +3554,7 @@
         "notification_campaigns": [
           {
             "campaign": "Unknown",
-            "opens": 64284,
+            "opens": 64283,
             "users": 20294
           },
           {
@@ -4217,7 +4222,7 @@
       {
         "config_id": 18,
         "trial_type": "Rs 1 trial",
-        "assigned_users": 44545,
+        "assigned_users": 44557,
         "followup_users": 10378,
         "trial_buyers": 760,
         "main_plan_buyers": 197,
@@ -4230,7 +4235,7 @@
       {
         "config_id": 20,
         "trial_type": "Rs 49 trial",
-        "assigned_users": 57962,
+        "assigned_users": 57972,
         "followup_users": 13051,
         "trial_buyers": 248,
         "main_plan_buyers": 155,
@@ -4513,7 +4518,7 @@
         "bot_name": "Avika Sharma",
         "entity_label": "Avika Sharma",
         "entity_match_type": "bot_id",
-        "followup_events": 46148
+        "followup_events": 46147
       },
       {
         "entity_slug": "68792542fcf00df3749da528",
@@ -5067,42 +5072,42 @@
       {
         "platform": "android",
         "day_n": 1,
-        "cohort_users": 78645,
+        "cohort_users": 78646,
         "retained_users": 5086,
         "retention_pct": 6.47
       },
       {
         "platform": "android",
         "day_n": 3,
-        "cohort_users": 78645,
+        "cohort_users": 78646,
         "retained_users": 1771,
         "retention_pct": 2.25
       },
       {
         "platform": "android",
         "day_n": 7,
-        "cohort_users": 78645,
+        "cohort_users": 78646,
         "retained_users": 709,
         "retention_pct": 0.9
       },
       {
         "platform": "unknown",
         "day_n": 1,
-        "cohort_users": 21930,
+        "cohort_users": 21929,
         "retained_users": 919,
         "retention_pct": 4.19
       },
       {
         "platform": "unknown",
         "day_n": 3,
-        "cohort_users": 21930,
+        "cohort_users": 21929,
         "retained_users": 271,
         "retention_pct": 1.24
       },
       {
         "platform": "unknown",
         "day_n": 7,
-        "cohort_users": 21930,
+        "cohort_users": 21929,
         "retained_users": 155,
         "retention_pct": 0.71
       }
@@ -5292,9 +5297,9 @@
   },
   "engagement": {
     "kpis": {
-      "active_users": 36175,
-      "sessions": 164539,
-      "total_minutes": 380607.0,
+      "active_users": 36174,
+      "sessions": 164541,
+      "total_minutes": 380623.7,
       "avg_minutes_per_user": 10.52,
       "avg_minutes_per_session": 2.31,
       "bim_notification_opens": 12960,
@@ -5330,10 +5335,10 @@
       },
       {
         "date": "2026-06-05",
-        "sessions": 22163,
-        "users": 6672,
-        "total_minutes": 48857.5,
-        "avg_minutes_per_user": 7.32,
+        "sessions": 22164,
+        "users": 6671,
+        "total_minutes": 48870.0,
+        "avg_minutes_per_user": 7.33,
         "avg_minutes_per_session": 2.2,
         "sessions_per_user": 3.32
       },
@@ -5357,9 +5362,9 @@
       },
       {
         "date": "2026-06-08",
-        "sessions": 24526,
+        "sessions": 24527,
         "users": 7408,
-        "total_minutes": 56887.6,
+        "total_minutes": 56891.8,
         "avg_minutes_per_user": 7.68,
         "avg_minutes_per_session": 2.32,
         "sessions_per_user": 3.31
@@ -5368,9 +5373,9 @@
     "session_by_platform": [
       {
         "platform": "android",
-        "sessions": 149849,
-        "users": 33670,
-        "total_minutes": 345587.6,
+        "sessions": 149851,
+        "users": 33669,
+        "total_minutes": 345604.3,
         "avg_minutes_per_user": 10.26,
         "avg_minutes_per_session": 2.31,
         "sessions_per_user": 4.45
@@ -5441,7 +5446,7 @@
     "notification_campaigns": [
       {
         "campaign": "Unknown",
-        "opens": 64284,
+        "opens": 64283,
         "users": 20294
       },
       {

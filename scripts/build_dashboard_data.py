@@ -1084,6 +1084,15 @@ def build_period_dashboard(
     }
 
 
+def write_latest_dashboard(dashboard: dict[str, Any]) -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    for stale_path in DATA_DIR.glob("dashboard_data*.tmp"):
+        stale_path.unlink(missing_ok=True)
+    tmp_path = OUTPUT_PATH.with_suffix(".json.tmp")
+    tmp_path.write_text(json.dumps(dashboard, indent=2, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp_path, OUTPUT_PATH)
+
+
 def main() -> None:
     env = load_env()
     engine = mysql_engine(env)
@@ -1131,6 +1140,11 @@ def main() -> None:
                 {"id": "weekly", "label": "Weekly", **periods["weekly"]["metadata"]},
             ],
             "timezone": "Asia/Kolkata",
+            "data_retention_policy": {
+                "storage": "Latest aggregate dashboard JSON only",
+                "refresh_behavior": "Each refresh replaces the previous dashboard_data.json file; old aggregate output is not appended or archived.",
+                "raw_data": "Raw SQL rows, Mixpanel event exports, user-level funnel rows, and credentials are not stored in this repo.",
+            },
             "source_notes": [
                 "Revenue comes from MySQL subscription_lifecycle_events and payment_orders.",
                 "Pay as you go means successful ADD_MONEY wallet payment orders.",
@@ -1148,8 +1162,7 @@ def main() -> None:
         "engagement": weekly["engagement"],
     }
 
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    OUTPUT_PATH.write_text(json.dumps(dashboard, indent=2, ensure_ascii=False), encoding="utf-8")
+    write_latest_dashboard(dashboard)
     print(f"WROTE {OUTPUT_PATH}")
     print(
         "SUMMARY",

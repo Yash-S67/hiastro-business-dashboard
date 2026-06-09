@@ -39,6 +39,15 @@ function pct(value) {
   return `${Number(value).toFixed(2)}%`;
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function shortDate(value) {
   const d = new Date(`${value}T00:00:00`);
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
@@ -63,7 +72,8 @@ function card(label, value, sub = "") {
 
 function table(containerId, rows, columns, limit = 12) {
   const container = document.getElementById(containerId);
-  const sliced = rows.slice(0, limit);
+  if (!container) return;
+  const sliced = (rows || []).slice(0, limit);
   if (!sliced.length) {
     container.innerHTML = `<div class="kpi-sub">No data in this window.</div>`;
     return;
@@ -80,7 +90,10 @@ function table(containerId, rows, columns, limit = 12) {
               (row) => `
                 <tr>
                   ${columns
-                    .map((c) => `<td class="${c.text ? "text" : ""}">${c.format ? c.format(row[c.key], row) : row[c.key]}</td>`)
+                    .map((c) => {
+                      const value = c.format ? c.format(row[c.key], row) : row[c.key];
+                      return `<td class="${c.text ? "text" : ""}">${escapeHtml(value)}</td>`;
+                    })
                     .join("")}
                 </tr>
               `,
@@ -181,22 +194,44 @@ function renderMonetization(data) {
     plugins: { title: { display: true, text: "Revenue Mix" }, legend: { position: "bottom" } },
   });
 
-  table("packTable", m.pack, [
-    { key: "pack", label: "Pack", text: true },
+  table("revenueDailyTable", m.daily, [
+    { key: "day", label: "Date", text: true, format: shortDate },
+    { key: "family", label: "Family", text: true, format: (v) => String(v).replaceAll("_", " ") },
+    { key: "revenue", label: "Revenue", format: money },
+    { key: "payers", label: "Payers", format: number },
+    { key: "transactions", label: "Txns", format: number },
+  ], 30);
+
+  table("revenueFamilyTable", m.family, [
     { key: "family", label: "Family", text: true, format: (v) => String(v).replaceAll("_", " ") },
     { key: "revenue", label: "Revenue", format: money },
     { key: "payers", label: "Payers", format: number },
     { key: "transactions", label: "Txns", format: number },
     { key: "avg_transaction", label: "Avg Txn", format: money },
-  ], 15);
+  ], 10);
+
+  table("packTable", m.pack, [
+    { key: "pack", label: "Pack", text: true },
+    { key: "family", label: "Family", text: true, format: (v) => String(v).replaceAll("_", " ") },
+    { key: "plan_code", label: "Plan", text: true },
+    { key: "amount", label: "Amount", format: money },
+    { key: "revenue", label: "Revenue", format: money },
+    { key: "payers", label: "Payers", format: number },
+    { key: "transactions", label: "Txns", format: number },
+    { key: "avg_transaction", label: "Avg Txn", format: money },
+  ], 30);
 
   table("configFunnelTable", m.config_funnel, [
     { key: "trial_type", label: "Config", text: true },
+    { key: "assigned_users", label: "Assigned", format: number },
     { key: "followup_users", label: "Follow-up", format: number },
     { key: "trial_buyers", label: "Trial Buyers", format: number },
     { key: "main_plan_buyers", label: "Main Buyers", format: number },
+    { key: "main_199_buyers", label: "Rs 199", format: number },
+    { key: "main_499_buyers", label: "Rs 499", format: number },
     { key: "followup_to_trial_pct", label: "F to Trial", format: pct },
     { key: "trial_to_main_pct", label: "Trial to Main", format: pct },
+    { key: "followup_to_main_pct", label: "F to Main", format: pct },
   ]);
 
   table("entityTable", m.entity_distribution, [
@@ -236,6 +271,20 @@ function renderAcquisition(data) {
     indexAxis: "y",
     plugins: { title: { display: true, text: "New Login to Follow-up to Payment" }, legend: { display: false } },
   });
+
+  table("acquisitionDailyTable", a.daily, [
+    { key: "signup_date", label: "Date", text: true, format: shortDate },
+    { key: "new_users", label: "New Users", format: number },
+    { key: "followup_users", label: "Follow-up", format: number },
+    { key: "payers", label: "Payers", format: number },
+  ], 14);
+
+  table("acquisitionFunnelTableDetail", a.funnel, [
+    { key: "stage", label: "Stage", text: true },
+    { key: "users", label: "Users", format: number },
+    { key: "conversion_from_previous_pct", label: "Step Conv.", format: pct },
+    { key: "conversion_from_start_pct", label: "Start Conv.", format: pct },
+  ], 5);
 
   table("acquisitionSegmentTable", a.segments, [
     { key: "segment", label: "Segment", text: true },
@@ -305,6 +354,21 @@ function renderRetention(data) {
     })),
   }, { plugins: { title: { display: true, text: "Retention by Platform" } } });
 
+  table("retentionCurveTable", r.curve, [
+    { key: "day_n", label: "Day", text: true, format: (v) => `D${v}` },
+    { key: "cohort_users", label: "Cohort", format: number },
+    { key: "retained_users", label: "Retained", format: number },
+    { key: "retention_pct", label: "Retention", format: pct },
+  ], 10);
+
+  table("retentionPlatformTable", r.platform, [
+    { key: "platform", label: "Platform", text: true },
+    { key: "day_n", label: "Day", text: true, format: (v) => `D${v}` },
+    { key: "cohort_users", label: "Cohort", format: number },
+    { key: "retained_users", label: "Retained", format: number },
+    { key: "retention_pct", label: "Retention", format: pct },
+  ], 30);
+
   chart("botRepeatChart", "bar", {
     labels: r.bot.slice(0, 10).map((x) => x.bot_name),
     datasets: [{ label: "Repeat rate %", data: r.bot.slice(0, 10).map((x) => x.repeat_rate_pct), backgroundColor: COLORS.teal }],
@@ -341,6 +405,15 @@ function renderEngagement(data) {
     ],
   }, { plugins: { title: { display: true, text: "Daily Engagement Depth" } } });
 
+  table("sessionDailyTable", e.session_daily, [
+    { key: "date", label: "Date", text: true, format: shortDate },
+    { key: "users", label: "Users", format: number },
+    { key: "sessions", label: "Sessions", format: number },
+    { key: "total_minutes", label: "Total Min", format: number },
+    { key: "avg_minutes_per_user", label: "Avg Min/User", format: (v) => Number(v || 0).toFixed(2) },
+    { key: "sessions_per_user", label: "Sessions/User", format: (v) => Number(v || 0).toFixed(2) },
+  ], 14);
+
   chart("bimDailyChart", "bar", {
     labels: e.bim_daily.map((r) => shortDate(r.date)),
     datasets: [
@@ -362,6 +435,12 @@ function renderEngagement(data) {
     { key: "opens", label: "Opens", format: number },
     { key: "users", label: "Users", format: number },
   ]);
+
+  table("bimDailyTable", e.bim_daily, [
+    { key: "date", label: "Date", text: true, format: shortDate },
+    { key: "opens", label: "Opens", format: number },
+    { key: "users", label: "Users", format: number },
+  ], 14);
 }
 
 async function main() {
@@ -370,6 +449,7 @@ async function main() {
     DASHBOARD_DATA = await response.json();
     SELECTED_PERIOD = DASHBOARD_DATA.metadata.default_period || "weekly";
     setupPeriodControls();
+    setupTabs();
     renderDashboard();
   } catch (error) {
     document.getElementById("freshness").textContent = "Could not load dashboard data.";
@@ -393,6 +473,46 @@ function setupPeriodControls() {
   });
 }
 
+function setupTabs() {
+  document.querySelectorAll(".section-tabs").forEach((group) => {
+    group.querySelectorAll("button[data-tab-target]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const targetId = button.dataset.tabTarget;
+        group.querySelectorAll("button").forEach((tabButton) => {
+          tabButton.classList.toggle("active", tabButton === button);
+        });
+        document.querySelectorAll(`#${targetId}, .tab-panel`).forEach((panel) => {
+          if (!panel.id) return;
+          const inSameSection = panel.closest(".band") === group.closest(".band");
+          if (inSameSection) {
+            panel.classList.toggle("active", panel.id === targetId);
+          }
+        });
+        window.requestAnimationFrame(() => {
+          Object.values(CHARTS).forEach((chartInstance) => chartInstance.resize());
+        });
+      });
+    });
+  });
+}
+
+function renderDataPolicy(meta) {
+  const policy = meta.data_retention_policy || {};
+  const policyRows = [
+    ["Storage", policy.storage || "Latest aggregate JSON only"],
+    ["Refresh", policy.refresh_behavior || "Each refresh replaces the previous dashboard data file"],
+    ["Raw Data", policy.raw_data || "Raw SQL rows and Mixpanel events are not saved in the dashboard repo"],
+  ];
+  document.getElementById("dataPolicy").innerHTML = policyRows
+    .map(([label, value]) => `
+      <div class="policy-item">
+        <div class="policy-label">${escapeHtml(label)}</div>
+        <div class="policy-value">${escapeHtml(value)}</div>
+      </div>
+    `)
+    .join("");
+}
+
 function renderDashboard() {
   const data = selectedData();
   const rootMeta = DASHBOARD_DATA.metadata;
@@ -403,7 +523,8 @@ function renderDashboard() {
   renderAcquisition(data);
   renderRetention(data);
   renderEngagement(data);
-  document.getElementById("sourceNotes").innerHTML = rootMeta.source_notes.map((note) => `<li>${note}</li>`).join("");
+  renderDataPolicy(rootMeta);
+  document.getElementById("sourceNotes").innerHTML = rootMeta.source_notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("");
 }
 
 main();
