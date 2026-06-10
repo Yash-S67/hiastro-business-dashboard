@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HiAstro Business Dashboard</title>
-    <link rel="stylesheet" href="assets/styles.css?v=20260609-stream-split" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260610-detail-metrics" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -89,9 +89,27 @@
           </div>
         </div>
         <div class="tab-panel" id="monetization-packs">
+          <div class="grid two">
+            <div class="panel"><canvas id="packDailyChart"></canvas></div>
+            <div class="panel"><canvas id="payerFrequencyChart"></canvas></div>
+          </div>
           <div class="panel">
             <h3>Pack Revenue</h3>
             <div id="packTable"></div>
+          </div>
+          <div class="grid two">
+            <div class="panel">
+              <h3>Amount Breakdown</h3>
+              <div id="amountBreakdownTable"></div>
+            </div>
+            <div class="panel">
+              <h3>Revenue Concentration</h3>
+              <div id="revenueConcentrationTable"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>Daily Pack Detail</h3>
+            <div id="dailyPackTable"></div>
           </div>
         </div>
         <div class="tab-panel" id="monetization-funnels">
@@ -133,6 +151,7 @@
             <div class="panel"><canvas id="newUsersChart"></canvas></div>
             <div class="panel"><canvas id="acquisitionRateChart"></canvas></div>
           </div>
+          <div class="panel"><canvas id="loginSignupChart"></canvas></div>
           <div class="grid two">
             <div class="panel"><canvas id="acquisitionFunnelChart"></canvas></div>
             <div class="panel">
@@ -153,9 +172,17 @@
           </div>
         </div>
         <div class="tab-panel" id="acquisition-segments">
+          <div class="grid two">
+            <div class="panel"><canvas id="acquisitionSegmentRateChart"></canvas></div>
+            <div class="panel"><canvas id="acquisitionSegmentVolumeChart"></canvas></div>
+          </div>
           <div class="panel">
             <h3>New User Funnel by Segment</h3>
             <div id="acquisitionSegmentTable"></div>
+          </div>
+          <div class="panel">
+            <h3>Best Conversion Segments</h3>
+            <div id="segmentOpportunityTable"></div>
           </div>
         </div>
         <div class="tab-panel" id="acquisition-followup">
@@ -197,6 +224,7 @@
             <div class="panel"><canvas id="retentionCurveChart"></canvas></div>
             <div class="panel"><canvas id="retentionPlatformChart"></canvas></div>
           </div>
+          <div class="panel"><canvas id="retentionSegmentChart"></canvas></div>
           <div class="grid two">
             <div class="panel">
               <h3>Retention Curve Detail</h3>
@@ -206,6 +234,10 @@
               <h3>Retention by Platform Detail</h3>
               <div id="retentionPlatformTable"></div>
             </div>
+          </div>
+          <div class="panel">
+            <h3>Retention by Segment Detail</h3>
+            <div id="retentionSegmentTable"></div>
           </div>
         </div>
         <div class="tab-panel" id="retention-bots">
@@ -219,6 +251,10 @@
           <div class="panel">
             <h3>Bot Repeat by User Type</h3>
             <div id="botCohortTable"></div>
+          </div>
+          <div class="panel">
+            <h3>Bot Repeat by Segment</h3>
+            <div id="botSegmentTable"></div>
           </div>
         </div>
       </section>
@@ -240,6 +276,13 @@
           <div class="grid two">
             <div class="panel"><canvas id="engagementDailyChart"></canvas></div>
             <div class="panel"><canvas id="sessionCohortChart"></canvas></div>
+          </div>
+          <div class="grid two">
+            <div class="panel"><canvas id="sessionIntensityChart"></canvas></div>
+            <div class="panel">
+              <h3>Session Intensity</h3>
+              <div id="sessionIntensityTable"></div>
+            </div>
           </div>
           <div class="grid two">
             <div class="panel">
@@ -272,6 +315,10 @@
             <div class="panel">
               <h3>Notification Campaign Opens</h3>
               <div id="campaignTable"></div>
+            </div>
+            <div class="panel">
+              <h3>BIM by Platform</h3>
+              <div id="bimPlatformTable"></div>
             </div>
           </div>
           <div class="panel">
@@ -310,6 +357,6 @@
       </section>
     </main>
 
-    <script src="assets/app.js?v=20260609-stream-split"></script>
+    <script src="assets/app.js?v=20260610-detail-metrics"></script>
   </body>
 </html>

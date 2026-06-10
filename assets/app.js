@@ -169,6 +169,12 @@ function groupedLine(rows, xKey, groupKey, valueKey) {
   };
 }
 
+function topRows(rows, valueKey, limit = 10) {
+  return [...(rows || [])]
+    .sort((a, b) => Number(b[valueKey] || 0) - Number(a[valueKey] || 0))
+    .slice(0, limit);
+}
+
 function chart(id, type, data, options = {}) {
   const el = document.getElementById(id);
   if (CHARTS[id]) {
@@ -371,6 +377,53 @@ function renderMonetization(data) {
     { key: "revenue_share_pct", label: "Revenue Share", format: pct },
   ], 30);
 
+  const topPackSelections = (m.pack || []).slice(0, 6).map((row) => row.selection);
+  const packDailyRows = (m.daily_pack || []).filter((row) => topPackSelections.includes(row.selection));
+  const packDaily = groupedLine(packDailyRows, "day", "selection", "revenue");
+  packDaily.labels = packDaily.labels.map(shortDate);
+  chart("packDailyChart", "line", packDaily, {
+    plugins: { title: { display: true, text: "Top Pack Revenue Trend" } },
+  });
+
+  chart("payerFrequencyChart", "bar", {
+    labels: (m.payer_frequency || []).map((r) => r.bucket),
+    datasets: [
+      { label: "Payers", data: (m.payer_frequency || []).map((r) => r.payers), backgroundColor: COLORS.teal },
+      { label: "Revenue share %", data: (m.payer_frequency || []).map((r) => r.revenue_share_pct), backgroundColor: COLORS.gold },
+    ],
+  }, {
+    plugins: { title: { display: true, text: "Payer Frequency and Revenue Share" } },
+  });
+
+  table("amountBreakdownTable", m.amount_breakdown || [], [
+    { key: "family_label", label: "Family", text: true },
+    { key: "amount", label: "Amount", format: money },
+    { key: "revenue", label: "Revenue", format: money },
+    { key: "revenue_share_pct", label: "Revenue Share", format: pct },
+    { key: "payers", label: "Payers", format: number },
+    { key: "transactions", label: "Txns", format: number },
+    { key: "avg_transaction", label: "Avg Txn", format: money },
+  ], 25);
+
+  table("revenueConcentrationTable", m.revenue_concentration || [], [
+    { key: "group", label: "Group", text: true },
+    { key: "payers", label: "Payers", format: number },
+    { key: "revenue", label: "Revenue", format: money },
+    { key: "revenue_share_pct", label: "Revenue Share", format: pct },
+    { key: "avg_revenue_per_payer", label: "ARPP", format: money },
+  ], 10);
+
+  table("dailyPackTable", m.daily_pack || [], [
+    { key: "day", label: "Date", text: true, format: shortDate },
+    { key: "selection", label: "Selection", text: true },
+    { key: "plan_code", label: "Plan", text: true },
+    { key: "amount", label: "Amount", format: money },
+    { key: "revenue", label: "Revenue", format: money },
+    { key: "payers", label: "Payers", format: number },
+    { key: "transactions", label: "Txns", format: number },
+    { key: "avg_transaction", label: "Avg Txn", format: money },
+  ], 60);
+
   chart("configFunnelRateChart", "bar", {
     labels: m.config_funnel.map((r) => r.trial_type),
     datasets: [
@@ -470,6 +523,16 @@ function renderAcquisition(data) {
     scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" } } },
   });
 
+  chart("loginSignupChart", "line", {
+    labels: (a.login_vs_signup_daily || []).map((r) => shortDate(r.signup_date)),
+    datasets: [
+      { label: "SQL new users", data: (a.login_vs_signup_daily || []).map((r) => r.new_users), borderColor: COLORS.blue, tension: 0.25 },
+      { label: "Mixpanel login users", data: (a.login_vs_signup_daily || []).map((r) => r.login_success_users), borderColor: COLORS.slate, tension: 0.25 },
+      { label: "Follow-up users", data: (a.login_vs_signup_daily || []).map((r) => r.followup_users), borderColor: COLORS.teal, tension: 0.25 },
+      { label: "Payers", data: (a.login_vs_signup_daily || []).map((r) => r.payers), borderColor: COLORS.gold, tension: 0.25 },
+    ],
+  }, { plugins: { title: { display: true, text: "Signup, Login, Follow-up and Payment Cross-check" } } });
+
   chart("acquisitionFunnelChart", "bar", {
     labels: a.funnel.map((r) => r.stage),
     datasets: [{ label: "Users", data: a.funnel.map((r) => r.users), backgroundColor: [COLORS.blue, COLORS.teal, COLORS.gold] }],
@@ -526,6 +589,42 @@ function renderAcquisition(data) {
     { key: "payer_rate_pct", label: "Payer Rate", format: pct },
     { key: "followup_to_payer_pct", label: "F to Pay", format: pct },
   ], 30);
+
+  const conversionSegments = topRows((a.segments || []).filter((row) => Number(row.new_users || 0) >= 50), "payer_rate_pct", 12);
+  chart("acquisitionSegmentRateChart", "bar", {
+    labels: conversionSegments.map((r) => r.selection),
+    datasets: [
+      { label: "Payer rate %", data: conversionSegments.map((r) => r.payer_rate_pct), backgroundColor: COLORS.gold },
+      { label: "Follow-up rate %", data: conversionSegments.map((r) => r.followup_rate_pct), backgroundColor: COLORS.teal },
+    ],
+  }, {
+    indexAxis: "y",
+    plugins: { title: { display: true, text: "Best Segment Conversion Rates" } },
+  });
+
+  const volumeSegments = topRows(a.segments || [], "new_users", 12);
+  chart("acquisitionSegmentVolumeChart", "bar", {
+    labels: volumeSegments.map((r) => r.selection),
+    datasets: [
+      { label: "New users", data: volumeSegments.map((r) => r.new_users), backgroundColor: COLORS.blue },
+      { label: "Follow-up", data: volumeSegments.map((r) => r.followup_users), backgroundColor: COLORS.teal },
+      { label: "Payers", data: volumeSegments.map((r) => r.payers), backgroundColor: COLORS.gold },
+    ],
+  }, {
+    indexAxis: "y",
+    plugins: { title: { display: true, text: "Largest Acquisition Segments" } },
+  });
+
+  table("segmentOpportunityTable", a.segment_opportunities || [], [
+    { key: "selection", label: "Selection", text: true },
+    { key: "new_users", label: "New Users", format: number },
+    { key: "followup_users", label: "Follow-up", format: number },
+    { key: "payers", label: "Payers", format: number },
+    { key: "followup_rate_pct", label: "Follow-up Rate", format: pct },
+    { key: "payer_rate_pct", label: "Payer Rate", format: pct },
+    { key: "followup_to_payer_pct", label: "F to Pay", format: pct },
+    { key: "opportunity_score", label: "Expected Payers", format: number },
+  ], 40);
 
   const entityRows = a.followup_entity_events || [];
   const followupCohort = groupedLine(a.followup_daily_user_cohort || [], "date", "user_cohort", "followup_users");
@@ -595,6 +694,15 @@ function renderRetention(data) {
     plugins: { title: { display: true, text: "Retention Movement by Platform" } },
   });
 
+  const d1Segments = topRows((r.segment_retention || []).filter((row) => Number(row.day_n) === 1), "cohort_users", 16);
+  chart("retentionSegmentChart", "bar", {
+    labels: d1Segments.map((row) => row.selection),
+    datasets: [{ label: "D1 retention %", data: d1Segments.map((row) => row.retention_pct), backgroundColor: COLORS.teal }],
+  }, {
+    indexAxis: "y",
+    plugins: { title: { display: true, text: "D1 Retention by Largest Segments" }, legend: { display: false } },
+  });
+
   table("retentionCurveTable", r.curve, [
     { key: "day_n", label: "Day", text: true, format: (v) => `D${v}` },
     { key: "cohort_users", label: "Cohort", format: number },
@@ -609,6 +717,14 @@ function renderRetention(data) {
     { key: "retained_users", label: "Retained", format: number },
     { key: "retention_pct", label: "Retention", format: pct },
   ], 30);
+
+  table("retentionSegmentTable", r.segment_retention || [], [
+    { key: "selection", label: "Selection", text: true },
+    { key: "day_n", label: "Day", text: true, format: (v) => `D${v}` },
+    { key: "cohort_users", label: "Cohort", format: number },
+    { key: "retained_users", label: "Retained", format: number },
+    { key: "retention_pct", label: "Retention", format: pct },
+  ], 80);
 
   chart("botRepeatChart", "bar", {
     labels: r.bot.slice(0, 10).map((x) => x.bot_name),
@@ -636,6 +752,15 @@ function renderRetention(data) {
     { key: "sessions", label: "Sessions", format: number },
     { key: "minutes_per_user", label: "Min/User", format: (v) => Number(v || 0).toFixed(2) },
   ], 30);
+
+  table("botSegmentTable", r.bot_segment || [], [
+    { key: "selection", label: "Selection", text: true },
+    { key: "active_users", label: "Users", format: number },
+    { key: "repeat_users_2plus_days", label: "Repeat Users", format: number },
+    { key: "repeat_rate_pct", label: "Repeat Rate", format: pct },
+    { key: "sessions", label: "Sessions", format: number },
+    { key: "minutes_per_user", label: "Min/User", format: (v) => Number(v || 0).toFixed(2) },
+  ], 60);
 }
 
 function renderEngagement(data) {
@@ -661,6 +786,23 @@ function renderEngagement(data) {
   chart("sessionCohortChart", "line", sessionCohort, {
     plugins: { title: { display: true, text: "App Sessions by New vs Old Users" } },
   });
+
+  chart("sessionIntensityChart", "doughnut", {
+    labels: (e.session_intensity || []).map((r) => r.bucket),
+    datasets: [{ data: (e.session_intensity || []).map((r) => r.users), backgroundColor: [COLORS.blue, COLORS.teal, COLORS.gold, COLORS.rose, COLORS.green] }],
+  }, {
+    plugins: { title: { display: true, text: "Session Intensity Distribution" }, legend: { position: "bottom" } },
+  });
+
+  table("sessionIntensityTable", e.session_intensity || [], [
+    { key: "selection", label: "Selection", text: true },
+    { key: "users", label: "Users", format: number },
+    { key: "user_share_pct", label: "User Share", format: pct },
+    { key: "sessions", label: "Sessions", format: number },
+    { key: "total_minutes", label: "Total Min", format: number },
+    { key: "avg_minutes_per_user", label: "Min/User", format: (v) => Number(v || 0).toFixed(2) },
+    { key: "sessions_per_user", label: "Sessions/User", format: (v) => Number(v || 0).toFixed(2) },
+  ], 10);
 
   table("sessionDailyTable", e.session_daily, [
     { key: "date", label: "Date", text: true, format: shortDate },
@@ -723,9 +865,18 @@ function renderEngagement(data) {
   table("campaignTable", e.notification_campaigns, [
     { key: "campaign", label: "Campaign", text: true },
     { key: "opens", label: "Opens", format: number },
+    { key: "open_share_pct", label: "Open Share", format: pct },
     { key: "users", label: "Users", format: number },
     { key: "opens_per_user", label: "Opens/User", format: (v) => Number(v || 0).toFixed(2) },
   ]);
+
+  table("bimPlatformTable", e.bim_by_platform || [], [
+    { key: "platform", label: "Platform", text: true },
+    { key: "opens", label: "Opens", format: number },
+    { key: "open_share_pct", label: "Open Share", format: pct },
+    { key: "users", label: "Users", format: number },
+    { key: "opens_per_user", label: "Opens/User", format: (v) => Number(v || 0).toFixed(2) },
+  ], 10);
 
   table("bimDailyTable", e.bim_daily, [
     { key: "date", label: "Date", text: true, format: shortDate },

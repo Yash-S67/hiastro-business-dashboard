@@ -724,17 +724,97 @@ def build_monetization(
         .sort_values("revenue", ascending=False)
     )
     if pack.empty:
-        pack = pd.DataFrame(columns=["family", "family_label", "selection", "pack", "plan_code", "amount", "revenue", "transactions", "payers", "avg_transaction", "revenue_share_pct"])
+        pack = pd.DataFrame(columns=["family", "family_label", "selection", "pack", "plan_code", "amount", "revenue", "transactions", "payers", "avg_transaction", "revenue_share_pct", "revenue_growth_vs_prior_7_pct"])
     else:
+        prior_pack = (
+            prior7.groupby(["family", "pack", "plan_code", "amount"], as_index=False)
+            .agg(prior_revenue=("revenue", "sum"))
+        )
+        pack = pack.merge(prior_pack, on=["family", "pack", "plan_code", "amount"], how="left")
+        pack["prior_revenue"] = pack["prior_revenue"].fillna(0)
         pack["family_label"] = pack["family"].apply(revenue_family_label)
-        pack["selection"] = "family = " + pack["family_label"] + "; pack = " + pack["pack"].astype(str)
+        pack["selection"] = (
+            "family = "
+            + pack["family_label"]
+            + "; pack = "
+            + pack["pack"].astype(str)
+            + "; plan = "
+            + pack["plan_code"].astype(str)
+        )
         pack["avg_transaction"] = (pack["revenue"] / pack["transactions"]).round(2)
         pack["revenue_share_pct"] = (pack["revenue"] / pack["revenue"].sum() * 100).round(2)
+        pack["revenue_growth_vs_prior_7_pct"] = pack.apply(
+            lambda row: pct_change(float(row["revenue"]), float(row["prior_revenue"])),
+            axis=1,
+        )
+
+    if current.empty:
+        daily_pack = pd.DataFrame(columns=["day", "family", "family_label", "pack", "plan_code", "amount", "revenue", "transactions", "payers", "avg_transaction"])
+        amount_breakdown = pd.DataFrame(columns=["family", "family_label", "amount", "revenue", "transactions", "payers", "revenue_share_pct", "avg_transaction"])
+    else:
+        daily_pack = (
+            current.groupby(["day", "family", "pack", "plan_code", "amount"], as_index=False)
+            .agg(revenue=("revenue", "sum"), transactions=("transactions", "sum"), payers=("user_id", "nunique"))
+            .sort_values(["day", "revenue"], ascending=[True, False])
+        )
+        daily_pack["family_label"] = daily_pack["family"].apply(revenue_family_label)
+        daily_pack["selection"] = (
+            "family = "
+            + daily_pack["family_label"]
+            + "; pack = "
+            + daily_pack["pack"].astype(str)
+            + "; plan = "
+            + daily_pack["plan_code"].astype(str)
+        )
+        daily_pack["avg_transaction"] = (daily_pack["revenue"] / daily_pack["transactions"]).round(2)
+        daily_pack["day"] = daily_pack["day"].astype(str)
+
+        amount_breakdown = (
+            current.groupby(["family", "amount"], as_index=False)
+            .agg(revenue=("revenue", "sum"), transactions=("transactions", "sum"), payers=("user_id", "nunique"))
+            .sort_values(["family", "revenue"], ascending=[True, False])
+        )
+        amount_breakdown["family_label"] = amount_breakdown["family"].apply(revenue_family_label)
+        amount_breakdown = add_share(amount_breakdown, "revenue", "revenue_share_pct")
+        amount_breakdown["avg_transaction"] = (amount_breakdown["revenue"] / amount_breakdown["transactions"]).round(2)
 
     user_revenue = (
         current.groupby("user_id", as_index=False)
         .agg(revenue=("revenue", "sum"), transactions=("transactions", "sum"))
     )
+    if user_revenue.empty:
+        payer_frequency = pd.DataFrame(columns=["bucket", "selection", "payers", "revenue", "transactions", "avg_revenue_per_payer", "revenue_share_pct"])
+        revenue_concentration = []
+    else:
+        user_revenue["bucket"] = pd.cut(
+            user_revenue["transactions"],
+            bins=[0, 1, 2, 5, 999999],
+            labels=["1 txn", "2 txn", "3-5 txn", "6+ txn"],
+            include_lowest=True,
+        ).astype(str)
+        payer_frequency = (
+            user_revenue.groupby("bucket", as_index=False)
+            .agg(payers=("user_id", "nunique"), revenue=("revenue", "sum"), transactions=("transactions", "sum"))
+        )
+        payer_frequency["selection"] = "transaction frequency = " + payer_frequency["bucket"].astype(str)
+        payer_frequency["avg_revenue_per_payer"] = (
+            payer_frequency["revenue"] / payer_frequency["payers"]
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        payer_frequency = add_share(payer_frequency, "revenue", "revenue_share_pct")
+        ranked_payers = user_revenue.sort_values("revenue", ascending=False).reset_index(drop=True)
+        total_payer_revenue = float(ranked_payers["revenue"].sum())
+        revenue_concentration = []
+        for top_n in [10, 50, 100]:
+            top_revenue = float(ranked_payers.head(top_n)["revenue"].sum())
+            revenue_concentration.append(
+                {
+                    "group": f"Top {top_n} payers",
+                    "payers": min(top_n, int(ranked_payers["user_id"].nunique())),
+                    "revenue": round(top_revenue, 2),
+                    "revenue_share_pct": safe_div(top_revenue, total_payer_revenue),
+                    "avg_revenue_per_payer": round(top_revenue / min(top_n, len(ranked_payers)), 2) if len(ranked_payers) else 0,
+                }
+            )
     user_family_revenue = (
         current.groupby(["user_id", "family"], as_index=False)
         .agg(revenue=("revenue", "sum"), transactions=("transactions", "sum"))
@@ -899,8 +979,12 @@ def build_monetization(
         "daily_summary": records(daily_summary),
         "daily_user_cohort": records(daily_user_cohort),
         "daily_family_user_cohort": records(daily_family_user_cohort),
+        "daily_pack": records(daily_pack.head(80)),
+        "amount_breakdown": records(amount_breakdown.head(40)),
         "family": records(family),
         "pack": records(pack.head(30)),
+        "payer_frequency": records(payer_frequency.sort_values("revenue", ascending=False)),
+        "revenue_concentration": revenue_concentration,
         "payer_segments": records(payer_segments.sort_values(["segment", "revenue"], ascending=[True, False]).head(80)),
         "payer_segments_by_family": records(
             payer_segments_by_family.sort_values(["family", "segment", "revenue"], ascending=[True, True, False]).head(160)
@@ -1082,6 +1166,19 @@ def build_acquisition(
             [float("inf"), -float("inf")], 0
         ).fillna(0).round(2)
     daily["signup_date"] = daily["signup_date"].astype(str)
+    login_daily = pd.DataFrame(mixpanel["login_daily"])
+    if login_daily.empty:
+        login_vs_signup_daily = daily.copy()
+        login_vs_signup_daily["login_success_users"] = 0
+    else:
+        login_daily = login_daily.rename(columns={"date": "signup_date"})
+        login_vs_signup_daily = daily.merge(login_daily, on="signup_date", how="outer").fillna(0)
+        login_vs_signup_daily = login_vs_signup_daily.sort_values("signup_date")
+        for column in ["new_users", "followup_users", "payers", "login_success_users"]:
+            login_vs_signup_daily[column] = pd.to_numeric(login_vs_signup_daily[column], errors="coerce").fillna(0).astype(int)
+        login_vs_signup_daily["login_to_signup_ratio"] = (
+            login_vs_signup_daily["login_success_users"] / login_vs_signup_daily["new_users"]
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
 
     current_user_ids = set(current_users["user_id"])
     new_user_family_revenue = user_family_revenue_current[user_family_revenue_current["user_id"].isin(current_user_ids)].copy()
@@ -1150,6 +1247,16 @@ def build_acquisition(
         ).fillna(0).round(2)
         segment_rows.append(seg)
     segments = pd.concat(segment_rows, ignore_index=True) if segment_rows else pd.DataFrame()
+    if segments.empty:
+        segment_opportunities = pd.DataFrame(columns=["selection", "segment", "bucket", "new_users", "followup_users", "payers", "followup_rate_pct", "payer_rate_pct", "followup_to_payer_pct", "opportunity_score"])
+    else:
+        segment_opportunities = segments[segments["new_users"] >= max(50, int(new_users * 0.002))].copy()
+        segment_opportunities["opportunity_score"] = (
+            segment_opportunities["new_users"] * segment_opportunities["payer_rate_pct"] / 100
+        ).round(2)
+        segment_opportunities = segment_opportunities.sort_values(
+            ["payer_rate_pct", "new_users"], ascending=[False, False]
+        )
 
     followup_daily_rows = []
     for event_date, users in mixpanel.get("followup_daily_user_ids", {}).items():
@@ -1204,11 +1311,13 @@ def build_acquisition(
             "new_user_to_payment_pct": safe_div(payers, new_users),
         },
         "daily": records(daily),
+        "login_vs_signup_daily": records(login_vs_signup_daily),
         "daily_payment_family": records(daily_payment_family),
         "login_daily": mixpanel["login_daily"],
         "funnel": funnel,
         "payment_type_funnel": records(payment_type_funnel.sort_values("revenue", ascending=False)),
         "segments": records(segments.sort_values(["segment", "new_users"], ascending=[True, False])),
+        "segment_opportunities": records(segment_opportunities.head(40)),
         "followup_daily_user_cohort": records(followup_daily_user_cohort),
         "followup_entity_events": mixpanel.get("followup_entity_events", []),
         "followup_demographics": followup_demographics,
@@ -1297,7 +1406,7 @@ def build_retention(engine, profiles: pd.DataFrame, ranges: dict[str, Any]) -> d
     cohort_users = profiles[
         (profiles["signup_date"] >= cohort_start)
         & (profiles["signup_date"] <= cohort_end)
-    ][["user_id", "signup_date", "platform", "gender", "age_bucket"]].copy()
+    ][["user_id", "signup_date", "platform", "gender", "age_bucket", "config_id", "occupation", "marital_status"]].copy()
 
     activity = read_sql(
         engine,
@@ -1355,6 +1464,28 @@ def build_retention(engine, profiles: pd.DataFrame, ranges: dict[str, Any]) -> d
                     "retention_pct": safe_div(retained, d),
                 }
             )
+
+    segment_retention_rows = []
+    for field in ["platform", "gender", "age_bucket", "config_id", "occupation", "marital_status"]:
+        for bucket, group in cohort_users.groupby(field, dropna=False):
+            d = group["user_id"].nunique()
+            if d == 0:
+                continue
+            active = joined[joined["user_id"].isin(set(group["user_id"]))] if not joined.empty else pd.DataFrame()
+            for day_n in [1, 3, 7]:
+                retained = active.loc[active["day_n"].eq(day_n), "user_id"].nunique() if not active.empty else 0
+                segment_retention_rows.append(
+                    {
+                        "selection": f"{field} = {bucket}",
+                        "segment": field,
+                        "bucket": str(bucket),
+                        "day_n": day_n,
+                        "cohort_users": int(d),
+                        "retained_users": int(retained),
+                        "retention_pct": safe_div(retained, d),
+                    }
+                )
+    segment_retention = pd.DataFrame(segment_retention_rows)
 
     bot = read_sql(
         engine,
@@ -1416,6 +1547,9 @@ def build_retention(engine, profiles: pd.DataFrame, ranges: dict[str, Any]) -> d
         bot_user_cohort = pd.DataFrame(
             columns=["bot_name", "user_cohort", "active_users", "repeat_users_2plus_days", "repeat_rate_pct", "sessions", "minutes", "minutes_per_user"]
         )
+        bot_segment = pd.DataFrame(
+            columns=["selection", "segment", "bucket", "active_users", "repeat_users_2plus_days", "repeat_rate_pct", "sessions", "minutes", "minutes_per_user"]
+        )
     else:
         bot_user = enrich_users(bot_user, profiles, ranges)
         bot_user["repeat_flag"] = bot_user["active_days"] >= 2
@@ -1437,12 +1571,38 @@ def build_retention(engine, profiles: pd.DataFrame, ranges: dict[str, Any]) -> d
             bot_user_cohort["minutes"] / bot_user_cohort["active_users"]
         ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
 
+        bot_segment_rows = []
+        for field in ["user_cohort", "platform", "gender", "age_bucket", "config_id", "occupation", "marital_status"]:
+            seg = (
+                bot_user.groupby(field, dropna=False)
+                .agg(
+                    active_users=("user_id", "nunique"),
+                    repeat_users_2plus_days=("repeat_flag", "sum"),
+                    sessions=("sessions", "sum"),
+                    minutes=("minutes", "sum"),
+                )
+                .reset_index()
+                .rename(columns={field: "bucket"})
+            )
+            seg["segment"] = field
+            seg["selection"] = seg["segment"].astype(str) + " = " + seg["bucket"].astype(str)
+            seg["repeat_rate_pct"] = (
+                seg["repeat_users_2plus_days"] / seg["active_users"] * 100
+            ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+            seg["minutes_per_user"] = (
+                seg["minutes"] / seg["active_users"]
+            ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+            bot_segment_rows.append(seg)
+        bot_segment = pd.concat(bot_segment_rows, ignore_index=True)
+
     return {
         "cohort_window": {"start": cohort_start.isoformat(), "end": cohort_end.isoformat()},
         "curve": curve_rows,
         "platform": platform_rows,
+        "segment_retention": records(segment_retention.sort_values(["segment", "day_n", "cohort_users"], ascending=[True, True, False]).head(120)),
         "bot": records(bot),
         "bot_user_cohort": records(bot_user_cohort),
+        "bot_segment": records(bot_segment.sort_values(["segment", "active_users"], ascending=[True, False]).head(100)),
     }
 
 
@@ -1503,6 +1663,7 @@ def build_engagement(mixpanel: dict[str, Any], profiles: pd.DataFrame, ranges: d
     if session_user_daily.empty:
         session_user_cohort_daily = pd.DataFrame(columns=["date", "user_cohort", "sessions", "users", "total_minutes", "avg_minutes_per_user", "sessions_per_user"])
         session_segments = pd.DataFrame(columns=["segment", "bucket", "selection", "users", "sessions", "total_minutes", "avg_minutes_per_user", "sessions_per_user", "user_share_pct"])
+        session_intensity = pd.DataFrame(columns=["bucket", "selection", "users", "sessions", "total_minutes", "avg_minutes_per_user", "sessions_per_user", "user_share_pct"])
     else:
         session_user_daily = enrich_users(session_user_daily, profiles, ranges)
         session_user_daily["total_minutes"] = session_user_daily["seconds"] / 60
@@ -1544,6 +1705,29 @@ def build_engagement(mixpanel: dict[str, Any], profiles: pd.DataFrame, ranges: d
             segment_rows.append(seg)
         session_segments = pd.concat(segment_rows, ignore_index=True)
 
+        user_session_totals = (
+            session_user_daily.groupby("user_id", as_index=False)
+            .agg(sessions=("sessions", "sum"), total_minutes=("total_minutes", "sum"))
+        )
+        user_session_totals["bucket"] = pd.cut(
+            user_session_totals["total_minutes"],
+            bins=[-0.01, 1, 5, 15, 45, 999999],
+            labels=["0-1 min", "1-5 min", "5-15 min", "15-45 min", "45+ min"],
+        ).astype(str)
+        session_intensity = (
+            user_session_totals.groupby("bucket", as_index=False)
+            .agg(users=("user_id", "nunique"), sessions=("sessions", "sum"), total_minutes=("total_minutes", "sum"))
+        )
+        session_intensity["selection"] = "total session time = " + session_intensity["bucket"].astype(str)
+        session_intensity["total_minutes"] = session_intensity["total_minutes"].round(1)
+        session_intensity["avg_minutes_per_user"] = (
+            session_intensity["total_minutes"] / session_intensity["users"]
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        session_intensity["sessions_per_user"] = (
+            session_intensity["sessions"] / session_intensity["users"]
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        session_intensity = add_share(session_intensity, "users", "user_share_pct")
+
     bim_user_daily = pd.DataFrame(mixpanel.get("bim_user_daily", []))
     if bim_user_daily.empty:
         bim_user_cohort_daily = pd.DataFrame(columns=["date", "user_cohort", "opens", "users", "opens_per_user", "share_pct"])
@@ -1560,6 +1744,18 @@ def build_engagement(mixpanel: dict[str, Any], profiles: pd.DataFrame, ranges: d
         daily_opens = bim_user_cohort_daily.groupby("date")["opens"].transform("sum")
         bim_user_cohort_daily["share_pct"] = (bim_user_cohort_daily["opens"] / daily_opens * 100).round(2)
 
+    notification_campaigns = pd.DataFrame(mixpanel["notification_campaigns"])
+    if notification_campaigns.empty:
+        notification_campaigns = pd.DataFrame(columns=["campaign", "opens", "users", "opens_per_user", "open_share_pct"])
+    else:
+        notification_campaigns = add_share(notification_campaigns, "opens", "open_share_pct")
+
+    bim_by_platform = pd.DataFrame(mixpanel["bim_by_platform"])
+    if bim_by_platform.empty:
+        bim_by_platform = pd.DataFrame(columns=["platform", "opens", "users", "opens_per_user", "open_share_pct"])
+    else:
+        bim_by_platform = add_share(bim_by_platform, "opens", "open_share_pct")
+
     return {
         "kpis": {
             **engagement_kpis,
@@ -1570,10 +1766,11 @@ def build_engagement(mixpanel: dict[str, Any], profiles: pd.DataFrame, ranges: d
         "session_by_platform": mixpanel["session_by_platform"],
         "session_user_cohort_daily": records(session_user_cohort_daily),
         "session_segments": records(session_segments.sort_values(["segment", "users"], ascending=[True, False]).head(80)),
+        "session_intensity": records(session_intensity.sort_values("users", ascending=False)),
         "bim_daily": mixpanel["bim_daily"],
-        "bim_by_platform": mixpanel["bim_by_platform"],
+        "bim_by_platform": records(bim_by_platform.sort_values("opens", ascending=False)),
         "bim_user_cohort_daily": records(bim_user_cohort_daily),
-        "notification_campaigns": mixpanel["notification_campaigns"],
+        "notification_campaigns": records(notification_campaigns.sort_values("opens", ascending=False)),
     }
 
 
