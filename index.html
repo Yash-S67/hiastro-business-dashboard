@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HiAstro Business Dashboard</title>
-    <link rel="stylesheet" href="assets/styles.css?v=20260610-retention-filters" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260610-table-filters" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -77,10 +77,12 @@
           </div>
           <div class="panel">
             <h3>Payer Segment Detail</h3>
+            <div class="table-controls" id="payerSegmentControls"></div>
             <div id="payerSegmentTable"></div>
           </div>
           <div class="panel">
             <h3>Payer Segment by Revenue Stream</h3>
+            <div class="table-controls" id="payerFamilySegmentControls"></div>
             <div id="payerFamilySegmentTable"></div>
           </div>
           <div class="panel">
@@ -121,6 +123,7 @@
           </div>
           <div class="panel">
             <h3>Pack Revenue, PayG Merged</h3>
+            <div class="table-controls" id="packControls"></div>
             <div id="packTable"></div>
           </div>
           <div class="grid two">
@@ -140,11 +143,13 @@
             </div>
             <div class="panel">
               <h3>Raw Pack Detail</h3>
+              <div class="table-controls" id="rawPackControls"></div>
               <div id="rawPackTable"></div>
             </div>
           </div>
           <div class="panel">
             <h3>Daily Pack Detail</h3>
+            <div class="table-controls" id="dailyPackControls"></div>
             <div id="dailyPackTable"></div>
           </div>
         </div>
@@ -214,10 +219,12 @@
           </div>
           <div class="panel">
             <h3>New User Funnel by Segment</h3>
+            <div class="table-controls" id="acquisitionSegmentControls"></div>
             <div id="acquisitionSegmentTable"></div>
           </div>
           <div class="panel">
             <h3>Best Conversion Segments</h3>
+            <div class="table-controls" id="segmentOpportunityControls"></div>
             <div id="segmentOpportunityTable"></div>
           </div>
         </div>
@@ -233,11 +240,13 @@
             </div>
             <div class="panel">
               <h3>Follow-up Segment Detail</h3>
+              <div class="table-controls" id="followupSegmentControls"></div>
               <div id="followupSegmentTable"></div>
             </div>
           </div>
           <div class="panel">
             <h3>Follow-up Query Entity Detail</h3>
+            <div class="table-controls" id="followupEntityControls"></div>
             <div id="followupEntityTable"></div>
           </div>
         </div>
@@ -287,6 +296,7 @@
           </div>
           <div class="panel">
             <h3>Bot Repeat by User Type</h3>
+            <div class="table-controls" id="botCohortControls"></div>
             <div id="botCohortTable"></div>
           </div>
           <div class="panel">
@@ -329,6 +339,7 @@
             </div>
             <div class="panel">
               <h3>Session Segment Detail</h3>
+              <div class="table-controls" id="sessionSegmentControls"></div>
               <div id="sessionSegmentTable"></div>
             </div>
           </div>
@@ -395,6 +406,6 @@
       </section>
     </main>
 
-    <script src="assets/app.js?v=20260610-retention-filters"></script>
+    <script src="assets/app.js?v=20260610-table-filters"></script>
   </body>
 </html>

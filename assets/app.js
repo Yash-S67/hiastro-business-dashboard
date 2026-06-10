@@ -28,8 +28,19 @@ const CHARTS = {};
 let DASHBOARD_DATA = null;
 let SELECTED_PERIOD = "weekly";
 const TABLE_FILTERS = {
+  payerSegment: { segment: "all", limit: 25 },
+  payerFamilySegment: { family_label: "all", segment: "all", limit: 25 },
+  pack: { family_label: "all", limit: 20 },
+  rawPack: { family_label: "all", limit: 20 },
+  dailyPack: { family_label: "all", day: "all", limit: 25 },
+  acquisitionSegment: { segment: "all", limit: 25 },
+  segmentOpportunity: { segment: "all", limit: 20 },
+  followupSegment: { segment: "all", limit: 25 },
+  followupEntity: { entity_match_type: "all", limit: 20 },
   retentionSegment: { segment: "all", day: "1", limit: 20 },
+  botCohort: { user_cohort: "all", limit: 20 },
   botSegment: { segment: "all", limit: 25 },
+  sessionSegment: { segment: "all", limit: 25 },
 };
 
 function money(value) {
@@ -217,6 +228,69 @@ function uniqueSorted(rows, key) {
 
 function tableControlButton(label, value, active) {
   return `<button type="button" data-limit="${value}" class="${active ? "active" : ""}">${label}</button>`;
+}
+
+function optionLabel(value, filter) {
+  const raw = String(value);
+  if (filter.prefix) return `${filter.prefix}${raw}`;
+  return raw.replaceAll("_", " ");
+}
+
+function renderFilteredTable({ controlsId, tableId, rows, columns, stateKey, filters = [], sortKey, limitOptions = [10, 25, 50] }) {
+  const sourceRows = rows || [];
+  const state = TABLE_FILTERS[stateKey];
+  const controls = document.getElementById(controlsId);
+  if (!controls || !state) {
+    table(tableId, sourceRows, columns, limitOptions[1] || 25);
+    return;
+  }
+
+  filters.forEach((filter) => {
+    const values = uniqueSorted(sourceRows, filter.key);
+    if (state[filter.key] !== "all" && !values.includes(String(state[filter.key]))) {
+      state[filter.key] = filter.defaultValue && values.includes(String(filter.defaultValue)) ? String(filter.defaultValue) : "all";
+    }
+  });
+
+  controls.innerHTML = `
+    ${filters
+      .map((filter) => {
+        const values = uniqueSorted(sourceRows, filter.key);
+        return `
+          <label>${filter.label}
+            <select data-filter="${escapeHtml(filter.key)}">
+              <option value="all"${state[filter.key] === "all" ? " selected" : ""}>${escapeHtml(filter.allLabel || "All")}</option>
+              ${values
+                .map((value) => `<option value="${escapeHtml(value)}"${String(state[filter.key]) === value ? " selected" : ""}>${escapeHtml(optionLabel(value, filter))}</option>`)
+                .join("")}
+            </select>
+          </label>
+        `;
+      })
+      .join("")}
+    <div class="limit-toggle" aria-label="Rows to show">
+      ${limitOptions.map((limit) => tableControlButton(`Top ${limit}`, limit, Number(state.limit) === limit)).join("")}
+    </div>
+  `;
+
+  controls.querySelectorAll("select[data-filter]").forEach((select) => {
+    select.addEventListener("change", (event) => {
+      state[event.target.dataset.filter] = event.target.value;
+      renderFilteredTable({ controlsId, tableId, rows: sourceRows, columns, stateKey, filters, sortKey, limitOptions });
+    });
+  });
+  controls.querySelectorAll("button[data-limit]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.limit = Number(button.dataset.limit);
+      renderFilteredTable({ controlsId, tableId, rows: sourceRows, columns, stateKey, filters, sortKey, limitOptions });
+    });
+  });
+
+  const filtered = sourceRows
+    .filter((row) => filters.every((filter) => state[filter.key] === "all" || String(row[filter.key]) === String(state[filter.key])))
+    .sort((a, b) => Number(b[sortKey] || 0) - Number(a[sortKey] || 0))
+    .slice(0, Number(state.limit));
+  table(tableId, filtered, columns, Number(state.limit));
 }
 
 function renderRetentionSegmentTable(rows) {
@@ -471,7 +545,7 @@ function renderMonetization(data) {
     { key: "revenue_share_pct", label: "Daily Share", format: pct },
   ], 20);
 
-  table("payerSegmentTable", m.payer_segments || [], [
+  const payerSegmentColumns = [
     { key: "selection", label: "Selection", text: true },
     { key: "segment", label: "Segment", text: true },
     { key: "bucket", label: "Bucket", text: true },
@@ -481,9 +555,22 @@ function renderMonetization(data) {
     { key: "transactions", label: "Txns", format: number },
     { key: "avg_transaction", label: "Avg Txn", format: money },
     { key: "avg_revenue_per_payer", label: "ARPP", format: money },
-  ], 40);
+  ];
+  renderFilteredTable({
+    controlsId: "payerSegmentControls",
+    tableId: "payerSegmentTable",
+    rows: m.payer_segments || [],
+    columns: payerSegmentColumns,
+    stateKey: "payerSegment",
+    filters: [{ key: "segment", label: "Segment" }],
+    sortKey: "revenue",
+  });
 
-  table("payerFamilySegmentTable", m.payer_segments_by_family || [], [
+  renderFilteredTable({
+    controlsId: "payerFamilySegmentControls",
+    tableId: "payerFamilySegmentTable",
+    rows: m.payer_segments_by_family || [],
+    columns: [
     { key: "selection", label: "Selection", text: true },
     { key: "family_label", label: "Revenue Stream", text: true },
     { key: "segment", label: "Segment", text: true },
@@ -494,7 +581,14 @@ function renderMonetization(data) {
     { key: "payers", label: "Payers", format: number },
     { key: "transactions", label: "Txns", format: number },
     { key: "avg_transaction", label: "Avg Txn", format: money },
-  ], 60);
+    ],
+    stateKey: "payerFamilySegment",
+    filters: [
+      { key: "family_label", label: "Stream" },
+      { key: "segment", label: "Segment" },
+    ],
+    sortKey: "revenue",
+  });
 
   table("revenueFamilyTable", m.family, [
     { key: "selection", label: "Selection", text: true },
@@ -622,7 +716,7 @@ function renderMonetization(data) {
     { key: "avg_revenue_per_payer", label: "ARPP", format: money },
   ], 5);
 
-  table("packTable", m.pack_merged || m.pack, [
+  const packColumns = [
     { key: "selection", label: "Selection", text: true },
     { key: "pack", label: "Pack", text: true },
     { key: "family_label", label: "Family", text: true },
@@ -634,7 +728,17 @@ function renderMonetization(data) {
     { key: "avg_transaction", label: "Avg Txn", format: money },
     { key: "revenue_share_pct", label: "Revenue Share", format: pct },
     { key: "revenue_growth_vs_prior_7_pct", label: "Rev Growth", format: pct },
-  ], 30);
+  ];
+  renderFilteredTable({
+    controlsId: "packControls",
+    tableId: "packTable",
+    rows: m.pack_merged || m.pack,
+    columns: packColumns,
+    stateKey: "pack",
+    filters: [{ key: "family_label", label: "Family" }],
+    sortKey: "revenue",
+    limitOptions: [10, 20, 30],
+  });
 
   const topPackSelections = (m.pack_merged || m.pack || []).slice(0, 6).map((row) => row.selection);
   const packDailyRows = (m.daily_pack_merged || m.daily_pack || []).filter((row) => topPackSelections.includes(row.selection));
@@ -682,7 +786,11 @@ function renderMonetization(data) {
     { key: "avg_revenue_per_payer", label: "ARPP", format: money },
   ], 10);
 
-  table("rawPackTable", m.pack || [], [
+  renderFilteredTable({
+    controlsId: "rawPackControls",
+    tableId: "rawPackTable",
+    rows: m.pack || [],
+    columns: [
     { key: "selection", label: "Selection", text: true },
     { key: "pack", label: "Pack", text: true },
     { key: "family_label", label: "Family", text: true },
@@ -692,9 +800,18 @@ function renderMonetization(data) {
     { key: "payers", label: "Payers", format: number },
     { key: "transactions", label: "Txns", format: number },
     { key: "revenue_growth_vs_prior_7_pct", label: "Rev Growth", format: pct },
-  ], 30);
+    ],
+    stateKey: "rawPack",
+    filters: [{ key: "family_label", label: "Family" }],
+    sortKey: "revenue",
+    limitOptions: [10, 20, 30],
+  });
 
-  table("dailyPackTable", m.daily_pack || [], [
+  renderFilteredTable({
+    controlsId: "dailyPackControls",
+    tableId: "dailyPackTable",
+    rows: m.daily_pack || [],
+    columns: [
     { key: "day", label: "Date", text: true, format: shortDate },
     { key: "selection", label: "Selection", text: true },
     { key: "plan_code", label: "Plan", text: true },
@@ -703,7 +820,15 @@ function renderMonetization(data) {
     { key: "payers", label: "Payers", format: number },
     { key: "transactions", label: "Txns", format: number },
     { key: "avg_transaction", label: "Avg Txn", format: money },
-  ], 60);
+    ],
+    stateKey: "dailyPack",
+    filters: [
+      { key: "family_label", label: "Family" },
+      { key: "day", label: "Date" },
+    ],
+    sortKey: "revenue",
+    limitOptions: [10, 25, 50],
+  });
 
   chart("configFunnelRateChart", "bar", {
     labels: m.config_funnel.map((r) => r.trial_type),
@@ -869,7 +994,7 @@ function renderAcquisition(data) {
     { key: "avg_revenue_per_payer", label: "ARPP", format: money },
   ], 10);
 
-  table("acquisitionSegmentTable", a.segments, [
+  const acquisitionSegmentColumns = [
     { key: "selection", label: "Selection", text: true },
     { key: "segment", label: "Segment", text: true },
     { key: "bucket", label: "Bucket", text: true },
@@ -879,7 +1004,16 @@ function renderAcquisition(data) {
     { key: "followup_rate_pct", label: "Follow-up Rate", format: pct },
     { key: "payer_rate_pct", label: "Payer Rate", format: pct },
     { key: "followup_to_payer_pct", label: "F to Pay", format: pct },
-  ], 30);
+  ];
+  renderFilteredTable({
+    controlsId: "acquisitionSegmentControls",
+    tableId: "acquisitionSegmentTable",
+    rows: a.segments,
+    columns: acquisitionSegmentColumns,
+    stateKey: "acquisitionSegment",
+    filters: [{ key: "segment", label: "Segment" }],
+    sortKey: "new_users",
+  });
 
   const conversionSegments = topRows((a.segments || []).filter((row) => Number(row.new_users || 0) >= 50), "payer_rate_pct", 12);
   chart("acquisitionSegmentRateChart", "bar", {
@@ -906,7 +1040,11 @@ function renderAcquisition(data) {
     plugins: { title: { display: true, text: "Largest Acquisition Segments" } },
   });
 
-  table("segmentOpportunityTable", a.segment_opportunities || [], [
+  renderFilteredTable({
+    controlsId: "segmentOpportunityControls",
+    tableId: "segmentOpportunityTable",
+    rows: a.segment_opportunities || [],
+    columns: [
     { key: "selection", label: "Selection", text: true },
     { key: "new_users", label: "New Users", format: number },
     { key: "followup_users", label: "Follow-up", format: number },
@@ -915,7 +1053,12 @@ function renderAcquisition(data) {
     { key: "payer_rate_pct", label: "Payer Rate", format: pct },
     { key: "followup_to_payer_pct", label: "F to Pay", format: pct },
     { key: "opportunity_score", label: "Expected Payers", format: number },
-  ], 40);
+    ],
+    stateKey: "segmentOpportunity",
+    filters: [{ key: "segment", label: "Segment" }],
+    sortKey: "opportunity_score",
+    limitOptions: [10, 20, 40],
+  });
 
   const entityRows = a.followup_entity_events || [];
   const followupCohort = groupedLine(a.followup_daily_user_cohort || [], "date", "user_cohort", "followup_users");
@@ -946,21 +1089,38 @@ function renderAcquisition(data) {
     { key: "pct", label: "%", format: pct },
   ], 30);
 
-  table("followupSegmentTable", a.followup_segment_detail || [], [
+  renderFilteredTable({
+    controlsId: "followupSegmentControls",
+    tableId: "followupSegmentTable",
+    rows: a.followup_segment_detail || [],
+    columns: [
     { key: "selection", label: "Selection", text: true },
     { key: "segment", label: "Segment", text: true },
     { key: "bucket", label: "Bucket", text: true },
     { key: "users", label: "Users", format: number },
     { key: "pct", label: "Share", format: pct },
-  ], 50);
+    ],
+    stateKey: "followupSegment",
+    filters: [{ key: "segment", label: "Segment" }],
+    sortKey: "users",
+  });
 
-  table("followupEntityTable", entityRows, [
+  renderFilteredTable({
+    controlsId: "followupEntityControls",
+    tableId: "followupEntityTable",
+    rows: entityRows,
+    columns: [
     { key: "entity_label", label: "Bot / Entity", text: true },
     { key: "entity_slug", label: "Entity Slug", text: true },
     { key: "bot_id", label: "Bot ID", text: true },
     { key: "entity_match_type", label: "Match", text: true },
     { key: "followup_events", label: "Follow-up Events", format: number },
-  ], 25);
+    ],
+    stateKey: "followupEntity",
+    filters: [{ key: "entity_match_type", label: "Match" }],
+    sortKey: "followup_events",
+    limitOptions: [10, 20, 25],
+  });
 }
 
 function renderRetention(data) {
@@ -1028,7 +1188,11 @@ function renderRetention(data) {
     { key: "minutes_per_user", label: "Min/User", format: (v) => Number(v || 0).toFixed(2) },
   ], 15);
 
-  table("botCohortTable", r.bot_user_cohort || [], [
+  renderFilteredTable({
+    controlsId: "botCohortControls",
+    tableId: "botCohortTable",
+    rows: r.bot_user_cohort || [],
+    columns: [
     { key: "bot_name", label: "Bot", text: true },
     { key: "user_cohort", label: "User Type", text: true },
     { key: "active_users", label: "Users", format: number },
@@ -1036,7 +1200,12 @@ function renderRetention(data) {
     { key: "repeat_rate_pct", label: "Repeat Rate", format: pct },
     { key: "sessions", label: "Sessions", format: number },
     { key: "minutes_per_user", label: "Min/User", format: (v) => Number(v || 0).toFixed(2) },
-  ], 30);
+    ],
+    stateKey: "botCohort",
+    filters: [{ key: "user_cohort", label: "User Type" }],
+    sortKey: "active_users",
+    limitOptions: [10, 20, 30],
+  });
 
   renderBotSegmentTable(r.bot_segment || []);
 }
@@ -1129,7 +1298,11 @@ function renderEngagement(data) {
     { key: "sessions_per_user", label: "Sessions/User", format: (v) => Number(v || 0).toFixed(2) },
   ]);
 
-  table("sessionSegmentTable", e.session_segments || [], [
+  renderFilteredTable({
+    controlsId: "sessionSegmentControls",
+    tableId: "sessionSegmentTable",
+    rows: e.session_segments || [],
+    columns: [
     { key: "selection", label: "Selection", text: true },
     { key: "segment", label: "Segment", text: true },
     { key: "bucket", label: "Bucket", text: true },
@@ -1138,7 +1311,11 @@ function renderEngagement(data) {
     { key: "sessions", label: "Sessions", format: number },
     { key: "sessions_per_user", label: "Sessions/User", format: (v) => Number(v || 0).toFixed(2) },
     { key: "avg_minutes_per_user", label: "Min/User", format: (v) => Number(v || 0).toFixed(2) },
-  ], 50);
+    ],
+    stateKey: "sessionSegment",
+    filters: [{ key: "segment", label: "Segment" }],
+    sortKey: "users",
+  });
 
   table("campaignTable", e.notification_campaigns, [
     { key: "campaign", label: "Campaign", text: true },
