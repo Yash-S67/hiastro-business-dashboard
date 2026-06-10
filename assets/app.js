@@ -41,7 +41,7 @@ function number(value) {
 }
 
 function pct(value) {
-  if (value === null || value === undefined) return "n/a";
+  if (value === null || value === undefined) return "-";
   return `${Number(value).toFixed(2)}%`;
 }
 
@@ -50,7 +50,7 @@ function familyLabel(value) {
     subscription: "Subscription",
     pay_as_you_go: "Pay as you go",
     day_pass: "Day pass",
-  })[value] || String(value || "Unknown").replaceAll("_", " ");
+  })[value] || String(value || "Other").replaceAll("_", " ");
 }
 
 function familyRows(monetization) {
@@ -77,6 +77,32 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function isUnknownLike(value) {
+  if (typeof value !== "string") return false;
+  return value.toLowerCase().includes("unknown");
+}
+
+function rowHasUnknown(row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return isUnknownLike(row);
+  return Object.values(row).some((value) => {
+    if (isUnknownLike(value)) return true;
+    if (value && typeof value === "object") return rowHasUnknown(value);
+    return false;
+  });
+}
+
+function hideUnknownRows(value) {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item) => !rowHasUnknown(item))
+      .map((item) => hideUnknownRows(item));
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, nestedValue]) => [key, hideUnknownRows(nestedValue)]));
+  }
+  return value;
 }
 
 function shortDate(value) {
@@ -376,14 +402,42 @@ function renderMonetization(data) {
   const paygAmounts = m.payg_amount_breakdown || [];
   const topPlan = subscriptionPlans[0] || {};
   const topWalletAmount = paygAmounts[0] || {};
+  const mainPackRows = subscriptionStages
+    .filter((row) => row.stage === "Main" && [199, 499].includes(Number(row.amount)))
+    .sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0));
+  const main499 = mainPackRows.find((row) => Number(row.amount) === 499) || {};
+  const main199 = mainPackRows.find((row) => Number(row.amount) === 199) || {};
+  const mainPackDailyRows = (m.daily_pack || [])
+    .filter((row) => row.family === "subscription" && String(row.pack || "").startsWith("Main Rs ") && [199, 499].includes(Number(row.amount)))
+    .map((row) => ({ ...row, pack_amount: `Rs ${Number(row.amount)}` }));
+  const mainPackDaily = groupedLine(mainPackDailyRows, "day", "pack_amount", "payers");
+  mainPackDaily.labels = mainPackDaily.labels.map(shortDate);
 
   document.getElementById("packPerformanceCards").innerHTML = [
-    card("Best Sub Plan", topPlan.plan_code || "n/a", `${money(topPlan.revenue)} | ${number(topPlan.payers)} payers`),
+    card("Rs 499 Main Users", number(main499.payers), `${money(main499.revenue)} | ${number(main499.transactions)} txns`),
+    card("Rs 199 Main Users", number(main199.payers), `${money(main199.revenue)} | ${number(main199.transactions)} txns`),
+    card("Rs 499 vs 199", `${number(main499.payers)} / ${number(main199.payers)}`, "Main subscription users"),
+    card("Best Sub Plan", topPlan.plan_code || "No plan", `${money(topPlan.revenue)} | ${number(topPlan.payers)} payers`),
     card("Sub Main Buyers", number((subscriptionPlans || []).reduce((sum, row) => sum + Number(row.main_buyers || 0), 0)), "Users buying main subscription packs"),
     card("Sub Trial Buyers", number((subscriptionPlans || []).reduce((sum, row) => sum + Number(row.trial_buyers || 0), 0)), "Users buying trial subscription packs"),
     card("Merged PayG", money(paygMerged.revenue), `${number(paygMerged.payers)} payers | ${trend(paygMerged.revenue_growth_vs_prior_7_pct)} vs prev`),
     card("Top Wallet Amount", optionalMoney(topWalletAmount.amount), `${money(topWalletAmount.revenue)} | ${number(topWalletAmount.transactions)} txns`),
   ].join("");
+
+  chart("mainPackBuyerChart", "line", mainPackDaily, {
+    plugins: { title: { display: true, text: "Rs 499 vs Rs 199 Main Buyers" }, legend: { position: "bottom" } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Users" } } },
+  });
+
+  table("mainPackAmountTable", mainPackRows, [
+    { key: "selection", label: "Selection", text: true },
+    { key: "amount", label: "Amount", format: money },
+    { key: "payers", label: "Users", format: number },
+    { key: "revenue", label: "Revenue", format: money },
+    { key: "revenue_share_pct", label: "Sub Share", format: pct },
+    { key: "transactions", label: "Txns", format: number },
+    { key: "avg_transaction", label: "Avg Txn", format: money },
+  ], 10);
 
   const subscriptionPlanDaily = groupedLine(
     (m.daily_pack || []).filter((row) => row.family === "subscription"),
@@ -1051,7 +1105,7 @@ function renderMetricCoverage(data) {
 async function main() {
   try {
     const response = await fetch(`data/dashboard_data.json?ts=${Date.now()}`, { cache: "no-store" });
-    DASHBOARD_DATA = await response.json();
+    DASHBOARD_DATA = hideUnknownRows(await response.json());
     SELECTED_PERIOD = DASHBOARD_DATA.metadata.default_period || "weekly";
     setupPeriodControls();
     setupTabs();
