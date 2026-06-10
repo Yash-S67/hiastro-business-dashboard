@@ -89,22 +89,51 @@
           </div>
         </div>
         <div class="tab-panel" id="monetization-packs">
+          <div class="kpi-grid compact" id="packPerformanceCards"></div>
+          <div class="grid two">
+            <div class="panel"><canvas id="subscriptionPlanDailyChart"></canvas></div>
+            <div class="panel"><canvas id="paygDailyChart"></canvas></div>
+          </div>
+          <div class="panel">
+            <h3>Subscription Plan Performance</h3>
+            <div id="subscriptionPlanTable"></div>
+          </div>
+          <div class="grid two">
+            <div class="panel">
+              <h3>Subscription Trial and Main Pack Split</h3>
+              <div id="subscriptionStageTable"></div>
+            </div>
+            <div class="panel">
+              <h3>Merged Pay as You Go</h3>
+              <div id="paygMergedTable"></div>
+            </div>
+          </div>
           <div class="grid two">
             <div class="panel"><canvas id="packDailyChart"></canvas></div>
             <div class="panel"><canvas id="payerFrequencyChart"></canvas></div>
           </div>
           <div class="panel">
-            <h3>Pack Revenue</h3>
+            <h3>Pack Revenue, PayG Merged</h3>
             <div id="packTable"></div>
           </div>
           <div class="grid two">
             <div class="panel">
-              <h3>Amount Breakdown</h3>
+              <h3>Pay as You Go Amount Drilldown</h3>
+              <div id="paygAmountTable"></div>
+            </div>
+            <div class="panel">
+              <h3>All Amount Breakdown</h3>
               <div id="amountBreakdownTable"></div>
             </div>
+          </div>
+          <div class="grid two">
             <div class="panel">
               <h3>Revenue Concentration</h3>
               <div id="revenueConcentrationTable"></div>
+            </div>
+            <div class="panel">
+              <h3>Raw Pack Detail</h3>
+              <div id="rawPackTable"></div>
             </div>
           </div>
           <div class="panel">

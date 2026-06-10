@@ -32,6 +32,10 @@ function money(value) {
   return INR.format(Number(value || 0));
 }
 
+function optionalMoney(value) {
+  return value === null || value === undefined || value === "" ? "All" : money(value);
+}
+
 function number(value) {
   return NUM.format(Number(value || 0));
 }
@@ -364,25 +368,112 @@ function renderMonetization(data) {
     { key: "revenue_share_pct", label: "Revenue Share", format: pct },
   ], 10);
 
-  table("packTable", m.pack, [
+  const subscriptionPlans = m.subscription_plan_performance || [];
+  const subscriptionStages = m.subscription_stage_performance || [];
+  const subscriptionPacks = m.subscription_pack || [];
+  const paygMergedRows = m.payg_merged || [];
+  const paygMerged = paygMergedRows[0] || familyMetric(m, "pay_as_you_go");
+  const paygAmounts = m.payg_amount_breakdown || [];
+  const topPlan = subscriptionPlans[0] || {};
+  const topWalletAmount = paygAmounts[0] || {};
+
+  document.getElementById("packPerformanceCards").innerHTML = [
+    card("Best Sub Plan", topPlan.plan_code || "n/a", `${money(topPlan.revenue)} | ${number(topPlan.payers)} payers`),
+    card("Sub Main Buyers", number((subscriptionPlans || []).reduce((sum, row) => sum + Number(row.main_buyers || 0), 0)), "Users buying main subscription packs"),
+    card("Sub Trial Buyers", number((subscriptionPlans || []).reduce((sum, row) => sum + Number(row.trial_buyers || 0), 0)), "Users buying trial subscription packs"),
+    card("Merged PayG", money(paygMerged.revenue), `${number(paygMerged.payers)} payers | ${trend(paygMerged.revenue_growth_vs_prior_7_pct)} vs prev`),
+    card("Top Wallet Amount", optionalMoney(topWalletAmount.amount), `${money(topWalletAmount.revenue)} | ${number(topWalletAmount.transactions)} txns`),
+  ].join("");
+
+  const subscriptionPlanDaily = groupedLine(
+    (m.daily_pack || []).filter((row) => row.family === "subscription"),
+    "day",
+    "plan_code",
+    "revenue",
+  );
+  subscriptionPlanDaily.labels = subscriptionPlanDaily.labels.map(shortDate);
+  chart("subscriptionPlanDailyChart", "line", subscriptionPlanDaily, {
+    plugins: { title: { display: true, text: "Subscription Revenue by Plan" }, legend: { position: "bottom" } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" } } },
+  });
+
+  const paygDailyRows = (m.daily || []).filter((row) => row.family === "pay_as_you_go");
+  chart("paygDailyChart", "line", {
+    labels: paygDailyRows.map((r) => shortDate(r.day)),
+    datasets: [
+      { label: "PayG revenue", data: paygDailyRows.map((r) => r.revenue), borderColor: COLORS.pay_as_you_go, backgroundColor: "rgba(15,118,110,0.12)", yAxisID: "y", tension: 0.25 },
+      { label: "PayG payers", data: paygDailyRows.map((r) => r.payers), borderColor: COLORS.gold, yAxisID: "y1", tension: 0.25 },
+    ],
+  }, {
+    plugins: { title: { display: true, text: "Merged Pay as You Go Trend" }, legend: { position: "bottom" } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Revenue" } },
+      y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Payers" } },
+    },
+  });
+
+  table("subscriptionPlanTable", subscriptionPlans, [
+    { key: "selection", label: "Selection", text: true },
+    { key: "plan_code", label: "Plan", text: true },
+    { key: "revenue", label: "Revenue", format: money },
+    { key: "revenue_share_pct", label: "Sub Share", format: pct },
+    { key: "revenue_growth_vs_prior_7_pct", label: "Rev Growth", format: pct },
+    { key: "payers", label: "Payers", format: number },
+    { key: "transactions", label: "Txns", format: number },
+    { key: "avg_transaction", label: "Avg Txn", format: money },
+    { key: "avg_revenue_per_payer", label: "ARPP", format: money },
+    { key: "trial_revenue", label: "Trial Rev", format: money },
+    { key: "trial_buyers", label: "Trial Buyers", format: number },
+    { key: "main_revenue", label: "Main Rev", format: money },
+    { key: "main_buyers", label: "Main Buyers", format: number },
+    { key: "main_to_trial_buyer_pct", label: "Main / Trial", format: pct },
+  ], 20);
+
+  table("subscriptionStageTable", subscriptionStages, [
+    { key: "selection", label: "Selection", text: true },
+    { key: "stage", label: "Stage", text: true },
+    { key: "amount", label: "Amount", format: money },
+    { key: "revenue", label: "Revenue", format: money },
+    { key: "revenue_share_pct", label: "Sub Share", format: pct },
+    { key: "payers", label: "Payers", format: number },
+    { key: "transactions", label: "Txns", format: number },
+    { key: "avg_transaction", label: "Avg Txn", format: money },
+  ], 20);
+
+  table("paygMergedTable", paygMergedRows, [
+    { key: "selection", label: "Selection", text: true },
+    { key: "revenue", label: "Revenue", format: money },
+    { key: "revenue_share_pct", label: "Revenue Share", format: pct },
+    { key: "revenue_growth_vs_prior_7_pct", label: "Rev Growth", format: pct },
+    { key: "payers", label: "Payers", format: number },
+    { key: "payer_share_pct", label: "Payer Share", format: pct },
+    { key: "transactions", label: "Txns", format: number },
+    { key: "transaction_share_pct", label: "Txn Share", format: pct },
+    { key: "avg_transaction", label: "Avg Txn", format: money },
+    { key: "avg_revenue_per_payer", label: "ARPP", format: money },
+  ], 5);
+
+  table("packTable", m.pack_merged || m.pack, [
     { key: "selection", label: "Selection", text: true },
     { key: "pack", label: "Pack", text: true },
     { key: "family_label", label: "Family", text: true },
     { key: "plan_code", label: "Plan", text: true },
-    { key: "amount", label: "Amount", format: money },
+    { key: "amount", label: "Amount", format: optionalMoney },
     { key: "revenue", label: "Revenue", format: money },
     { key: "payers", label: "Payers", format: number },
     { key: "transactions", label: "Txns", format: number },
     { key: "avg_transaction", label: "Avg Txn", format: money },
     { key: "revenue_share_pct", label: "Revenue Share", format: pct },
+    { key: "revenue_growth_vs_prior_7_pct", label: "Rev Growth", format: pct },
   ], 30);
 
-  const topPackSelections = (m.pack || []).slice(0, 6).map((row) => row.selection);
-  const packDailyRows = (m.daily_pack || []).filter((row) => topPackSelections.includes(row.selection));
+  const topPackSelections = (m.pack_merged || m.pack || []).slice(0, 6).map((row) => row.selection);
+  const packDailyRows = (m.daily_pack_merged || m.daily_pack || []).filter((row) => topPackSelections.includes(row.selection));
   const packDaily = groupedLine(packDailyRows, "day", "selection", "revenue");
   packDaily.labels = packDaily.labels.map(shortDate);
   chart("packDailyChart", "line", packDaily, {
-    plugins: { title: { display: true, text: "Top Pack Revenue Trend" } },
+    plugins: { title: { display: true, text: "Top Pack Revenue Trend, PayG Merged" } },
   });
 
   chart("payerFrequencyChart", "bar", {
@@ -405,6 +496,16 @@ function renderMonetization(data) {
     { key: "avg_transaction", label: "Avg Txn", format: money },
   ], 25);
 
+  table("paygAmountTable", paygAmounts, [
+    { key: "family_label", label: "Family", text: true },
+    { key: "amount", label: "Wallet Amount", format: money },
+    { key: "revenue", label: "Revenue", format: money },
+    { key: "revenue_share_pct", label: "Revenue Share", format: pct },
+    { key: "payers", label: "Payers", format: number },
+    { key: "transactions", label: "Txns", format: number },
+    { key: "avg_transaction", label: "Avg Txn", format: money },
+  ], 20);
+
   table("revenueConcentrationTable", m.revenue_concentration || [], [
     { key: "group", label: "Group", text: true },
     { key: "payers", label: "Payers", format: number },
@@ -412,6 +513,18 @@ function renderMonetization(data) {
     { key: "revenue_share_pct", label: "Revenue Share", format: pct },
     { key: "avg_revenue_per_payer", label: "ARPP", format: money },
   ], 10);
+
+  table("rawPackTable", m.pack || [], [
+    { key: "selection", label: "Selection", text: true },
+    { key: "pack", label: "Pack", text: true },
+    { key: "family_label", label: "Family", text: true },
+    { key: "plan_code", label: "Plan", text: true },
+    { key: "amount", label: "Amount", format: money },
+    { key: "revenue", label: "Revenue", format: money },
+    { key: "payers", label: "Payers", format: number },
+    { key: "transactions", label: "Txns", format: number },
+    { key: "revenue_growth_vs_prior_7_pct", label: "Rev Growth", format: pct },
+  ], 30);
 
   table("dailyPackTable", m.daily_pack || [], [
     { key: "day", label: "Date", text: true, format: shortDate },
@@ -980,8 +1093,15 @@ function setupTabs() {
             panel.classList.toggle("active", panel.id === targetId);
           }
         });
+        const resizeVisibleCharts = () => {
+          Object.values(CHARTS).forEach((chartInstance) => {
+            chartInstance.resize();
+            chartInstance.update("none");
+          });
+        };
         window.requestAnimationFrame(() => {
-          Object.values(CHARTS).forEach((chartInstance) => chartInstance.resize());
+          resizeVisibleCharts();
+          window.setTimeout(resizeVisibleCharts, 120);
         });
       });
     });

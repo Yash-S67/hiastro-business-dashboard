@@ -748,8 +748,34 @@ def build_monetization(
             axis=1,
         )
 
+    pack_merged = pack.copy()
+    payg_family_row = family_summary[family_summary["family"].eq("pay_as_you_go")]
+    if not payg_family_row.empty:
+        payg_current_metrics = kpis(current[current["family"].eq("pay_as_you_go")])
+        payg_prior_metrics = kpis(prior7[prior7["family"].eq("pay_as_you_go")])
+        payg_merged_row = {
+            "family": "pay_as_you_go",
+            "pack": "All wallet recharges",
+            "plan_code": "wallet_recharge",
+            "amount": None,
+            "revenue": payg_current_metrics["revenue"],
+            "transactions": payg_current_metrics["transactions"],
+            "payers": payg_current_metrics["payers"],
+            "prior_revenue": payg_prior_metrics["revenue"],
+            "family_label": revenue_family_label("pay_as_you_go"),
+            "selection": "family = Pay as you go; pack = All wallet recharges",
+            "avg_transaction": payg_current_metrics["avg_transaction"],
+            "revenue_share_pct": safe_div(payg_current_metrics["revenue"], current_kpis["revenue"]),
+            "revenue_growth_vs_prior_7_pct": pct_change(payg_current_metrics["revenue"], payg_prior_metrics["revenue"]),
+        }
+        pack_merged = pd.concat(
+            [pack[pack["family"].ne("pay_as_you_go")], pd.DataFrame([payg_merged_row])],
+            ignore_index=True,
+        ).sort_values("revenue", ascending=False)
+
     if current.empty:
         daily_pack = pd.DataFrame(columns=["day", "family", "family_label", "pack", "plan_code", "amount", "revenue", "transactions", "payers", "avg_transaction"])
+        daily_pack_merged = pd.DataFrame(columns=["day", "family", "family_label", "pack", "plan_code", "amount", "selection", "revenue", "transactions", "payers", "avg_transaction"])
         amount_breakdown = pd.DataFrame(columns=["family", "family_label", "amount", "revenue", "transactions", "payers", "revenue_share_pct", "avg_transaction"])
     else:
         daily_pack = (
@@ -777,6 +803,146 @@ def build_monetization(
         amount_breakdown["family_label"] = amount_breakdown["family"].apply(revenue_family_label)
         amount_breakdown = add_share(amount_breakdown, "revenue", "revenue_share_pct")
         amount_breakdown["avg_transaction"] = (amount_breakdown["revenue"] / amount_breakdown["transactions"]).round(2)
+
+        payg_daily_pack = daily[daily["family"].eq("pay_as_you_go")].copy()
+        payg_daily_pack["pack"] = "All wallet recharges"
+        payg_daily_pack["plan_code"] = "wallet_recharge"
+        payg_daily_pack["amount"] = None
+        payg_daily_pack["selection"] = "family = Pay as you go; pack = All wallet recharges"
+        daily_pack_merged = pd.concat(
+            [
+                daily_pack[daily_pack["family"].ne("pay_as_you_go")],
+                payg_daily_pack[
+                    [
+                        "day",
+                        "family",
+                        "family_label",
+                        "pack",
+                        "plan_code",
+                        "amount",
+                        "selection",
+                        "revenue",
+                        "transactions",
+                        "payers",
+                        "avg_transaction",
+                    ]
+                ],
+            ],
+            ignore_index=True,
+        ).sort_values(["day", "revenue"], ascending=[True, False])
+
+    subscription_current = current[current["family"].eq("subscription")].copy()
+    subscription_prior = prior7[prior7["family"].eq("subscription")].copy()
+    subscription_pack = pack[pack["family"].eq("subscription")].copy()
+    payg_amount_breakdown = amount_breakdown[amount_breakdown["family"].eq("pay_as_you_go")].copy()
+    payg_merged = family_summary[family_summary["family"].eq("pay_as_you_go")].copy()
+    if payg_merged.empty:
+        payg_merged = pd.DataFrame(
+            columns=[
+                "family",
+                "family_label",
+                "selection",
+                "revenue",
+                "payers",
+                "transactions",
+                "avg_transaction",
+                "avg_revenue_per_payer",
+                "revenue_share_pct",
+                "payer_share_pct",
+                "transaction_share_pct",
+                "revenue_growth_vs_prior_7_pct",
+            ]
+        )
+    else:
+        payg_merged["pack"] = "All wallet recharges"
+        payg_merged["plan_code"] = "wallet_recharge"
+
+    if subscription_current.empty:
+        subscription_plan_performance = pd.DataFrame(
+            columns=[
+                "selection",
+                "plan_code",
+                "revenue",
+                "revenue_share_pct",
+                "revenue_growth_vs_prior_7_pct",
+                "payers",
+                "transactions",
+                "avg_transaction",
+                "avg_revenue_per_payer",
+                "trial_revenue",
+                "trial_buyers",
+                "trial_transactions",
+                "main_revenue",
+                "main_buyers",
+                "main_transactions",
+                "main_to_trial_buyer_pct",
+            ]
+        )
+        subscription_stage_performance = pd.DataFrame(
+            columns=["stage", "amount", "selection", "revenue", "revenue_share_pct", "payers", "transactions", "avg_transaction"]
+        )
+    else:
+        def subscription_stage(pack_name: Any) -> str:
+            text_value = str(pack_name or "")
+            if text_value.startswith("Trial"):
+                return "Trial"
+            if text_value.startswith("Main"):
+                return "Main"
+            return "Other"
+
+        subscription_current["stage"] = subscription_current["pack"].apply(subscription_stage)
+        subscription_prior["stage"] = subscription_prior["pack"].apply(subscription_stage)
+        subscription_total_revenue = float(subscription_current["revenue"].sum())
+        plan_rows = []
+        for plan_code in sorted(subscription_current["plan_code"].dropna().astype(str).unique()):
+            plan_df = subscription_current[subscription_current["plan_code"].astype(str).eq(plan_code)]
+            prior_plan_df = subscription_prior[subscription_prior["plan_code"].astype(str).eq(plan_code)]
+            plan_revenue = float(plan_df["revenue"].sum())
+            plan_payers = int(plan_df["user_id"].nunique())
+            plan_transactions = int(plan_df["transactions"].sum())
+            trial_df = plan_df[plan_df["stage"].eq("Trial")]
+            main_df = plan_df[plan_df["stage"].eq("Main")]
+            trial_buyers = int(trial_df["user_id"].nunique())
+            main_buyers = int(main_df["user_id"].nunique())
+            plan_rows.append(
+                {
+                    "selection": f"subscription plan = {plan_code}",
+                    "plan_code": plan_code,
+                    "revenue": round(plan_revenue, 2),
+                    "revenue_share_pct": safe_div(plan_revenue, subscription_total_revenue),
+                    "revenue_growth_vs_prior_7_pct": pct_change(plan_revenue, float(prior_plan_df["revenue"].sum())),
+                    "payers": plan_payers,
+                    "transactions": plan_transactions,
+                    "avg_transaction": round(plan_revenue / plan_transactions, 2) if plan_transactions else 0,
+                    "avg_revenue_per_payer": round(plan_revenue / plan_payers, 2) if plan_payers else 0,
+                    "trial_revenue": round(float(trial_df["revenue"].sum()), 2),
+                    "trial_buyers": trial_buyers,
+                    "trial_transactions": int(trial_df["transactions"].sum()),
+                    "main_revenue": round(float(main_df["revenue"].sum()), 2),
+                    "main_buyers": main_buyers,
+                    "main_transactions": int(main_df["transactions"].sum()),
+                    "main_to_trial_buyer_pct": safe_div(main_buyers, trial_buyers),
+                }
+            )
+        subscription_plan_performance = pd.DataFrame(plan_rows).sort_values("revenue", ascending=False)
+
+        subscription_stage_performance = (
+            subscription_current.groupby(["stage", "amount"], as_index=False)
+            .agg(revenue=("revenue", "sum"), transactions=("transactions", "sum"), payers=("user_id", "nunique"))
+            .sort_values(["stage", "revenue"], ascending=[True, False])
+        )
+        subscription_stage_performance["selection"] = (
+            "subscription stage = "
+            + subscription_stage_performance["stage"].astype(str)
+            + "; amount = Rs "
+            + subscription_stage_performance["amount"].round(0).astype(int).astype(str)
+        )
+        subscription_stage_performance["revenue_share_pct"] = (
+            subscription_stage_performance["revenue"] / subscription_total_revenue * 100
+        ).round(2)
+        subscription_stage_performance["avg_transaction"] = (
+            subscription_stage_performance["revenue"] / subscription_stage_performance["transactions"]
+        ).round(2)
 
     user_revenue = (
         current.groupby("user_id", as_index=False)
@@ -980,9 +1146,16 @@ def build_monetization(
         "daily_user_cohort": records(daily_user_cohort),
         "daily_family_user_cohort": records(daily_family_user_cohort),
         "daily_pack": records(daily_pack.head(80)),
+        "daily_pack_merged": records(daily_pack_merged.head(80)),
         "amount_breakdown": records(amount_breakdown.head(40)),
+        "payg_merged": records(payg_merged.head(1)),
+        "payg_amount_breakdown": records(payg_amount_breakdown.head(30)),
         "family": records(family),
         "pack": records(pack.head(30)),
+        "pack_merged": records(pack_merged.head(30)),
+        "subscription_pack": records(subscription_pack.head(30)),
+        "subscription_plan_performance": records(subscription_plan_performance.head(20)),
+        "subscription_stage_performance": records(subscription_stage_performance.head(20)),
         "payer_frequency": records(payer_frequency.sort_values("revenue", ascending=False)),
         "revenue_concentration": revenue_concentration,
         "payer_segments": records(payer_segments.sort_values(["segment", "revenue"], ascending=[True, False]).head(80)),
