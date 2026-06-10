@@ -27,6 +27,10 @@ Chart.defaults.plugins.tooltip.backgroundColor = "#111827";
 const CHARTS = {};
 let DASHBOARD_DATA = null;
 let SELECTED_PERIOD = "weekly";
+const TABLE_FILTERS = {
+  retentionSegment: { segment: "all", day: "1", limit: 20 },
+  botSegment: { segment: "all", limit: 25 },
+};
 
 function money(value) {
   return INR.format(Number(value || 0));
@@ -203,6 +207,116 @@ function topRows(rows, valueKey, limit = 10) {
   return [...(rows || [])]
     .sort((a, b) => Number(b[valueKey] || 0) - Number(a[valueKey] || 0))
     .slice(0, limit);
+}
+
+function uniqueSorted(rows, key) {
+  return [...new Set((rows || []).map((row) => row[key]).filter((value) => value !== null && value !== undefined))]
+    .map(String)
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+function tableControlButton(label, value, active) {
+  return `<button type="button" data-limit="${value}" class="${active ? "active" : ""}">${label}</button>`;
+}
+
+function renderRetentionSegmentTable(rows) {
+  const sourceRows = rows || [];
+  const state = TABLE_FILTERS.retentionSegment;
+  const segments = uniqueSorted(sourceRows, "segment");
+  const days = uniqueSorted(sourceRows, "day_n");
+  if (state.segment !== "all" && !segments.includes(String(state.segment))) state.segment = "all";
+  if (state.day !== "all" && !days.includes(String(state.day))) state.day = days.includes("1") ? "1" : "all";
+
+  const controls = document.getElementById("retentionSegmentControls");
+  controls.innerHTML = `
+    <label>Segment
+      <select data-filter="segment">
+        <option value="all"${state.segment === "all" ? " selected" : ""}>All</option>
+        ${segments.map((segment) => `<option value="${escapeHtml(segment)}"${state.segment === segment ? " selected" : ""}>${escapeHtml(segment.replaceAll("_", " "))}</option>`).join("")}
+      </select>
+    </label>
+    <label>Day
+      <select data-filter="day">
+        <option value="all"${state.day === "all" ? " selected" : ""}>All days</option>
+        ${days.map((day) => `<option value="${escapeHtml(day)}"${state.day === day ? " selected" : ""}>D${escapeHtml(day)}</option>`).join("")}
+      </select>
+    </label>
+    <div class="limit-toggle" aria-label="Rows to show">
+      ${[10, 20, 50].map((limit) => tableControlButton(`Top ${limit}`, limit, Number(state.limit) === limit)).join("")}
+    </div>
+  `;
+
+  controls.querySelector('select[data-filter="segment"]').addEventListener("change", (event) => {
+    state.segment = event.target.value;
+    renderRetentionSegmentTable(sourceRows);
+  });
+  controls.querySelector('select[data-filter="day"]').addEventListener("change", (event) => {
+    state.day = event.target.value;
+    renderRetentionSegmentTable(sourceRows);
+  });
+  controls.querySelectorAll("button[data-limit]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.limit = Number(button.dataset.limit);
+      renderRetentionSegmentTable(sourceRows);
+    });
+  });
+
+  const filtered = sourceRows
+    .filter((row) => state.segment === "all" || String(row.segment) === state.segment)
+    .filter((row) => state.day === "all" || String(row.day_n) === state.day)
+    .sort((a, b) => Number(b.cohort_users || 0) - Number(a.cohort_users || 0))
+    .slice(0, Number(state.limit));
+  table("retentionSegmentTable", filtered, [
+    { key: "selection", label: "Selection", text: true },
+    { key: "day_n", label: "Day", text: true, format: (v) => `D${v}` },
+    { key: "cohort_users", label: "Cohort", format: number },
+    { key: "retained_users", label: "Retained", format: number },
+    { key: "retention_pct", label: "Retention", format: pct },
+  ], Number(state.limit));
+}
+
+function renderBotSegmentTable(rows) {
+  const sourceRows = rows || [];
+  const state = TABLE_FILTERS.botSegment;
+  const segments = uniqueSorted(sourceRows, "segment");
+  if (state.segment !== "all" && !segments.includes(String(state.segment))) state.segment = "all";
+
+  const controls = document.getElementById("botSegmentControls");
+  controls.innerHTML = `
+    <label>Segment
+      <select data-filter="segment">
+        <option value="all"${state.segment === "all" ? " selected" : ""}>All</option>
+        ${segments.map((segment) => `<option value="${escapeHtml(segment)}"${state.segment === segment ? " selected" : ""}>${escapeHtml(segment.replaceAll("_", " "))}</option>`).join("")}
+      </select>
+    </label>
+    <div class="limit-toggle" aria-label="Rows to show">
+      ${[10, 25, 50].map((limit) => tableControlButton(`Top ${limit}`, limit, Number(state.limit) === limit)).join("")}
+    </div>
+  `;
+
+  controls.querySelector('select[data-filter="segment"]').addEventListener("change", (event) => {
+    state.segment = event.target.value;
+    renderBotSegmentTable(sourceRows);
+  });
+  controls.querySelectorAll("button[data-limit]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.limit = Number(button.dataset.limit);
+      renderBotSegmentTable(sourceRows);
+    });
+  });
+
+  const filtered = sourceRows
+    .filter((row) => state.segment === "all" || String(row.segment) === state.segment)
+    .sort((a, b) => Number(b.active_users || 0) - Number(a.active_users || 0))
+    .slice(0, Number(state.limit));
+  table("botSegmentTable", filtered, [
+    { key: "selection", label: "Selection", text: true },
+    { key: "active_users", label: "Users", format: number },
+    { key: "repeat_users_2plus_days", label: "Repeat Users", format: number },
+    { key: "repeat_rate_pct", label: "Repeat Rate", format: pct },
+    { key: "sessions", label: "Sessions", format: number },
+    { key: "minutes_per_user", label: "Min/User", format: (v) => Number(v || 0).toFixed(2) },
+  ], Number(state.limit));
 }
 
 function chart(id, type, data, options = {}) {
@@ -895,13 +1009,7 @@ function renderRetention(data) {
     { key: "retention_pct", label: "Retention", format: pct },
   ], 30);
 
-  table("retentionSegmentTable", r.segment_retention || [], [
-    { key: "selection", label: "Selection", text: true },
-    { key: "day_n", label: "Day", text: true, format: (v) => `D${v}` },
-    { key: "cohort_users", label: "Cohort", format: number },
-    { key: "retained_users", label: "Retained", format: number },
-    { key: "retention_pct", label: "Retention", format: pct },
-  ], 80);
+  renderRetentionSegmentTable(r.segment_retention || []);
 
   chart("botRepeatChart", "bar", {
     labels: r.bot.slice(0, 10).map((x) => x.bot_name),
@@ -930,14 +1038,7 @@ function renderRetention(data) {
     { key: "minutes_per_user", label: "Min/User", format: (v) => Number(v || 0).toFixed(2) },
   ], 30);
 
-  table("botSegmentTable", r.bot_segment || [], [
-    { key: "selection", label: "Selection", text: true },
-    { key: "active_users", label: "Users", format: number },
-    { key: "repeat_users_2plus_days", label: "Repeat Users", format: number },
-    { key: "repeat_rate_pct", label: "Repeat Rate", format: pct },
-    { key: "sessions", label: "Sessions", format: number },
-    { key: "minutes_per_user", label: "Min/User", format: (v) => Number(v || 0).toFixed(2) },
-  ], 60);
+  renderBotSegmentTable(r.bot_segment || []);
 }
 
 function renderEngagement(data) {

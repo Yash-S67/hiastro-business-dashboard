@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HiAstro Business Dashboard</title>
-    <link rel="stylesheet" href="assets/styles.css?v=20260610-detail-metrics" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260610-retention-filters" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -273,6 +273,7 @@
           </div>
           <div class="panel">
             <h3>Retention by Segment Detail</h3>
+            <div class="table-controls" id="retentionSegmentControls"></div>
             <div id="retentionSegmentTable"></div>
           </div>
         </div>
@@ -290,6 +291,7 @@
           </div>
           <div class="panel">
             <h3>Bot Repeat by Segment</h3>
+            <div class="table-controls" id="botSegmentControls"></div>
             <div id="botSegmentTable"></div>
           </div>
         </div>
@@ -393,6 +395,6 @@
       </section>
     </main>
 
-    <script src="assets/app.js?v=20260610-paywall-cta-funnel"></script>
+    <script src="assets/app.js?v=20260610-retention-filters"></script>
   </body>
 </html>
