@@ -306,6 +306,14 @@ def fetch_mixpanel_events(env: dict[str, str], events: list[str], start: date, e
                                 "$region",
                                 "$city",
                                 "campaign_name",
+                                "has_trial",
+                                "charge_amount",
+                                "plan_amount",
+                                "plan_id",
+                                "action",
+                                "selected_amount",
+                                "amount_requested",
+                                "start_trial",
                             )
                         }
                         slim_props["_event_time_ist"] = local_ts.isoformat()
@@ -342,6 +350,10 @@ def aggregate_mixpanel(
         "age_bucket": Counter(),
         "region": Counter(),
     }
+    subscription_paywall_user_daily: dict[tuple[str, str], dict[str, Any]] = defaultdict(lambda: {"paywall_shown": 0})
+    subscription_trial_cta_user_daily: dict[tuple[Any, ...], dict[str, Any]] = defaultdict(
+        lambda: {"trial_cta_clicks": 0}
+    )
     bim_daily: dict[str, dict[str, Any]] = defaultdict(lambda: {"opens": 0, "users": set()})
     bim_platform: dict[str, dict[str, Any]] = defaultdict(lambda: {"opens": 0, "users": set()})
     bim_user_daily: dict[tuple[str, str], dict[str, Any]] = defaultdict(lambda: {"opens": 0})
@@ -393,6 +405,18 @@ def aggregate_mixpanel(
             for field in followup_segment_counts:
                 value = followup_users[user_id].get(field) or "Unknown"
                 followup_segment_counts[field][value] += 1
+
+        elif name == "subscription_paywall_shown" and user_id:
+            subscription_paywall_user_daily[(event_date, user_id)]["paywall_shown"] += 1
+
+        elif name == "subscription_trial_initiated" and user_id:
+            trial_amount = pd.to_numeric(props.get("charge_amount"), errors="coerce")
+            main_pack_amount = pd.to_numeric(props.get("plan_amount"), errors="coerce")
+            trial_amount = None if pd.isna(trial_amount) else float(round(float(trial_amount), 0))
+            main_pack_amount = None if pd.isna(main_pack_amount) else float(round(float(main_pack_amount), 0))
+            subscription_trial_cta_user_daily[(event_date, user_id, trial_amount, main_pack_amount)][
+                "trial_cta_clicks"
+            ] += 1
 
         elif name == "App Opened from Notification":
             campaign = str(props.get("campaign_name") or "Unknown")
@@ -488,6 +512,26 @@ def aggregate_mixpanel(
             for field, counter in followup_segment_counts.items()
         },
         "followup_demographics": followup_demographics,
+        "subscription_paywall_user_daily": [
+            {
+                "date": event_date,
+                "user_id": user_id,
+                "paywall_shown": value["paywall_shown"],
+            }
+            for (event_date, user_id), value in sorted(subscription_paywall_user_daily.items())
+        ],
+        "subscription_trial_cta_user_daily": [
+            {
+                "date": event_date,
+                "user_id": user_id,
+                "trial_amount": trial_amount,
+                "main_pack_amount": main_pack_amount,
+                "trial_cta_clicks": value["trial_cta_clicks"],
+            }
+            for (event_date, user_id, trial_amount, main_pack_amount), value in sorted(
+                subscription_trial_cta_user_daily.items()
+            )
+        ],
         "bim_daily": open_rows(bim_daily, "date"),
         "bim_by_platform": open_rows(bim_platform, "platform"),
         "bim_user_daily": [
@@ -1498,7 +1542,12 @@ def build_acquisition(
     }
 
 
-def build_config_funnel(engine, ranges: dict[str, Any], followup_user_ids: set[str]) -> list[dict[str, Any]]:
+def build_config_funnel(
+    engine,
+    ranges: dict[str, Any],
+    followup_user_ids: set[str],
+    mixpanel: dict[str, Any],
+) -> list[dict[str, Any]]:
     users = read_sql(
         engine,
         """
@@ -1527,10 +1576,27 @@ def build_config_funnel(engine, ranges: dict[str, Any], followup_user_ids: set[s
         },
     )
     purchases["amount"] = pd.to_numeric(purchases["charge_amount"], errors="coerce").round(0)
+    paywall_events = pd.DataFrame(mixpanel.get("subscription_paywall_user_daily", []))
+    trial_cta_events = pd.DataFrame(mixpanel.get("subscription_trial_cta_user_daily", []))
+    if paywall_events.empty:
+        paywall_events = pd.DataFrame(columns=["user_id", "paywall_shown"])
+    if trial_cta_events.empty:
+        trial_cta_events = pd.DataFrame(columns=["user_id", "trial_amount", "main_pack_amount", "trial_cta_clicks"])
+    for column in ["trial_amount", "main_pack_amount"]:
+        trial_cta_events[column] = pd.to_numeric(trial_cta_events[column], errors="coerce").round(0)
+
     rows = []
     for config_id, trial_amount in [(18, 1), (20, 49)]:
         cohort_ids = set(users.loc[users["config_id"].eq(config_id), "user_id"])
         follow_ids = cohort_ids.intersection(followup_user_ids)
+        paywall_ids = follow_ids.intersection(set(paywall_events["user_id"]))
+        config_trial_cta = trial_cta_events[
+            trial_cta_events["user_id"].isin(follow_ids)
+            & trial_cta_events["trial_amount"].eq(trial_amount)
+        ].copy()
+        trial_cta_ids = set(config_trial_cta["user_id"])
+        trial_cta_199_ids = set(config_trial_cta.loc[config_trial_cta["main_pack_amount"].eq(199), "user_id"])
+        trial_cta_499_ids = set(config_trial_cta.loc[config_trial_cta["main_pack_amount"].eq(499), "user_id"])
         follow_purchases = purchases[purchases["user_id"].isin(follow_ids)]
         trial_ids = set(
             follow_purchases.loc[
@@ -1558,13 +1624,21 @@ def build_config_funnel(engine, ranges: dict[str, Any], followup_user_ids: set[s
             {
                 "config_id": config_id,
                 "trial_type": "Rs 1 trial" if config_id == 18 else "Rs 49 trial",
+                "trial_amount": trial_amount,
                 "assigned_users": len(cohort_ids),
                 "followup_users": len(follow_ids),
+                "paywall_shown_users": len(paywall_ids),
+                "trial_cta_users": len(trial_cta_ids),
                 "trial_buyers": len(trial_ids),
                 "main_plan_buyers": len(main_ids),
+                "trial_cta_199_pack_users": len(trial_cta_199_ids),
+                "trial_cta_499_pack_users": len(trial_cta_499_ids),
                 "main_199_buyers": len(main_199_ids),
                 "main_499_buyers": len(main_499_ids),
                 "assigned_to_followup_pct": safe_div(len(follow_ids), len(cohort_ids)),
+                "followup_to_paywall_pct": safe_div(len(paywall_ids), len(follow_ids)),
+                "paywall_to_trial_cta_pct": safe_div(len(trial_cta_ids), len(paywall_ids)),
+                "trial_cta_to_trial_purchase_pct": safe_div(len(trial_ids), len(trial_cta_ids)),
                 "followup_to_trial_pct": safe_div(len(trial_ids), len(follow_ids)),
                 "trial_to_main_pct": safe_div(len(main_ids), len(trial_ids)),
                 "followup_to_main_pct": safe_div(len(main_ids), len(follow_ids)),
@@ -1962,6 +2036,11 @@ def build_metric_coverage(period_dashboard: dict[str, Any]) -> dict[str, Any]:
     demographics = acquisition.get("followup_demographics", {})
     unknown_gender_pct = bucket_pct(demographics.get("gender", []), "unknown")
     unknown_age_pct = bucket_pct(demographics.get("age_bucket", []), "unknown")
+    config_rows = monetization.get("config_funnel", [])
+    has_paywall_cta = any(
+        row.get("paywall_shown_users", 0) or row.get("trial_cta_users", 0)
+        for row in config_rows
+    )
     followup_entities = acquisition.get("followup_entity_events", [])
     total_entity_events = sum(row.get("followup_events", 0) for row in followup_entities)
     unmapped_entity_events = sum(
@@ -2000,10 +2079,10 @@ def build_metric_coverage(period_dashboard: dict[str, Any]) -> dict[str, Any]:
         {
             "area": "Monetization",
             "metric": "Rs 1 / Rs 49 config to trial and main plan funnel",
-            "status": "Partial",
-            "coverage_pct": 80,
-            "missing_detail": "Config assignment and purchases are available; exact paywall impression and click events are not in the current export.",
-            "next_data_needed": "Add paywall shown and trial CTA clicked events with config_id and pack amount.",
+            "status": "Available" if has_paywall_cta else "Partial",
+            "coverage_pct": 100 if has_paywall_cta else 80,
+            "missing_detail": "None" if has_paywall_cta else "Config assignment and purchases are available; paywall and CTA events were not found.",
+            "next_data_needed": "None" if has_paywall_cta else "Track subscription_paywall_shown and subscription_trial_initiated with user_id.",
         },
         {
             "area": "Acquisition",
@@ -2026,16 +2105,16 @@ def build_metric_coverage(period_dashboard: dict[str, Any]) -> dict[str, Any]:
             "metric": "Follow-up user gender distribution",
             "status": "Partial" if unknown_gender_pct >= 20 else "Available",
             "coverage_pct": round(100 - unknown_gender_pct, 2),
-            "missing_detail": f"{unknown_gender_pct:.2f}% of follow-up users have unknown gender.",
-            "next_data_needed": "Improve profile gender collection or pass profile gender into Mixpanel user profiles.",
+            "missing_detail": f"{unknown_gender_pct:.2f}% of follow-up users have missing DB profile gender.",
+            "next_data_needed": "Backfill prod.user_profiles.gender or improve in-app gender collection.",
         },
         {
             "area": "Persona",
             "metric": "Follow-up user age distribution",
             "status": "Partial" if unknown_age_pct >= 20 else "Available",
             "coverage_pct": round(100 - unknown_age_pct, 2),
-            "missing_detail": f"{unknown_age_pct:.2f}% of follow-up users have unknown age/dob.",
-            "next_data_needed": "Improve DOB/profile coverage or pass age bucket into Mixpanel user profiles.",
+            "missing_detail": f"{unknown_age_pct:.2f}% of follow-up users have missing DB profile DOB.",
+            "next_data_needed": "Backfill prod.user_profiles.birth_datetime_utc or improve DOB collection.",
         },
         {
             "area": "Bot / Entity",
@@ -2100,7 +2179,7 @@ def build_period_dashboard(
         user_family_revenue_current = pd.DataFrame(columns=["user_id", "family", "revenue", "transactions"])
 
     acquisition = build_acquisition(profiles, ranges, mixpanel, user_revenue_current, user_family_revenue_current)
-    config_funnel = build_config_funnel(engine, ranges, set(mixpanel["followup_users"].keys()))
+    config_funnel = build_config_funnel(engine, ranges, set(mixpanel["followup_users"].keys()), mixpanel)
     retention = build_retention(engine, profiles, ranges)
     engagement = build_engagement(mixpanel, profiles, ranges)
     period_dashboard = {
@@ -2154,7 +2233,14 @@ def main() -> None:
 
     mixpanel_events = fetch_mixpanel_events(
         env,
-        ["$ae_session", "Login Success", "Follow up Query", "App Opened from Notification"],
+        [
+            "$ae_session",
+            "Login Success",
+            "Follow up Query",
+            "App Opened from Notification",
+            "subscription_paywall_shown",
+            "subscription_trial_initiated",
+        ],
         mixpanel_start,
         current_end,
     )
@@ -2196,6 +2282,7 @@ def main() -> None:
                 "Pay as you go means successful ADD_MONEY wallet payment orders.",
                 "Customized day pass means successful DAY_PASS payment orders.",
                 "Acquisition new users come from MySQL users.created_at; login success comes from Mixpanel.",
+                "Config funnel paywall shown and trial CTA clicks come from Mixpanel; config, purchases, gender, and DOB-derived age buckets come from MySQL.",
                 "Follow-up entity values are resolved to bot names using chat_session bot_id and normalized bot-name slugs.",
                 "Retention uses completed MySQL chat_session activity for new-user cohorts.",
                 "Engagement duration and BIM notification opens come from Mixpanel app events.",
