@@ -60,6 +60,10 @@ function pct(value) {
   return `${Number(value).toFixed(2)}%`;
 }
 
+function safePercent(num, den) {
+  return den ? (Number(num || 0) / Number(den || 0)) * 100 : 0;
+}
+
 function familyLabel(value) {
   return ({
     subscription: "Subscription",
@@ -340,6 +344,90 @@ function renderFilteredTable({ controlsId, tableId, rows, columns, stateKey, fil
   table(tableId, filtered, columns, Number(state.limit));
 }
 
+function trendSection(sectionKey) {
+  if (SELECTED_PERIOD === "daily") {
+    return DASHBOARD_DATA.periods?.weekly?.[sectionKey] || selectedData()[sectionKey];
+  }
+  return selectedData()[sectionKey];
+}
+
+function trendWindowLabel() {
+  return SELECTED_PERIOD === "daily" ? "Last 7 days" : "Selected period";
+}
+
+function dashboardDateOptions() {
+  const weekly = DASHBOARD_DATA.periods?.weekly;
+  const days = new Set();
+  (weekly?.monetization?.daily_summary || []).forEach((row) => days.add(row.day));
+  (weekly?.acquisition?.daily || []).forEach((row) => days.add(row.signup_date));
+  (weekly?.engagement?.session_daily || []).forEach((row) => days.add(row.date));
+  return [...days].filter(Boolean).sort();
+}
+
+function csvValue(value) {
+  const text = String(value ?? "");
+  return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+function downloadCsv(filename, rows) {
+  if (!rows.length) return;
+  const columns = ["area", "table", ...[...new Set(rows.flatMap((row) => Object.keys(row)))].filter((key) => !["area", "table"].includes(key))];
+  const csv = [
+    columns.join(","),
+    ...rows.map((row) => columns.map((column) => csvValue(row[column])).join(",")),
+  ].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function dayRows(rows, key, day) {
+  return (rows || []).filter((row) => row[key] === day);
+}
+
+function buildDayExportRows(day) {
+  const weekly = DASHBOARD_DATA.periods?.weekly || selectedData();
+  const sections = [
+    ["Monetization", "Daily revenue by stream", dayRows(weekly.monetization?.daily, "day", day)],
+    ["Monetization", "Daily pack detail", dayRows(weekly.monetization?.daily_pack_merged || weekly.monetization?.daily_pack, "day", day)],
+    ["Monetization", "Daily new vs old revenue", dayRows(weekly.monetization?.daily_user_cohort, "day", day)],
+    ["Acquisition", "Daily new user funnel", dayRows(weekly.acquisition?.daily, "signup_date", day)],
+    ["Acquisition", "Daily payment family", dayRows(weekly.acquisition?.daily_payment_family, "signup_date", day)],
+    ["Engagement", "Daily sessions", dayRows(weekly.engagement?.session_daily, "date", day)],
+    ["Engagement", "Daily BIM opens", dayRows(weekly.engagement?.bim_daily, "date", day)],
+    ["Engagement", "Session new vs old", dayRows(weekly.engagement?.session_user_cohort_daily, "date", day)],
+    ["Engagement", "BIM new vs old", dayRows(weekly.engagement?.bim_user_cohort_daily, "date", day)],
+  ];
+  return sections.flatMap(([area, tableName, rows]) => rows.map((row) => ({ area, table: tableName, ...row })));
+}
+
+function setupDayDownloadControls() {
+  const controls = document.getElementById("dayDownloadControls");
+  if (!controls) return;
+  const days = dashboardDateOptions();
+  if (!days.length) {
+    controls.innerHTML = "";
+    return;
+  }
+  const defaultDay = days[days.length - 1];
+  controls.innerHTML = `
+    <select id="downloadDaySelect" aria-label="Day to download">
+      ${days.map((day) => `<option value="${escapeHtml(day)}"${day === defaultDay ? " selected" : ""}>${escapeHtml(shortDate(day))}</option>`).join("")}
+    </select>
+    <button type="button" id="downloadDayCsv">Download CSV</button>
+  `;
+  document.getElementById("downloadDayCsv").addEventListener("click", () => {
+    const day = document.getElementById("downloadDaySelect").value;
+    downloadCsv(`hiastro-dashboard-${day}.csv`, buildDayExportRows(day));
+  });
+}
+
 function renderRetentionSegmentTable(rows) {
   const sourceRows = rows || [];
   const state = TABLE_FILTERS.retentionSegment;
@@ -502,6 +590,8 @@ function renderOverview(data) {
 function renderMonetization(data) {
   const meta = data.metadata;
   const m = data.monetization;
+  const mTrend = trendSection("monetization");
+  const chartLabel = trendWindowLabel();
   const k = m.kpis.current;
   const g7 = m.kpis.growth_vs_prior_7;
   const g30 = m.kpis.growth_vs_prior_30_7day_baseline;
@@ -526,14 +616,14 @@ function renderMonetization(data) {
     streamCard(dayPass, COLORS.day_pass),
   ].join("");
 
-  const daily = groupedDaily(m.daily);
+  const daily = groupedDaily(mTrend.daily || m.daily);
   daily.labels = daily.labels.map(shortDate);
   chart("revenueDailyChart", "line", daily, {
-    plugins: { title: { display: true, text: "Daily Revenue by Family" }, legend: { position: "bottom" } },
+    plugins: { title: { display: true, text: `${chartLabel}: Daily Revenue by Family` }, legend: { position: "bottom" } },
     scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" } } },
   });
 
-  const dailySummary = m.daily_summary || [];
+  const dailySummary = mTrend.daily_summary || m.daily_summary || [];
   chart("revenueRateChart", "line", {
     labels: dailySummary.map((r) => shortDate(r.day)),
     datasets: [
@@ -542,7 +632,7 @@ function renderMonetization(data) {
       { label: "Avg txn", data: dailySummary.map((r) => r.avg_transaction), borderColor: COLORS.gold, yAxisID: "y1", tension: 0.25 },
     ],
   }, {
-    plugins: { title: { display: true, text: "Revenue, Payers and Avg Transaction Trend" } },
+    plugins: { title: { display: true, text: `${chartLabel}: Revenue, Payers and Avg Transaction` } },
     scales: {
       x: { grid: { display: false } },
       y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Revenue" } },
@@ -550,16 +640,16 @@ function renderMonetization(data) {
     },
   });
 
-  const familyPayers = groupedDaily(m.daily || [], "family", "payers");
+  const familyPayers = groupedDaily(mTrend.daily || m.daily || [], "family", "payers");
   familyPayers.labels = familyPayers.labels.map(shortDate);
   chart("familyPayerChart", "line", familyPayers, {
-    plugins: { title: { display: true, text: "Daily Payers by Revenue Stream" } },
+    plugins: { title: { display: true, text: `${chartLabel}: Payers by Revenue Stream` } },
   });
 
-  const familyAvgTxn = groupedDaily(m.daily || [], "family", "avg_transaction");
+  const familyAvgTxn = groupedDaily(mTrend.daily || m.daily || [], "family", "avg_transaction");
   familyAvgTxn.labels = familyAvgTxn.labels.map(shortDate);
   chart("familyAvgTxnChart", "line", familyAvgTxn, {
-    plugins: { title: { display: true, text: "Avg Transaction by Revenue Stream" } },
+    plugins: { title: { display: true, text: `${chartLabel}: Avg Transaction by Stream` } },
   });
 
   chart("revenueFamilyChart", "doughnut", {
@@ -581,10 +671,10 @@ function renderMonetization(data) {
     scales: { x: { grid: { display: false } }, y: { beginAtZero: true, max: 100, grid: { color: "#eef2f6" } } },
   });
 
-  const cohortRevenue = groupedLine(m.daily_user_cohort || [], "day", "user_cohort", "revenue");
+  const cohortRevenue = groupedLine(mTrend.daily_user_cohort || m.daily_user_cohort || [], "day", "user_cohort", "revenue");
   cohortRevenue.labels = cohortRevenue.labels.map(shortDate);
   chart("revenueCohortChart", "line", cohortRevenue, {
-    plugins: { title: { display: true, text: "Revenue by New vs Old Users" } },
+    plugins: { title: { display: true, text: `${chartLabel}: Revenue by New vs Old Users` } },
   });
 
   table("revenueStreamKpiTable", m.kpis?.by_family || m.family || [], [
@@ -691,7 +781,7 @@ function renderMonetization(data) {
     .sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0));
   const main499 = mainPackRows.find((row) => Number(row.amount) === 499) || {};
   const main199 = mainPackRows.find((row) => Number(row.amount) === 199) || {};
-  const mainPackDailyRows = (m.daily_pack || [])
+  const mainPackDailyRows = (mTrend.daily_pack || m.daily_pack || [])
     .filter((row) => row.family === "subscription" && String(row.pack || "").startsWith("Main Rs ") && [199, 499].includes(Number(row.amount)))
     .map((row) => ({ ...row, pack_amount: `Rs ${Number(row.amount)}` }));
   const mainPackDaily = groupedLine(mainPackDailyRows, "day", "pack_amount", "payers");
@@ -725,7 +815,7 @@ function renderMonetization(data) {
   ].join("");
 
   chart("mainPackBuyerChart", "line", mainPackDaily, {
-    plugins: { title: { display: true, text: "Rs 499 vs Rs 199 Main Buyers" }, legend: { position: "bottom" } },
+    plugins: { title: { display: true, text: `${chartLabel}: Rs 499 vs Rs 199 Main Buyers` }, legend: { position: "bottom" } },
     scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Users" } } },
   });
 
@@ -747,18 +837,18 @@ function renderMonetization(data) {
   ], 10);
 
   const subscriptionPlanDaily = groupedLine(
-    (m.daily_pack || []).filter((row) => row.family === "subscription"),
+    (mTrend.daily_pack || m.daily_pack || []).filter((row) => row.family === "subscription"),
     "day",
     "plan_code",
     "revenue",
   );
   subscriptionPlanDaily.labels = subscriptionPlanDaily.labels.map(shortDate);
   chart("subscriptionPlanDailyChart", "line", subscriptionPlanDaily, {
-    plugins: { title: { display: true, text: "Subscription Revenue by Plan" }, legend: { position: "bottom" } },
+    plugins: { title: { display: true, text: `${chartLabel}: Subscription Revenue by Plan` }, legend: { position: "bottom" } },
     scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" } } },
   });
 
-  const paygDailyRows = (m.daily || []).filter((row) => row.family === "pay_as_you_go");
+  const paygDailyRows = (mTrend.daily || m.daily || []).filter((row) => row.family === "pay_as_you_go");
   chart("paygDailyChart", "line", {
     labels: paygDailyRows.map((r) => shortDate(r.day)),
     datasets: [
@@ -766,7 +856,7 @@ function renderMonetization(data) {
       { label: "PayG payers", data: paygDailyRows.map((r) => r.payers), borderColor: COLORS.gold, yAxisID: "y1", tension: 0.25 },
     ],
   }, {
-    plugins: { title: { display: true, text: "Merged Pay as You Go Trend" }, legend: { position: "bottom" } },
+    plugins: { title: { display: true, text: `${chartLabel}: Merged Pay as You Go` }, legend: { position: "bottom" } },
     scales: {
       x: { grid: { display: false } },
       y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Revenue" } },
@@ -856,11 +946,11 @@ function renderMonetization(data) {
   });
 
   const topPackSelections = (m.pack_merged || m.pack || []).slice(0, 6).map((row) => row.selection);
-  const packDailyRows = (m.daily_pack_merged || m.daily_pack || []).filter((row) => topPackSelections.includes(row.selection));
+  const packDailyRows = (mTrend.daily_pack_merged || mTrend.daily_pack || m.daily_pack_merged || m.daily_pack || []).filter((row) => topPackSelections.includes(row.selection));
   const packDaily = groupedLine(packDailyRows, "day", "selection", "revenue");
   packDaily.labels = packDaily.labels.map(shortDate);
   chart("packDailyChart", "line", packDaily, {
-    plugins: { title: { display: true, text: "Top Pack Revenue Trend, PayG Merged" } },
+    plugins: { title: { display: true, text: `${chartLabel}: Top Pack Revenue, PayG Merged` } },
   });
 
   chart("payerFrequencyChart", "bar", {
@@ -945,6 +1035,28 @@ function renderMonetization(data) {
     limitOptions: [10, 25, 50],
   });
 
+  const configRows = m.config_funnel || [];
+  const funnelTotals = configRows.reduce((acc, row) => {
+    ["assigned_users", "followup_users", "paywall_shown_users", "trial_cta_users", "trial_buyers", "main_plan_buyers", "main_199_buyers", "main_499_buyers"].forEach((key) => {
+      acc[key] = (acc[key] || 0) + Number(row[key] || 0);
+    });
+    return acc;
+  }, {});
+  const bestTrialConfig = [...configRows].sort((a, b) => Number(b.followup_to_trial_pct || 0) - Number(a.followup_to_trial_pct || 0))[0] || {};
+  const bestMainConfig = [...configRows].sort((a, b) => Number(b.trial_to_main_pct || 0) - Number(a.trial_to_main_pct || 0))[0] || {};
+  document.getElementById("monetizationFunnelSummary").innerHTML = [
+    funnelStep("Assigned", number(funnelTotals.assigned_users), "Config 18 + 20 users"),
+    funnelStep("Follow-up", number(funnelTotals.followup_users), `${pct(safePercent(funnelTotals.followup_users, funnelTotals.assigned_users))} of assigned`),
+    funnelStep("Paywall", number(funnelTotals.paywall_shown_users), `${pct(safePercent(funnelTotals.paywall_shown_users, funnelTotals.followup_users))} of follow-up`),
+    funnelStep("Trial Buyers", number(funnelTotals.trial_buyers), `${pct(safePercent(funnelTotals.trial_buyers, funnelTotals.followup_users))} of follow-up`),
+    funnelStep("Main Buyers", number(funnelTotals.main_plan_buyers), `${pct(safePercent(funnelTotals.main_plan_buyers, funnelTotals.trial_buyers))} of trials`),
+  ].join("");
+  document.getElementById("monetizationFunnelCards").innerHTML = [
+    actionCard("Best Trial Flow", bestTrialConfig.trial_type || "-", `${pct(bestTrialConfig.followup_to_trial_pct)} follow-up to trial`, "good"),
+    actionCard("Best Main Conversion", bestMainConfig.trial_type || "-", `${pct(bestMainConfig.trial_to_main_pct)} trial to main`, "good"),
+    actionCard("Main Pack Split", `${number(funnelTotals.main_499_buyers)} / ${number(funnelTotals.main_199_buyers)}`, "Rs 499 buyers / Rs 199 buyers", "neutral"),
+  ].join("");
+
   chart("configFunnelRateChart", "bar", {
     labels: m.config_funnel.map((r) => r.trial_type),
     datasets: [
@@ -1017,6 +1129,8 @@ function renderMonetization(data) {
 
 function renderAcquisition(data) {
   const a = data.acquisition;
+  const aTrend = trendSection("acquisition");
+  const chartLabel = trendWindowLabel();
   const paymentRows = a.payment_type_funnel || [];
   const paymentMetric = (familyId) => paymentRows.find((row) => row.family === familyId) || { payers: 0, revenue: 0, new_to_payment_pct: 0, followup_to_payment_pct: 0 };
   const subPayment = paymentMetric("subscription");
@@ -1052,35 +1166,35 @@ function renderAcquisition(data) {
   ].join("");
 
   chart("newUsersChart", "line", {
-    labels: a.daily.map((r) => shortDate(r.signup_date)),
+    labels: (aTrend.daily || a.daily).map((r) => shortDate(r.signup_date)),
     datasets: [
-      { label: "New users", data: a.daily.map((r) => r.new_users), borderColor: COLORS.blue, tension: 0.25 },
-      { label: "Follow-up users", data: a.daily.map((r) => r.followup_users), borderColor: COLORS.teal, tension: 0.25 },
-      { label: "Payers", data: a.daily.map((r) => r.payers), borderColor: COLORS.gold, tension: 0.25 },
+      { label: "New users", data: (aTrend.daily || a.daily).map((r) => r.new_users), borderColor: COLORS.blue, tension: 0.25 },
+      { label: "Follow-up users", data: (aTrend.daily || a.daily).map((r) => r.followup_users), borderColor: COLORS.teal, tension: 0.25 },
+      { label: "Payers", data: (aTrend.daily || a.daily).map((r) => r.payers), borderColor: COLORS.gold, tension: 0.25 },
     ],
-  }, { plugins: { title: { display: true, text: "New User Daily Funnel" } } });
+  }, { plugins: { title: { display: true, text: `${chartLabel}: New User Daily Funnel` } } });
 
   chart("acquisitionRateChart", "line", {
-    labels: a.daily.map((r) => shortDate(r.signup_date)),
+    labels: (aTrend.daily || a.daily).map((r) => shortDate(r.signup_date)),
     datasets: [
-      { label: "Follow-up rate %", data: a.daily.map((r) => r.followup_rate_pct), borderColor: COLORS.teal, backgroundColor: "rgba(15,118,110,0.12)", tension: 0.25 },
-      { label: "Payment rate %", data: a.daily.map((r) => r.payer_rate_pct), borderColor: COLORS.gold, tension: 0.25 },
-      { label: "Follow-up to payer %", data: a.daily.map((r) => r.followup_to_payer_pct), borderColor: COLORS.rose, tension: 0.25 },
+      { label: "Follow-up rate %", data: (aTrend.daily || a.daily).map((r) => r.followup_rate_pct), borderColor: COLORS.teal, backgroundColor: "rgba(15,118,110,0.12)", tension: 0.25 },
+      { label: "Payment rate %", data: (aTrend.daily || a.daily).map((r) => r.payer_rate_pct), borderColor: COLORS.gold, tension: 0.25 },
+      { label: "Follow-up to payer %", data: (aTrend.daily || a.daily).map((r) => r.followup_to_payer_pct), borderColor: COLORS.rose, tension: 0.25 },
     ],
   }, {
-    plugins: { title: { display: true, text: "Daily Conversion Rate Trend" } },
+    plugins: { title: { display: true, text: `${chartLabel}: Conversion Rate Trend` } },
     scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" } } },
   });
 
   chart("loginSignupChart", "line", {
-    labels: (a.login_vs_signup_daily || []).map((r) => shortDate(r.signup_date)),
+    labels: (aTrend.login_vs_signup_daily || a.login_vs_signup_daily || []).map((r) => shortDate(r.signup_date)),
     datasets: [
-      { label: "SQL new users", data: (a.login_vs_signup_daily || []).map((r) => r.new_users), borderColor: COLORS.blue, tension: 0.25 },
-      { label: "Mixpanel login users", data: (a.login_vs_signup_daily || []).map((r) => r.login_success_users), borderColor: COLORS.slate, tension: 0.25 },
-      { label: "Follow-up users", data: (a.login_vs_signup_daily || []).map((r) => r.followup_users), borderColor: COLORS.teal, tension: 0.25 },
-      { label: "Payers", data: (a.login_vs_signup_daily || []).map((r) => r.payers), borderColor: COLORS.gold, tension: 0.25 },
+      { label: "SQL new users", data: (aTrend.login_vs_signup_daily || a.login_vs_signup_daily || []).map((r) => r.new_users), borderColor: COLORS.blue, tension: 0.25 },
+      { label: "Mixpanel login users", data: (aTrend.login_vs_signup_daily || a.login_vs_signup_daily || []).map((r) => r.login_success_users), borderColor: COLORS.slate, tension: 0.25 },
+      { label: "Follow-up users", data: (aTrend.login_vs_signup_daily || a.login_vs_signup_daily || []).map((r) => r.followup_users), borderColor: COLORS.teal, tension: 0.25 },
+      { label: "Payers", data: (aTrend.login_vs_signup_daily || a.login_vs_signup_daily || []).map((r) => r.payers), borderColor: COLORS.gold, tension: 0.25 },
     ],
-  }, { plugins: { title: { display: true, text: "Signup, Login, Follow-up and Payment Cross-check" } } });
+  }, { plugins: { title: { display: true, text: `${chartLabel}: Signup, Login, Follow-up and Payment` } } });
 
   chart("acquisitionFunnelChart", "bar", {
     labels: a.funnel.map((r) => r.stage),
@@ -1090,10 +1204,10 @@ function renderAcquisition(data) {
     plugins: { title: { display: true, text: "New Login to Follow-up to Payment" }, legend: { display: false } },
   });
 
-  const acquisitionPaymentFamily = groupedLine(a.daily_payment_family || [], "signup_date", "family", "revenue");
+  const acquisitionPaymentFamily = groupedLine(aTrend.daily_payment_family || a.daily_payment_family || [], "signup_date", "family", "revenue");
   acquisitionPaymentFamily.labels = acquisitionPaymentFamily.labels.map(shortDate);
   chart("acquisitionPaymentFamilyChart", "line", acquisitionPaymentFamily, {
-    plugins: { title: { display: true, text: "New User Payment Revenue by Stream" } },
+    plugins: { title: { display: true, text: `${chartLabel}: New User Payment Revenue by Stream` } },
   });
 
   table("acquisitionDailyTable", a.daily, [
@@ -1345,6 +1459,8 @@ function renderRetention(data) {
 
 function renderEngagement(data) {
   const e = data.engagement;
+  const eTrend = trendSection("engagement");
+  const chartLabel = trendWindowLabel();
   document.getElementById("engagementNote").textContent = "Average time uses Mixpanel $ae_session_length; BIM is campaign_name = Bot Initiated Messages.";
   document.getElementById("engagementCards").innerHTML = [
     card("Active Users", number(e.kpis.active_users), `${number(e.kpis.sessions)} app sessions`),
@@ -1354,17 +1470,17 @@ function renderEngagement(data) {
   ].join("");
 
   chart("engagementDailyChart", "line", {
-    labels: e.session_daily.map((r) => shortDate(r.date)),
+    labels: (eTrend.session_daily || e.session_daily).map((r) => shortDate(r.date)),
     datasets: [
-      { label: "Avg min/user", data: e.session_daily.map((r) => r.avg_minutes_per_user), borderColor: COLORS.teal, tension: 0.25 },
-      { label: "Sessions / user", data: e.session_daily.map((r) => r.sessions_per_user), borderColor: COLORS.gold, tension: 0.25 },
+      { label: "Avg min/user", data: (eTrend.session_daily || e.session_daily).map((r) => r.avg_minutes_per_user), borderColor: COLORS.teal, tension: 0.25 },
+      { label: "Sessions / user", data: (eTrend.session_daily || e.session_daily).map((r) => r.sessions_per_user), borderColor: COLORS.gold, tension: 0.25 },
     ],
-  }, { plugins: { title: { display: true, text: "Daily Engagement Depth" } } });
+  }, { plugins: { title: { display: true, text: `${chartLabel}: Engagement Depth` } } });
 
-  const sessionCohort = groupedLine(e.session_user_cohort_daily || [], "date", "user_cohort", "sessions");
+  const sessionCohort = groupedLine(eTrend.session_user_cohort_daily || e.session_user_cohort_daily || [], "date", "user_cohort", "sessions");
   sessionCohort.labels = sessionCohort.labels.map(shortDate);
   chart("sessionCohortChart", "line", sessionCohort, {
-    plugins: { title: { display: true, text: "App Sessions by New vs Old Users" } },
+    plugins: { title: { display: true, text: `${chartLabel}: App Sessions by New vs Old Users` } },
   });
 
   chart("sessionIntensityChart", "doughnut", {
@@ -1394,22 +1510,22 @@ function renderEngagement(data) {
   ], 14);
 
   chart("bimDailyChart", "line", {
-    labels: e.bim_daily.map((r) => shortDate(r.date)),
+    labels: (eTrend.bim_daily || e.bim_daily).map((r) => shortDate(r.date)),
     datasets: [
-      { label: "BIM opens", data: e.bim_daily.map((r) => r.opens), borderColor: COLORS.rose, tension: 0.25 },
-      { label: "Users", data: e.bim_daily.map((r) => r.users), borderColor: COLORS.blue, tension: 0.25 },
+      { label: "BIM opens", data: (eTrend.bim_daily || e.bim_daily).map((r) => r.opens), borderColor: COLORS.rose, tension: 0.25 },
+      { label: "Users", data: (eTrend.bim_daily || e.bim_daily).map((r) => r.users), borderColor: COLORS.blue, tension: 0.25 },
     ],
-  }, { plugins: { title: { display: true, text: "App Opened from Notification: BIM" } } });
+  }, { plugins: { title: { display: true, text: `${chartLabel}: App Opened from Notification BIM` } } });
 
   chart("notificationTrendChart", "line", {
-    labels: e.bim_daily.map((r) => shortDate(r.date)),
+    labels: (eTrend.bim_daily || e.bim_daily).map((r) => shortDate(r.date)),
     datasets: [
-      { label: "BIM opens", data: e.bim_daily.map((r) => r.opens), borderColor: COLORS.rose, backgroundColor: "rgba(190,52,85,0.12)", tension: 0.25 },
-      { label: "BIM users", data: e.bim_daily.map((r) => r.users), borderColor: COLORS.blue, tension: 0.25 },
-      { label: "Opens/user", data: e.bim_daily.map((r) => r.opens_per_user), borderColor: COLORS.gold, yAxisID: "y1", tension: 0.25 },
+      { label: "BIM opens", data: (eTrend.bim_daily || e.bim_daily).map((r) => r.opens), borderColor: COLORS.rose, backgroundColor: "rgba(190,52,85,0.12)", tension: 0.25 },
+      { label: "BIM users", data: (eTrend.bim_daily || e.bim_daily).map((r) => r.users), borderColor: COLORS.blue, tension: 0.25 },
+      { label: "Opens/user", data: (eTrend.bim_daily || e.bim_daily).map((r) => r.opens_per_user), borderColor: COLORS.gold, yAxisID: "y1", tension: 0.25 },
     ],
   }, {
-    plugins: { title: { display: true, text: "BIM Notification Trend" } },
+    plugins: { title: { display: true, text: `${chartLabel}: BIM Notification Trend` } },
     scales: {
       x: { grid: { display: false } },
       y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Opens / users" } },
@@ -1417,10 +1533,10 @@ function renderEngagement(data) {
     },
   });
 
-  const bimCohort = groupedLine(e.bim_user_cohort_daily || [], "date", "user_cohort", "opens");
+  const bimCohort = groupedLine(eTrend.bim_user_cohort_daily || e.bim_user_cohort_daily || [], "date", "user_cohort", "opens");
   bimCohort.labels = bimCohort.labels.map(shortDate);
   chart("bimCohortChart", "line", bimCohort, {
-    plugins: { title: { display: true, text: "BIM Opens by New vs Old Users" } },
+    plugins: { title: { display: true, text: `${chartLabel}: BIM Opens by New vs Old Users` } },
   });
 
   table("sessionPlatformTable", e.session_by_platform, [
@@ -1529,6 +1645,7 @@ async function main() {
     DASHBOARD_DATA = hideUnknownRows(await response.json());
     SELECTED_PERIOD = DASHBOARD_DATA.metadata.default_period || "weekly";
     setupPeriodControls();
+    setupDayDownloadControls();
     setupTabs();
     setupSectionNav();
     renderDashboard();

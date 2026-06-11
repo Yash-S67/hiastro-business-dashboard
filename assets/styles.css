@@ -93,6 +93,40 @@ body {
   border-radius: 8px;
 }
 
+.download-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+}
+
+.download-controls select,
+.download-controls button {
+  height: 32px;
+  border: 0;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.download-controls select {
+  min-width: 130px;
+  padding: 0 8px;
+  color: #111827;
+  background: #ffffff;
+}
+
+.download-controls button {
+  padding: 0 10px;
+  color: #ffffff;
+  background: #0f766e;
+  cursor: pointer;
+}
+
 .period-toggle button {
   appearance: none;
   border: 0;
@@ -247,6 +281,10 @@ main {
 .funnel-strip {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin: 0 0 12px;
+}
+
+.funnel-strip-wide {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .kpi-card,
@@ -676,6 +714,7 @@ tbody tr:last-child td {
   .insight-strip,
   .action-grid,
   .funnel-strip,
+  .funnel-strip-wide,
   .stream-grid,
   .policy-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -696,6 +735,11 @@ tbody tr:last-child td {
   }
 
   .period-toggle {
+    width: 100%;
+  }
+
+  .download-controls {
+    justify-content: space-between;
     width: 100%;
   }
 
@@ -751,6 +795,7 @@ tbody tr:last-child td {
   .kpi-grid.compact,
   .insight-strip,
   .funnel-strip,
+  .funnel-strip-wide,
   .stream-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -783,6 +828,7 @@ tbody tr:last-child td {
   .kpi-grid.compact,
   .insight-strip,
   .funnel-strip,
+  .funnel-strip-wide,
   .stream-grid {
     grid-template-columns: 1fr;
   }
