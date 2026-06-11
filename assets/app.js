@@ -27,6 +27,7 @@ Chart.defaults.plugins.tooltip.backgroundColor = "#111827";
 const CHARTS = {};
 let DASHBOARD_DATA = null;
 let SELECTED_PERIOD = "weekly";
+let SELECTED_DAY = null;
 const TABLE_FILTERS = {
   payerSegment: { segment: "all", limit: 25 },
   payerFamilySegment: { family_label: "all", segment: "all", limit: 25 },
@@ -366,6 +367,8 @@ function trendWindowLabel() {
 }
 
 function dashboardDateOptions() {
+  const dailyPeriods = DASHBOARD_DATA.metadata?.daily_periods || [];
+  if (dailyPeriods.length) return dailyPeriods.map((period) => period.date);
   const weekly = DASHBOARD_DATA.periods?.weekly;
   const days = new Set();
   (weekly?.monetization?.daily_summary || []).forEach((row) => days.add(row.day));
@@ -426,12 +429,20 @@ function setupDayDownloadControls() {
     return;
   }
   const defaultDay = days[days.length - 1];
+  if (!SELECTED_DAY || !days.includes(SELECTED_DAY)) SELECTED_DAY = defaultDay;
   controls.innerHTML = `
     <select id="downloadDaySelect" aria-label="Day to download">
-      ${days.map((day) => `<option value="${escapeHtml(day)}"${day === defaultDay ? " selected" : ""}>${escapeHtml(shortDate(day))}</option>`).join("")}
+      ${days.map((day) => `<option value="${escapeHtml(day)}"${day === SELECTED_DAY ? " selected" : ""}>${escapeHtml(shortDate(day))}</option>`).join("")}
     </select>
     <button type="button" id="downloadDayCsv">Download CSV</button>
   `;
+  document.getElementById("downloadDaySelect").addEventListener("change", (event) => {
+    SELECTED_DAY = event.target.value;
+    SELECTED_PERIOD = "daily";
+    setupPeriodControls();
+    setupDayDownloadControls();
+    renderDashboard();
+  });
   document.getElementById("downloadDayCsv").addEventListener("click", () => {
     const day = document.getElementById("downloadDaySelect").value;
     downloadCsv(`hiastro-dashboard-${day}.csv`, buildDayExportRows(day));
@@ -1788,6 +1799,9 @@ async function main() {
 }
 
 function selectedData() {
+  if (SELECTED_PERIOD === "daily" && SELECTED_DAY) {
+    return DASHBOARD_DATA.periods?.[`daily_${SELECTED_DAY}`] || DASHBOARD_DATA.periods?.daily || DASHBOARD_DATA;
+  }
   return DASHBOARD_DATA.periods?.[SELECTED_PERIOD] || DASHBOARD_DATA;
 }
 
@@ -1797,7 +1811,12 @@ function setupPeriodControls() {
     button.classList.toggle("active", button.dataset.period === SELECTED_PERIOD);
     button.addEventListener("click", () => {
       SELECTED_PERIOD = button.dataset.period;
+      if (SELECTED_PERIOD === "daily" && !SELECTED_DAY) {
+        const days = dashboardDateOptions();
+        SELECTED_DAY = days[days.length - 1] || null;
+      }
       controls.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.period === SELECTED_PERIOD));
+      setupDayDownloadControls();
       renderDashboard();
     });
   });

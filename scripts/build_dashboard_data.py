@@ -15,6 +15,7 @@ import pandas as pd
 import requests
 from dotenv import dotenv_values
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import DBAPIError, OperationalError
 from sqlalchemy.engine import URL
 
 
@@ -201,8 +202,16 @@ def mysql_engine(env: dict[str, str]):
 
 
 def read_sql(engine, sql: str, params: dict[str, Any] | None = None) -> pd.DataFrame:
-    with engine.connect() as conn:
-        return pd.read_sql(text(sql), conn, params=params or {})
+    for attempt in range(3):
+        try:
+            with engine.connect() as conn:
+                return pd.read_sql(text(sql), conn, params=params or {})
+        except (OperationalError, DBAPIError):
+            if attempt == 2:
+                raise
+            engine.dispose()
+            sleep(2 * (attempt + 1))
+    raise RuntimeError("SQL query failed after retries")
 
 
 def build_bot_lookup(engine, start: date, end: date) -> dict[str, dict[str, str]]:
@@ -2437,10 +2446,14 @@ def main() -> None:
     today_ist = datetime.now(IST).date()
     latest_complete_day = today_ist - timedelta(days=1)
     current_end = latest_complete_day
+    weekly_start = current_end - timedelta(days=6)
     period_ranges = {
         "daily": make_ranges("daily", current_end, current_end),
-        "weekly": make_ranges("weekly", current_end - timedelta(days=6), current_end),
+        "weekly": make_ranges("weekly", weekly_start, current_end),
     }
+    for day in day_range(weekly_start, current_end):
+        day_value = date.fromisoformat(day)
+        period_ranges[f"daily_{day}"] = make_ranges("daily", day_value, day_value)
     mixpanel_start = period_ranges["weekly"]["current_start"]
     sql_lookup_start = period_ranges["weekly"]["prior_30_start"]
 
@@ -2472,6 +2485,15 @@ def main() -> None:
         for period_id, ranges in period_ranges.items()
     }
     weekly = periods["weekly"]
+    daily_periods = [
+        {
+            "id": f"daily_{day}",
+            "date": day,
+            "label": datetime.fromisoformat(day).strftime("%d %b"),
+            **periods[f"daily_{day}"]["metadata"],
+        }
+        for day in day_range(weekly_start, current_end)
+    ]
 
     dashboard = {
         "metadata": {
@@ -2484,6 +2506,7 @@ def main() -> None:
                 {"id": "daily", "label": "Daily", **periods["daily"]["metadata"]},
                 {"id": "weekly", "label": "Weekly", **periods["weekly"]["metadata"]},
             ],
+            "daily_periods": daily_periods,
             "timezone": "Asia/Kolkata",
             "data_retention_policy": {
                 "storage": "Latest aggregate dashboard JSON only",
