@@ -1473,6 +1473,7 @@ async function main() {
     setupTabs();
     setupSectionNav();
     renderDashboard();
+    window.setTimeout(scrollToCurrentSection, 120);
   } catch (error) {
     document.getElementById("freshness").textContent = "Could not load dashboard data.";
     document.body.insertAdjacentHTML("afterbegin", `<div class="panel" style="margin:16px">Data load failed: ${error.message}</div>`);
@@ -1547,8 +1548,18 @@ function setupSectionNav() {
     });
   });
   window.addEventListener("scroll", setActive, { passive: true });
-  window.addEventListener("hashchange", setActive);
+  window.addEventListener("hashchange", () => {
+    window.setTimeout(scrollToCurrentSection, 40);
+    window.setTimeout(setActive, 90);
+  });
   setActive();
+}
+
+function scrollToCurrentSection() {
+  if (!window.location.hash) return;
+  const section = document.querySelector(window.location.hash);
+  if (!section) return;
+  section.scrollIntoView({ block: "start" });
 }
 
 function renderDataPolicy(meta) {

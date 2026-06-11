@@ -191,6 +191,7 @@ main {
 .source-note {
   margin-top: 32px;
   padding-top: 4px;
+  scroll-margin-top: 76px;
 }
 
 .section-heading {
@@ -251,6 +252,26 @@ main {
   width: 3px;
   height: auto;
   background: #7c8da1;
+}
+
+.kpi-card:nth-child(5n + 1)::before {
+  background: var(--blue);
+}
+
+.kpi-card:nth-child(5n + 2)::before {
+  background: var(--teal);
+}
+
+.kpi-card:nth-child(5n + 3)::before {
+  background: var(--gold);
+}
+
+.kpi-card:nth-child(5n + 4)::before {
+  background: var(--rose);
+}
+
+.kpi-card:nth-child(5n)::before {
+  background: var(--green);
 }
 
 .kpi-label {
@@ -623,12 +644,23 @@ tbody tr:last-child td {
     min-height: 36px;
   }
 
-  .kpi-grid,
-  .kpi-grid.compact,
   .grid.two,
-  .stream-grid,
   .policy-grid {
     grid-template-columns: 1fr;
+  }
+
+  .kpi-grid,
+  .kpi-grid.compact,
+  .stream-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kpi-card {
+    min-height: 104px;
+  }
+
+  .kpi-value {
+    font-size: 24px;
   }
 }
 
@@ -645,5 +677,11 @@ tbody tr:last-child td {
 
   .freshness {
     text-align: left;
+  }
+
+  .kpi-grid,
+  .kpi-grid.compact,
+  .stream-grid {
+    grid-template-columns: 1fr;
   }
 }
