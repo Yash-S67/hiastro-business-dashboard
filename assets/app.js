@@ -1471,6 +1471,7 @@ async function main() {
     SELECTED_PERIOD = DASHBOARD_DATA.metadata.default_period || "weekly";
     setupPeriodControls();
     setupTabs();
+    setupSectionNav();
     renderDashboard();
   } catch (error) {
     document.getElementById("freshness").textContent = "Could not load dashboard data.";
@@ -1523,6 +1524,31 @@ function setupTabs() {
       });
     });
   });
+}
+
+function setupSectionNav() {
+  const links = [...document.querySelectorAll(".section-nav a")];
+  const sections = links
+    .map((link) => document.querySelector(link.getAttribute("href")))
+    .filter(Boolean);
+
+  const setActive = () => {
+    const current = sections
+      .filter((section) => section.getBoundingClientRect().top <= 120)
+      .pop() || sections[0];
+    links.forEach((link) => {
+      link.classList.toggle("active", link.getAttribute("href") === `#${current.id}`);
+    });
+  };
+
+  links.forEach((link) => {
+    link.addEventListener("click", () => {
+      window.setTimeout(setActive, 80);
+    });
+  });
+  window.addEventListener("scroll", setActive, { passive: true });
+  window.addEventListener("hashchange", setActive);
+  setActive();
 }
 
 function renderDataPolicy(meta) {
