@@ -27,6 +27,7 @@ IST = timezone(timedelta(hours=5, minutes=30))
 UUID_RE = re.compile(
     r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 )
+HEX32_RE = re.compile(r"^[0-9a-fA-F]{32}$")
 ENTITY_ID_RE = re.compile(r"^[0-9a-fA-F]{24}$")
 REVENUE_FAMILIES = [
     ("subscription", "Subscription"),
@@ -137,8 +138,20 @@ def age_bucket(dob: Any, as_of: date) -> str:
 def extract_uuid(value: Any) -> str | None:
     if value is None:
         return None
-    match = UUID_RE.search(str(value))
+    text_value = str(value).strip()
+    match = UUID_RE.search(text_value)
     return match.group(0).lower() if match else None
+
+
+def normalize_user_id(value: Any) -> str | None:
+    user_id = extract_uuid(value)
+    if user_id:
+        return user_id
+    text_value = str(value or "").strip()
+    if HEX32_RE.match(text_value):
+        lowered = text_value.lower()
+        return f"{lowered[:8]}-{lowered[8:12]}-{lowered[12:16]}-{lowered[16:20]}-{lowered[20:]}"
+    return None
 
 
 def event_user_id(props: dict[str, Any]) -> str | None:
@@ -151,7 +164,7 @@ def event_user_id(props: dict[str, Any]) -> str | None:
         "UUID",
         "id",
     ):
-        user_id = extract_uuid(props.get(key))
+        user_id = normalize_user_id(props.get(key))
         if user_id:
             return user_id
     return None
@@ -1497,6 +1510,8 @@ def build_acquisition(
             {
                 "user_id": user_id,
                 "first_followup_date": profile.get("first_followup_date"),
+                "event_gender": profile.get("gender") or "Unknown",
+                "event_age_bucket": profile.get("age_bucket") or "Unknown",
                 "region": profile.get("region") or "Unknown",
                 "city": profile.get("city") or "Unknown",
             }
@@ -1504,8 +1519,14 @@ def build_acquisition(
         ]
     )
     if followup_base.empty:
-        followup_base = pd.DataFrame(columns=["user_id", "first_followup_date", "region", "city"])
+        followup_base = pd.DataFrame(columns=["user_id", "first_followup_date", "event_gender", "event_age_bucket", "region", "city"])
     followup_profiles = enrich_users(followup_base, profiles, ranges)
+    db_gender = followup_profiles["gender"].fillna("Unknown").astype(str)
+    event_gender = followup_profiles["event_gender"].fillna("Unknown").astype(str).str.lower()
+    followup_profiles["gender"] = db_gender.where(~db_gender.str.lower().eq("unknown"), event_gender)
+    db_age = followup_profiles["age_bucket"].fillna("Unknown").astype(str)
+    event_age = followup_profiles["event_age_bucket"].fillna("Unknown").astype(str)
+    followup_profiles["age_bucket"] = db_age.where(~db_age.str.lower().eq("unknown"), event_age)
     followup_profiles["region"] = followup_profiles["region"].fillna("Unknown").astype(str)
     followup_profiles["city"] = followup_profiles["city"].fillna("Unknown").astype(str)
 
@@ -2297,16 +2318,16 @@ def build_metric_coverage(period_dashboard: dict[str, Any]) -> dict[str, Any]:
             "metric": "Follow-up user gender distribution",
             "status": "Partial" if unknown_gender_pct >= 20 else "Available",
             "coverage_pct": round(100 - unknown_gender_pct, 2),
-            "missing_detail": f"{unknown_gender_pct:.2f}% of follow-up users have missing DB profile gender.",
-            "next_data_needed": "Backfill prod.user_profiles.gender or improve in-app gender collection.",
+            "missing_detail": f"{unknown_gender_pct:.2f}% of follow-up users could not be matched to DB profile or event gender.",
+            "next_data_needed": "Keep prod.user_profiles.gender populated and continue sending DB user_id with Follow up Query events.",
         },
         {
             "area": "Persona",
             "metric": "Follow-up user age distribution",
             "status": "Partial" if unknown_age_pct >= 20 else "Available",
             "coverage_pct": round(100 - unknown_age_pct, 2),
-            "missing_detail": f"{unknown_age_pct:.2f}% of follow-up users have missing DB profile DOB.",
-            "next_data_needed": "Backfill prod.user_profiles.birth_datetime_utc or improve DOB collection.",
+            "missing_detail": f"{unknown_age_pct:.2f}% of follow-up users could not be matched to DB profile DOB or event DOB.",
+            "next_data_needed": "Keep prod.user_profiles.birth_datetime_utc populated and continue sending DB user_id with Follow up Query events.",
         },
         {
             "area": "Bot / Entity",
