@@ -1182,6 +1182,8 @@ def build_monetization(
                 entity_distribution[f"{family_id}_revenue"] / entity_distribution["revenue"] * 100
             ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
 
+    renewal = build_subscription_renewal(engine, ranges)
+
     return {
         "kpis": {
             "current": current_kpis,
@@ -1225,6 +1227,150 @@ def build_monetization(
         "entity_distribution": records(entity_distribution),
         "user_revenue_current": records(user_revenue),
         "user_family_revenue_current": records(user_family_revenue),
+        "subscription_renewal": renewal,
+    }
+
+
+def build_subscription_renewal(engine, ranges: dict[str, Any]) -> dict[str, Any]:
+    due_start = ranges["current_end"] + timedelta(days=1)
+    due_end = ranges["current_end"] + timedelta(days=7)
+    subs = read_sql(
+        engine,
+        """
+        SELECT
+            LOWER(BIN_TO_UUID(cs.user_id)) AS user_id,
+            COALESCE(sp.code, 'unknown_plan') AS plan_code,
+            sp.billing_amount,
+            cs.status,
+            cs.subscription_case,
+            cs.cancel_at_period_end,
+            DATE(DATE_ADD(cs.current_period_starts_at, INTERVAL 330 MINUTE)) AS period_start_date,
+            DATE(DATE_ADD(cs.current_period_ends_at, INTERVAL 330 MINUTE)) AS renewal_due_date,
+            DATE(DATE_ADD(cs.trial_ends_at, INTERVAL 330 MINUTE)) AS trial_end_date,
+            DATE(DATE_ADD(cs.canceled_at, INTERVAL 330 MINUTE)) AS canceled_date
+        FROM prod.customer_subscriptions cs
+        LEFT JOIN prod.subscription_plans sp ON cs.plan_id = sp.id
+        WHERE cs.created_at < :as_of_end_utc
+        """,
+        {
+            "as_of_end_utc": utc_naive(local_midnight(ranges["current_end"] + timedelta(days=1))),
+        },
+    )
+    if subs.empty:
+        return {
+            "kpis": {
+                "active_paid_subscriptions": 0,
+                "trial_active_subscriptions": 0,
+                "renewal_due_next_7_days": 0,
+                "autopay_ready_users": 0,
+                "cancel_scheduled_users": 0,
+                "renewal_revenue_at_risk": 0,
+                "expected_renewal_revenue": 0,
+                "cancel_scheduled_revenue": 0,
+                "autopay_ready_pct": 0,
+                "renewal_success_pct": None,
+            },
+            "due_daily": [],
+            "due_by_plan": [],
+            "status_breakdown": [],
+            "notes": [
+                "Renewal due is based on customer_subscriptions.current_period_ends_at.",
+                "Autopay success will require a renewal charge success/failure event once recurring billing starts.",
+            ],
+        }
+
+    for column in ["renewal_due_date", "period_start_date", "trial_end_date", "canceled_date"]:
+        subs[column] = pd.to_datetime(subs[column], errors="coerce").dt.date
+    subs["billing_amount"] = pd.to_numeric(subs["billing_amount"], errors="coerce").fillna(0)
+    subs["cancel_at_period_end"] = pd.to_numeric(subs["cancel_at_period_end"], errors="coerce").fillna(0).astype(int)
+    subs["is_paid_active"] = (
+        subs["status"].eq("ACTIVE")
+        & subs["subscription_case"].isin(["PLAN", "CANCELED_PLAN"])
+        & subs["renewal_due_date"].notna()
+    )
+    subs["is_trial_active"] = subs["status"].eq("TRIAL_ACTIVE")
+    subs["is_cancel_scheduled"] = subs["is_paid_active"] & (
+        subs["cancel_at_period_end"].eq(1) | subs["subscription_case"].eq("CANCELED_PLAN")
+    )
+    subs["is_due_next_7"] = (
+        subs["is_paid_active"]
+        & (subs["renewal_due_date"] >= due_start)
+        & (subs["renewal_due_date"] <= due_end)
+    )
+    subs["is_autopay_ready"] = subs["is_due_next_7"] & ~subs["is_cancel_scheduled"]
+    due = subs[subs["is_due_next_7"]].copy()
+    active_paid = subs[subs["is_paid_active"]].copy()
+    cancel_scheduled = subs[subs["is_cancel_scheduled"]].copy()
+
+    def user_count(df: pd.DataFrame) -> int:
+        return int(df["user_id"].nunique()) if not df.empty else 0
+
+    due_daily = pd.DataFrame(columns=["renewal_due_date", "due_users", "autopay_ready_users", "cancel_scheduled_users", "renewal_revenue_at_risk", "expected_renewal_revenue"])
+    due_by_plan = pd.DataFrame(columns=["plan_code", "due_users", "autopay_ready_users", "cancel_scheduled_users", "renewal_revenue_at_risk", "expected_renewal_revenue", "autopay_ready_pct"])
+    if not due.empty:
+        due_daily = (
+            due.groupby("renewal_due_date", as_index=False)
+            .agg(
+                due_users=("user_id", "nunique"),
+                autopay_ready_users=("is_autopay_ready", "sum"),
+                cancel_scheduled_users=("is_cancel_scheduled", "sum"),
+                renewal_revenue_at_risk=("billing_amount", "sum"),
+            )
+            .sort_values("renewal_due_date")
+        )
+        due_daily["expected_renewal_revenue"] = due_daily["renewal_revenue_at_risk"] - (
+            due[due["is_cancel_scheduled"]].groupby("renewal_due_date")["billing_amount"].sum()
+        ).reindex(due_daily["renewal_due_date"]).fillna(0).to_numpy()
+        due_by_plan = (
+            due.groupby("plan_code", as_index=False)
+            .agg(
+                due_users=("user_id", "nunique"),
+                autopay_ready_users=("is_autopay_ready", "sum"),
+                cancel_scheduled_users=("is_cancel_scheduled", "sum"),
+                renewal_revenue_at_risk=("billing_amount", "sum"),
+            )
+            .sort_values("renewal_revenue_at_risk", ascending=False)
+        )
+        cancel_revenue_by_plan = due[due["is_cancel_scheduled"]].groupby("plan_code")["billing_amount"].sum()
+        due_by_plan["expected_renewal_revenue"] = due_by_plan["renewal_revenue_at_risk"] - (
+            cancel_revenue_by_plan.reindex(due_by_plan["plan_code"]).fillna(0).to_numpy()
+        )
+        due_by_plan["autopay_ready_pct"] = (
+            due_by_plan["autopay_ready_users"] / due_by_plan["due_users"] * 100
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        due_daily["renewal_due_date"] = due_daily["renewal_due_date"].astype(str)
+
+    status_breakdown = (
+        subs.groupby(["status", "subscription_case"], dropna=False, as_index=False)
+        .agg(users=("user_id", "nunique"))
+        .sort_values("users", ascending=False)
+    )
+    renewal_revenue_at_risk = float(due["billing_amount"].sum()) if not due.empty else 0.0
+    cancel_scheduled_revenue = float(due.loc[due["is_cancel_scheduled"], "billing_amount"].sum()) if not due.empty else 0.0
+    expected_renewal_revenue = renewal_revenue_at_risk - cancel_scheduled_revenue
+    due_users = user_count(due)
+    autopay_ready_users = user_count(due[due["is_autopay_ready"]]) if not due.empty else 0
+    return {
+        "kpis": {
+            "active_paid_subscriptions": user_count(active_paid),
+            "trial_active_subscriptions": user_count(subs[subs["is_trial_active"]]),
+            "renewal_due_next_7_days": due_users,
+            "autopay_ready_users": autopay_ready_users,
+            "cancel_scheduled_users": user_count(cancel_scheduled),
+            "renewal_revenue_at_risk": round(renewal_revenue_at_risk, 2),
+            "expected_renewal_revenue": round(expected_renewal_revenue, 2),
+            "cancel_scheduled_revenue": round(cancel_scheduled_revenue, 2),
+            "autopay_ready_pct": safe_div(autopay_ready_users, due_users),
+            "renewal_success_pct": None,
+        },
+        "due_daily": records(due_daily),
+        "due_by_plan": records(due_by_plan),
+        "status_breakdown": records(status_breakdown),
+        "notes": [
+            "Renewal due is based on customer_subscriptions.current_period_ends_at.",
+            "Autopay-ready excludes subscriptions already marked cancel_at_period_end or CANCELED_PLAN.",
+            "Autopay success/failure will need recurring charge events once renewals start.",
+        ],
     }
 
 
@@ -2123,6 +2269,14 @@ def build_metric_coverage(period_dashboard: dict[str, Any]) -> dict[str, Any]:
             "next_data_needed": "None" if has_paywall_cta else "Track subscription_paywall_shown and subscription_trial_initiated with user_id.",
         },
         {
+            "area": "Monetization",
+            "metric": "Subscription renewal due and autopay readiness",
+            "status": "Partial",
+            "coverage_pct": 70,
+            "missing_detail": "Renewal due, cancel-at-period-end, and active state are available; recurring autopay success/failure is not yet available as an event.",
+            "next_data_needed": "Track renewal_success, renewal_failed, and renewal_retry events with user_id, plan_id, amount, and due date.",
+        },
+        {
             "area": "Acquisition",
             "metric": "New user to follow-up to payment conversion",
             "status": "Available",
@@ -2321,6 +2475,7 @@ def main() -> None:
                 "Customized day pass revenue comes from MySQL customer_day_pass joined to day_pass_config.",
                 "Acquisition new users come from MySQL users.created_at; login success comes from Mixpanel.",
                 "Config funnel paywall shown and trial CTA clicks come from Mixpanel; config, purchases, gender, and DOB-derived age buckets come from MySQL.",
+                "Subscription renewal readiness comes from customer_subscriptions current period dates and cancel-at-period-end state; true autopay success needs recurring charge result events.",
                 "Follow-up entity values are resolved to bot names using chat_session bot_id and normalized bot-name slugs.",
                 "Retention uses completed MySQL chat_session activity for new-user cohorts.",
                 "Engagement duration and BIM notification opens come from Mixpanel app events.",

@@ -773,6 +773,7 @@ function renderMonetization(data) {
   const subscriptionPlans = m.subscription_plan_performance || [];
   const subscriptionStages = m.subscription_stage_performance || [];
   const subscriptionPacks = m.subscription_pack || [];
+  const renewal = m.subscription_renewal || { kpis: {}, due_daily: [], due_by_plan: [], status_breakdown: [], notes: [] };
   const paygMergedRows = m.payg_merged || [];
   const paygMerged = paygMergedRows[0] || familyMetric(m, "pay_as_you_go");
   const paygAmounts = m.payg_amount_breakdown || [];
@@ -873,6 +874,65 @@ function renderMonetization(data) {
     plugins: { title: { display: true, text: `${chartLabel}: Subscription Revenue by Plan` }, legend: { position: "bottom" } },
     scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" } } },
   });
+
+  const renewalKpis = renewal.kpis || {};
+  const dueDaily = renewal.due_daily || [];
+  const dueByPlan = renewal.due_by_plan || [];
+  const highestRiskPlan = topRows(dueByPlan, "renewal_revenue_at_risk", 1)[0] || {};
+  document.getElementById("renewalCards").innerHTML = [
+    card("Active Paid Subs", number(renewalKpis.active_paid_subscriptions), "Currently active paid plans"),
+    card("Trial Active", number(renewalKpis.trial_active_subscriptions), "Trial users that may convert"),
+    card("Renewal Due 7D", number(renewalKpis.renewal_due_next_7_days), `${money(renewalKpis.renewal_revenue_at_risk)} renewal revenue at risk`),
+    card("Autopay Ready", number(renewalKpis.autopay_ready_users), `${pct(renewalKpis.autopay_ready_pct)} of due renewals`),
+    card("Cancel Scheduled", number(renewalKpis.cancel_scheduled_users), `${money(renewalKpis.cancel_scheduled_revenue)} upcoming due revenue at risk`),
+    card("Renewal Success", "Not tracked yet", "Needs recurring charge success/failure events"),
+  ].join("");
+  document.getElementById("renewalActionCards").innerHTML = [
+    actionCard("Expected 7D Renewal", money(renewalKpis.expected_renewal_revenue), `${number(renewalKpis.autopay_ready_users)} autopay-ready users`, Number(renewalKpis.expected_renewal_revenue || 0) > 0 ? "good" : "neutral"),
+    actionCard("Highest Due Plan", highestRiskPlan.plan_code || "-", `${money(highestRiskPlan.renewal_revenue_at_risk)} | ${number(highestRiskPlan.due_users)} users`, "neutral"),
+    actionCard("Missing Event", "Autopay result", "Add renewal_success and renewal_failed events when recurring billing starts", "risk"),
+  ].join("");
+  chart("renewalDueChart", "line", {
+    labels: dueDaily.map((row) => shortDate(row.renewal_due_date)),
+    datasets: [
+      { label: "Due users", data: dueDaily.map((row) => row.due_users), borderColor: COLORS.blue, tension: 0.25 },
+      { label: "Autopay-ready", data: dueDaily.map((row) => row.autopay_ready_users), borderColor: COLORS.green, tension: 0.25 },
+      { label: "Cancel scheduled", data: dueDaily.map((row) => row.cancel_scheduled_users), borderColor: COLORS.rose, tension: 0.25 },
+    ],
+  }, {
+    plugins: { title: { display: true, text: "Next 7 Days Renewal Due" } },
+  });
+  chart("renewalPlanChart", "bar", {
+    labels: dueByPlan.slice(0, 8).map((row) => row.plan_code),
+    datasets: [
+      { label: "Expected renewal revenue", data: dueByPlan.slice(0, 8).map((row) => row.expected_renewal_revenue), backgroundColor: COLORS.green },
+      { label: "Cancel risk revenue", data: dueByPlan.slice(0, 8).map((row) => Number(row.renewal_revenue_at_risk || 0) - Number(row.expected_renewal_revenue || 0)), backgroundColor: COLORS.rose },
+    ],
+  }, {
+    plugins: { title: { display: true, text: "Renewal Revenue by Plan" }, legend: { position: "bottom" } },
+  });
+  table("renewalDueTable", dueDaily, [
+    { key: "renewal_due_date", label: "Due Date", text: true, format: shortDate },
+    { key: "due_users", label: "Due Users", format: number },
+    { key: "autopay_ready_users", label: "Autopay Ready", format: number },
+    { key: "cancel_scheduled_users", label: "Cancel Scheduled", format: number },
+    { key: "renewal_revenue_at_risk", label: "Revenue at Risk", format: money },
+    { key: "expected_renewal_revenue", label: "Expected Revenue", format: money },
+  ], 10);
+  table("renewalPlanTable", dueByPlan, [
+    { key: "plan_code", label: "Plan", text: true },
+    { key: "due_users", label: "Due Users", format: number },
+    { key: "autopay_ready_users", label: "Autopay Ready", format: number },
+    { key: "autopay_ready_pct", label: "Ready %", format: pct },
+    { key: "cancel_scheduled_users", label: "Cancel Scheduled", format: number },
+    { key: "renewal_revenue_at_risk", label: "Revenue at Risk", format: money },
+    { key: "expected_renewal_revenue", label: "Expected Revenue", format: money },
+  ], 12);
+  table("renewalStatusTable", renewal.status_breakdown || [], [
+    { key: "status", label: "Status", text: true },
+    { key: "subscription_case", label: "Case", text: true },
+    { key: "users", label: "Users", format: number },
+  ], 12);
 
   const paygDailyRows = (mTrend.daily || m.daily || []).filter((row) => row.family === "pay_as_you_go");
   chart("paygDailyChart", "line", {

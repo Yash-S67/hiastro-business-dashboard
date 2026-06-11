@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HiAstro Business Dashboard</title>
-    <link rel="stylesheet" href="assets/styles.css?v=20260611-pack-conversion" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260611-renewal-readiness" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -47,6 +47,7 @@
         <div class="section-tabs" data-tab-group="monetization">
           <button type="button" class="active" data-tab-target="monetization-streams">Revenue Streams</button>
           <button type="button" data-tab-target="monetization-subscription">Subscription</button>
+          <button type="button" data-tab-target="monetization-renewal">Renewal</button>
           <button type="button" data-tab-target="monetization-payg">PayG</button>
           <button type="button" data-tab-target="monetization-packs">Pack Comparison</button>
           <button type="button" data-tab-target="monetization-funnels">Funnels</button>
@@ -119,6 +120,35 @@
           <div class="panel">
             <h3>Trial and Main Pack Split</h3>
             <div id="subscriptionStageTable"></div>
+          </div>
+        </div>
+        <div class="tab-panel" id="monetization-renewal">
+          <div class="split-heading">
+            <div>
+              <p class="eyebrow">Autopay and Renewal Readiness</p>
+              <h3>Subscription Renewal</h3>
+            </div>
+            <p>Tracks active subscriptions, upcoming renewal due, cancel-at-period-end risk, and expected renewal revenue from customer subscriptions.</p>
+          </div>
+          <div class="kpi-grid compact" id="renewalCards"></div>
+          <div class="action-grid" id="renewalActionCards"></div>
+          <div class="grid two">
+            <div class="panel"><canvas id="renewalDueChart"></canvas></div>
+            <div class="panel"><canvas id="renewalPlanChart"></canvas></div>
+          </div>
+          <div class="grid two">
+            <div class="panel">
+              <h3>Renewal Due by Date</h3>
+              <div id="renewalDueTable"></div>
+            </div>
+            <div class="panel">
+              <h3>Renewal Due by Plan</h3>
+              <div id="renewalPlanTable"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>Subscription Status Breakdown</h3>
+            <div id="renewalStatusTable"></div>
           </div>
         </div>
         <div class="tab-panel" id="monetization-payg">
@@ -470,6 +500,6 @@
       </section>
     </main>
 
-    <script src="assets/app.js?v=20260611-pack-conversion"></script>
+    <script src="assets/app.js?v=20260611-renewal-readiness"></script>
   </body>
 </html>
