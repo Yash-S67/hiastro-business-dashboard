@@ -578,23 +578,37 @@ def build_monetization(
         SUM(amount) AS revenue
     FROM (
         SELECT
-            sle.event_created_at AS event_time,
-            LOWER(BIN_TO_UUID(sle.user_id)) AS user_id,
+            cs.trial_starts_at AS event_time,
+            LOWER(BIN_TO_UUID(cs.user_id)) AS user_id,
             'subscription' AS family,
-            CASE
-                WHEN sle.event_type = 'subscription.authenticated' THEN CONCAT('Trial Rs ', CAST(ROUND(sle.charge_amount, 0) AS CHAR))
-                WHEN sle.event_type = 'subscription.charged' THEN CONCAT('Main Rs ', CAST(ROUND(sle.charge_amount, 0) AS CHAR))
-                ELSE CONCAT('Subscription Rs ', CAST(ROUND(sle.charge_amount, 0) AS CHAR))
-            END AS pack,
+            CONCAT('Trial Rs ', CAST(ROUND(sp.trial_amount, 0) AS CHAR)) AS pack,
             COALESCE(sp.code, 'unknown_plan') AS plan_code,
-            sle.charge_amount AS amount
-        FROM prod.subscription_lifecycle_events sle
-        LEFT JOIN prod.subscription_plans sp ON sle.plan_id = sp.id
-        WHERE sle.event_created_at >= :start_utc
-          AND sle.event_created_at < :end_utc
-          AND sle.charge_amount IS NOT NULL
-          AND sle.charge_amount > 0
-          AND sle.event_type IN ('subscription.authenticated', 'subscription.charged')
+            sp.trial_amount AS amount
+        FROM prod.customer_subscriptions cs
+        LEFT JOIN prod.subscription_plans sp ON cs.plan_id = sp.id
+        WHERE cs.trial_starts_at >= :start_utc
+          AND cs.trial_starts_at < :end_utc
+          AND cs.status <> 'PENDING_AUTH'
+          AND sp.trial_amount IS NOT NULL
+          AND sp.trial_amount > 0
+
+        UNION ALL
+
+        SELECT
+            cs.current_period_starts_at AS event_time,
+            LOWER(BIN_TO_UUID(cs.user_id)) AS user_id,
+            'subscription' AS family,
+            CONCAT('Main Rs ', CAST(ROUND(sp.billing_amount, 0) AS CHAR)) AS pack,
+            COALESCE(sp.code, 'unknown_plan') AS plan_code,
+            sp.billing_amount AS amount
+        FROM prod.customer_subscriptions cs
+        LEFT JOIN prod.subscription_plans sp ON cs.plan_id = sp.id
+        WHERE cs.current_period_starts_at >= :start_utc
+          AND cs.current_period_starts_at < :end_utc
+          AND cs.subscription_case IN ('PLAN', 'CANCELED_PLAN', 'PLAN_ENDED')
+          AND cs.status IN ('ACTIVE', 'CANCELED')
+          AND sp.billing_amount IS NOT NULL
+          AND sp.billing_amount > 0
 
         UNION ALL
 
@@ -614,17 +628,19 @@ def build_monetization(
         UNION ALL
 
         SELECT
-            po.created_at AS event_time,
-            LOWER(BIN_TO_UUID(po.user_id)) AS user_id,
+            COALESCE(cdp.starts_at, cdp.updated_at, cdp.created_at) AS event_time,
+            LOWER(BIN_TO_UUID(cdp.user_id)) AS user_id,
             'day_pass' AS family,
-            CONCAT('Day Pass Rs ', CAST(ROUND(po.amount, 0) AS CHAR)) AS pack,
-            'custom_day_pass' AS plan_code,
-            po.amount AS amount
-        FROM prod.payment_orders po
-        WHERE po.created_at >= :start_utc
-          AND po.created_at < :end_utc
-          AND po.status = 'PAID'
-          AND JSON_UNQUOTE(JSON_EXTRACT(po.notes, '$.type')) = 'DAY_PASS'
+            CONCAT('Day Pass Rs ', CAST(ROUND(dpc.amount, 0) AS CHAR)) AS pack,
+            CONCAT('day_pass_config_', CAST(cdp.day_pass_config_id AS CHAR)) AS plan_code,
+            dpc.amount AS amount
+        FROM prod.customer_day_pass cdp
+        LEFT JOIN prod.day_pass_config dpc ON cdp.day_pass_config_id = dpc.id
+        WHERE COALESCE(cdp.starts_at, cdp.updated_at, cdp.created_at) >= :start_utc
+          AND COALESCE(cdp.starts_at, cdp.updated_at, cdp.created_at) < :end_utc
+          AND cdp.status IN ('ACTIVE', 'EXPIRED')
+          AND dpc.amount IS NOT NULL
+          AND dpc.amount > 0
     ) revenue_events
     GROUP BY day, user_id, family, pack, plan_code, amount
     """
@@ -1560,22 +1576,44 @@ def build_config_funnel(
         engine,
         """
         SELECT
-            LOWER(BIN_TO_UUID(user_id)) AS user_id,
+            LOWER(BIN_TO_UUID(cs.user_id)) AS user_id,
             event_type,
-            charge_amount
-        FROM prod.subscription_lifecycle_events
-        WHERE event_created_at >= :start_utc
-          AND event_created_at < :end_utc
-          AND charge_amount IS NOT NULL
-          AND charge_amount > 0
-          AND event_type IN ('subscription.authenticated', 'subscription.charged')
+            amount
+        FROM (
+            SELECT
+                cs.user_id,
+                'subscription.authenticated' AS event_type,
+                sp.trial_amount AS amount,
+                cs.trial_starts_at AS event_time
+            FROM prod.customer_subscriptions cs
+            LEFT JOIN prod.subscription_plans sp ON cs.plan_id = sp.id
+            WHERE cs.status <> 'PENDING_AUTH'
+              AND sp.trial_amount IS NOT NULL
+              AND sp.trial_amount > 0
+
+            UNION ALL
+
+            SELECT
+                cs.user_id,
+                'subscription.charged' AS event_type,
+                sp.billing_amount AS amount,
+                cs.current_period_starts_at AS event_time
+            FROM prod.customer_subscriptions cs
+            LEFT JOIN prod.subscription_plans sp ON cs.plan_id = sp.id
+            WHERE cs.subscription_case IN ('PLAN', 'CANCELED_PLAN', 'PLAN_ENDED')
+              AND cs.status IN ('ACTIVE', 'CANCELED')
+              AND sp.billing_amount IS NOT NULL
+              AND sp.billing_amount > 0
+        ) cs
+        WHERE event_time >= :start_utc
+          AND event_time < :end_utc
         """,
         {
             "start_utc": utc_naive(local_midnight(ranges["current_start"])),
             "end_utc": utc_naive(local_midnight(ranges["current_end"] + timedelta(days=1))),
         },
     )
-    purchases["amount"] = pd.to_numeric(purchases["charge_amount"], errors="coerce").round(0)
+    purchases["amount"] = pd.to_numeric(purchases["amount"], errors="coerce").round(0)
     paywall_events = pd.DataFrame(mixpanel.get("subscription_paywall_user_daily", []))
     trial_cta_events = pd.DataFrame(mixpanel.get("subscription_trial_cta_user_daily", []))
     if paywall_events.empty:
@@ -2278,9 +2316,9 @@ def main() -> None:
                 "raw_data": "Raw SQL rows, Mixpanel event exports, user-level funnel rows, and credentials are not stored in this repo.",
             },
             "source_notes": [
-                "Revenue comes from MySQL subscription_lifecycle_events and payment_orders.",
+                "Subscription revenue comes from MySQL customer_subscriptions joined to subscription_plans.",
                 "Pay as you go means successful ADD_MONEY wallet payment orders.",
-                "Customized day pass means successful DAY_PASS payment orders.",
+                "Customized day pass revenue comes from MySQL customer_day_pass joined to day_pass_config.",
                 "Acquisition new users come from MySQL users.created_at; login success comes from Mixpanel.",
                 "Config funnel paywall shown and trial CTA clicks come from Mixpanel; config, purchases, gender, and DOB-derived age buckets come from MySQL.",
                 "Follow-up entity values are resolved to bot names using chat_session bot_id and normalized bot-name slugs.",
