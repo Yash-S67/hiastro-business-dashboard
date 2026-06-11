@@ -366,6 +366,60 @@ function trendWindowLabel() {
   return SELECTED_PERIOD === "daily" ? "Last 7 days" : "Selected period";
 }
 
+function dailyPeriodDashboards() {
+  const periods = DASHBOARD_DATA.metadata?.daily_periods || [];
+  return periods
+    .map((period) => ({
+      date: period.date,
+      data: DASHBOARD_DATA.periods?.[period.id],
+    }))
+    .filter((period) => period.date && period.data);
+}
+
+function dailyConfigFunnelRows() {
+  return dailyPeriodDashboards().flatMap(({ date, data }) => (
+    data.monetization?.config_funnel || []
+  ).map((row) => ({
+    date,
+    trial_type: row.trial_type,
+    assigned_users: row.assigned_users,
+    followup_users: row.followup_users,
+    paywall_shown_users: row.paywall_shown_users,
+    trial_cta_users: row.trial_cta_users,
+    trial_buyers: row.trial_buyers,
+    main_plan_buyers: row.main_plan_buyers,
+    main_199_buyers: row.main_199_buyers,
+    main_499_buyers: row.main_499_buyers,
+    followup_to_trial_pct: row.followup_to_trial_pct,
+    trial_to_main_pct: row.trial_to_main_pct,
+    followup_to_main_pct: row.followup_to_main_pct,
+  })));
+}
+
+function currentFunnelStageRows(configRows) {
+  const totals = (configRows || []).reduce((acc, row) => {
+    [
+      "assigned_users",
+      "followup_users",
+      "paywall_shown_users",
+      "trial_cta_users",
+      "trial_buyers",
+      "main_plan_buyers",
+    ].forEach((key) => {
+      acc[key] = (acc[key] || 0) + Number(row[key] || 0);
+    });
+    return acc;
+  }, {});
+  return [
+    { stage: "Assigned", users: totals.assigned_users, conversion_pct: 100 },
+    { stage: "Follow-up", users: totals.followup_users, conversion_pct: safePercent(totals.followup_users, totals.assigned_users) },
+    { stage: "Paywall", users: totals.paywall_shown_users, conversion_pct: safePercent(totals.paywall_shown_users, totals.followup_users) },
+    { stage: "Trial CTA", users: totals.trial_cta_users, conversion_pct: safePercent(totals.trial_cta_users, totals.paywall_shown_users) },
+    { stage: "Trial Buyers", users: totals.trial_buyers, conversion_pct: safePercent(totals.trial_buyers, totals.trial_cta_users) },
+    { stage: "Main Buyers", users: totals.main_plan_buyers, conversion_pct: safePercent(totals.main_plan_buyers, totals.trial_buyers) },
+  ];
+}
+
 function dashboardDateOptions() {
   const dailyPeriods = DASHBOARD_DATA.metadata?.daily_periods || [];
   if (dailyPeriods.length) return dailyPeriods.map((period) => period.date);
@@ -1244,6 +1298,123 @@ function renderMonetization(data) {
     { key: "trial_to_main_pct", label: "Trial to Main", format: pct },
     { key: "followup_to_main_pct", label: "Follow-up to Main", format: pct },
   ]);
+
+  const dailyFunnelRows = dailyConfigFunnelRows();
+  const dailyFunnelTotals = dashboardDateOptions().map((date) => {
+    const rows = dailyFunnelRows.filter((row) => row.date === date);
+    return rows.reduce((acc, row) => ({
+      date,
+      assigned_users: acc.assigned_users + Number(row.assigned_users || 0),
+      followup_users: acc.followup_users + Number(row.followup_users || 0),
+      paywall_shown_users: acc.paywall_shown_users + Number(row.paywall_shown_users || 0),
+      trial_cta_users: acc.trial_cta_users + Number(row.trial_cta_users || 0),
+      trial_buyers: acc.trial_buyers + Number(row.trial_buyers || 0),
+      main_plan_buyers: acc.main_plan_buyers + Number(row.main_plan_buyers || 0),
+      main_199_buyers: acc.main_199_buyers + Number(row.main_199_buyers || 0),
+      main_499_buyers: acc.main_499_buyers + Number(row.main_499_buyers || 0),
+    }), {
+      date,
+      assigned_users: 0,
+      followup_users: 0,
+      paywall_shown_users: 0,
+      trial_cta_users: 0,
+      trial_buyers: 0,
+      main_plan_buyers: 0,
+      main_199_buyers: 0,
+      main_499_buyers: 0,
+    });
+  });
+  const dailyFunnelDetail = dailyFunnelTotals.map((row) => ({
+    ...row,
+    assigned_to_followup_pct: safePercent(row.followup_users, row.assigned_users),
+    followup_to_paywall_pct: safePercent(row.paywall_shown_users, row.followup_users),
+    paywall_to_trial_cta_pct: safePercent(row.trial_cta_users, row.paywall_shown_users),
+    cta_to_trial_pct: safePercent(row.trial_buyers, row.trial_cta_users),
+    followup_to_trial_pct: safePercent(row.trial_buyers, row.followup_users),
+    trial_to_main_pct: safePercent(row.main_plan_buyers, row.trial_buyers),
+    followup_to_main_pct: safePercent(row.main_plan_buyers, row.followup_users),
+  }));
+  chart("funnelDailyStageTrendChart", "line", {
+    labels: dailyFunnelTotals.map((row) => shortDate(row.date)),
+    datasets: [
+      { label: "Follow-up", data: dailyFunnelTotals.map((row) => row.followup_users), borderColor: COLORS.teal, tension: 0.25 },
+      { label: "Paywall", data: dailyFunnelTotals.map((row) => row.paywall_shown_users), borderColor: COLORS.blue, tension: 0.25 },
+      { label: "Trial CTA", data: dailyFunnelTotals.map((row) => row.trial_cta_users), borderColor: COLORS.gold, tension: 0.25 },
+      { label: "Trial buyers", data: dailyFunnelTotals.map((row) => row.trial_buyers), borderColor: COLORS.rose, tension: 0.25 },
+      { label: "Main buyers", data: dailyFunnelTotals.map((row) => row.main_plan_buyers), borderColor: COLORS.green, tension: 0.25 },
+    ],
+  }, {
+    plugins: { title: { display: true, text: "Daily Funnel Volume Movement" }, legend: { position: "bottom" } },
+  });
+
+  const conversionTrend = groupedLine(dailyFunnelRows, "date", "trial_type", "followup_to_trial_pct");
+  conversionTrend.labels = conversionTrend.labels.map(shortDate);
+  conversionTrend.datasets = [
+    ...conversionTrend.datasets.map((dataset) => ({ ...dataset, label: `${dataset.label} follow-up to trial`, borderColor: dataset.label.includes("49") ? COLORS.gold : COLORS.teal })),
+    ...groupedLine(dailyFunnelRows, "date", "trial_type", "followup_to_main_pct").datasets.map((dataset) => ({
+      ...dataset,
+      label: `${dataset.label} follow-up to main`,
+      borderColor: dataset.label.includes("49") ? COLORS.rose : COLORS.green,
+      borderDash: [6, 4],
+    })),
+  ];
+  chart("funnelDailyConversionTrendChart", "line", conversionTrend, {
+    plugins: { title: { display: true, text: "Daily Rs 1 vs Rs 49 Conversion Rates" }, legend: { position: "bottom" } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Conversion %" } } },
+  });
+
+  const funnelStageRows = currentFunnelStageRows(configRows);
+  chart("funnelDropoffChart", "bar", {
+    labels: funnelStageRows.map((row) => row.stage),
+    datasets: [
+      { label: "Users", data: funnelStageRows.map((row) => row.users), backgroundColor: COLORS.blue },
+      { label: "Step conversion %", data: funnelStageRows.map((row) => row.conversion_pct), backgroundColor: COLORS.gold, yAxisID: "y1" },
+    ],
+  }, {
+    plugins: { title: { display: true, text: "Selected Window Funnel Drop-off" }, legend: { position: "bottom" } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Users" } },
+      y1: { beginAtZero: true, max: 100, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Step conversion %" } },
+    },
+  });
+
+  const planFunnelRows = (m.subscription_plan_performance || []).filter((row) => Number(row.followup_users || 0) > 0);
+  chart("planFollowupConversionBar", "bar", {
+    labels: planFunnelRows.map((row) => row.plan_code),
+    datasets: [
+      { label: "Follow-up to trial %", data: planFunnelRows.map((row) => row.followup_to_trial_pct), backgroundColor: COLORS.teal },
+      { label: "Follow-up to main %", data: planFunnelRows.map((row) => row.followup_to_main_pct), backgroundColor: COLORS.green },
+      { label: "Main / trial %", data: planFunnelRows.map((row) => row.main_to_trial_buyer_pct), backgroundColor: COLORS.gold },
+    ],
+  }, {
+    plugins: { title: { display: true, text: "Plan-Level Subscription Conversion" }, legend: { position: "bottom" } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Conversion %" } } },
+  });
+
+  table("planFunnelTable", planFunnelRows, [
+    { key: "selection", label: "Selection", text: true },
+    { key: "plan_code", label: "Plan", text: true },
+    { key: "trial_type", label: "Trial Cohort", text: true },
+    { key: "followup_users", label: "Follow-up", format: number },
+    { key: "trial_buyers", label: "Trial Buyers", format: number },
+    { key: "main_buyers", label: "Main Buyers", format: number },
+    { key: "followup_to_trial_pct", label: "Follow-up to Trial", format: pct },
+    { key: "followup_to_main_pct", label: "Follow-up to Main", format: pct },
+    { key: "main_to_trial_buyer_pct", label: "Main / Trial", format: pct },
+  ], 20);
+
+  table("dailyFunnelTrendTable", dailyFunnelDetail, [
+    { key: "date", label: "Date", text: true, format: shortDate },
+    { key: "followup_users", label: "Follow-up", format: number },
+    { key: "paywall_shown_users", label: "Paywall", format: number },
+    { key: "trial_cta_users", label: "Trial CTA", format: number },
+    { key: "trial_buyers", label: "Trial Buyers", format: number },
+    { key: "main_plan_buyers", label: "Main Buyers", format: number },
+    { key: "followup_to_trial_pct", label: "Follow-up to Trial", format: pct },
+    { key: "trial_to_main_pct", label: "Trial to Main", format: pct },
+    { key: "followup_to_main_pct", label: "Follow-up to Main", format: pct },
+  ], 10);
 
   const entityRows = m.entity_distribution || [];
   chart("entityConversionChart", "bar", {

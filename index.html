@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HiAstro Business Dashboard</title>
-    <link rel="stylesheet" href="assets/styles.css?v=20260611-plan-followup-funnel" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260611-funnel-graphs" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -51,6 +51,7 @@
           <button type="button" data-tab-target="monetization-payg">PayG</button>
           <button type="button" data-tab-target="monetization-packs">Pack Comparison</button>
           <button type="button" data-tab-target="monetization-funnels">Funnels</button>
+          <button type="button" data-tab-target="monetization-funnel-graphs">Funnel Graphs</button>
           <button type="button" data-tab-target="monetization-diagnostics">Segments</button>
         </div>
         <div class="tab-panel active" id="monetization-streams">
@@ -244,6 +245,33 @@
             <div class="panel">
               <h3>Rs 1 vs Rs 49 Funnel Table</h3>
               <div id="configFunnelTable"></div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-panel" id="monetization-funnel-graphs">
+          <div class="split-heading">
+            <div>
+              <p class="eyebrow">Funnel Movement and Drop-offs</p>
+              <h3>Subscription Funnel Graphs</h3>
+            </div>
+            <p>Daily movement, Rs 1 vs Rs 49 conversion rates, and plan-level follow-up to trial/main performance.</p>
+          </div>
+          <div class="grid two">
+            <div class="panel"><canvas id="funnelDailyStageTrendChart"></canvas></div>
+            <div class="panel"><canvas id="funnelDailyConversionTrendChart"></canvas></div>
+          </div>
+          <div class="grid two">
+            <div class="panel"><canvas id="funnelDropoffChart"></canvas></div>
+            <div class="panel"><canvas id="planFollowupConversionBar"></canvas></div>
+          </div>
+          <div class="grid two">
+            <div class="panel">
+              <h3>Plan Follow-up Conversion Detail</h3>
+              <div id="planFunnelTable"></div>
+            </div>
+            <div class="panel">
+              <h3>Daily Funnel Trend Detail</h3>
+              <div id="dailyFunnelTrendTable"></div>
             </div>
           </div>
         </div>
@@ -514,6 +542,6 @@
       </section>
     </main>
 
-    <script src="assets/app.js?v=20260611-plan-followup-funnel"></script>
+    <script src="assets/app.js?v=20260611-funnel-graphs"></script>
   </body>
 </html>
