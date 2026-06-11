@@ -818,6 +818,9 @@ function renderMonetization(data) {
   const bestConversionPlan = [...subscriptionPlans]
     .filter((row) => Number(row.trial_buyers || 0) >= 10)
     .sort((a, b) => Number(b.main_to_trial_buyer_pct || 0) - Number(a.main_to_trial_buyer_pct || 0))[0] || {};
+  const bestFollowupMainPlan = [...subscriptionPlans]
+    .filter((row) => Number(row.followup_users || 0) > 0)
+    .sort((a, b) => Number(b.followup_to_main_pct || 0) - Number(a.followup_to_main_pct || 0))[0] || {};
   const bestRevenuePlan = topRows(subscriptionPlans, "revenue", 1)[0] || {};
   const mainPackDailyRows = (mTrend.daily_pack || m.daily_pack || [])
     .filter((row) => row.family === "subscription" && String(row.pack || "").startsWith("Main Rs ") && [199, 499].includes(Number(row.amount)))
@@ -837,6 +840,7 @@ function renderMonetization(data) {
     actionCard("Trial to Main", pct(trialToMainPct), `${number(mainBuyers)} main buyers from ${number(trialBuyers)} trial buyers`, trialToMainPct >= 20 ? "good" : "risk"),
     actionCard("Rs 499 Main Share", pct(main499BuyerShare), `${number(main499.payers)} users | ${pct(main499RevenueShare)} of main revenue`, main499BuyerShare >= main199BuyerShare ? "good" : "neutral"),
     actionCard("Best Plan Conversion", bestConversionPlan.plan_code || "-", `${pct(bestConversionPlan.main_to_trial_buyer_pct)} main/trial | ${number(bestConversionPlan.main_buyers)} main buyers`, "good"),
+    actionCard("Best Follow-up to Main", bestFollowupMainPlan.plan_code || "-", `${pct(bestFollowupMainPlan.followup_to_main_pct)} follow-up/main | ${pct(bestFollowupMainPlan.followup_to_trial_pct)} follow-up/trial`, "neutral"),
   ].join("");
 
   document.getElementById("packPerformanceCards").innerHTML = [
@@ -998,9 +1002,14 @@ function renderMonetization(data) {
     { key: "avg_transaction", label: "Avg Txn", format: money },
     { key: "avg_revenue_per_payer", label: "ARPP", format: money },
     { key: "trial_revenue", label: "Trial Rev", format: money },
+    { key: "trial_amount", label: "Trial Amt", format: money },
     { key: "trial_buyers", label: "Trial Buyers", format: number },
     { key: "main_revenue", label: "Main Rev", format: money },
+    { key: "main_amount", label: "Main Amt", format: money },
     { key: "main_buyers", label: "Main Buyers", format: number },
+    { key: "followup_users", label: "Follow-up Users", format: number },
+    { key: "followup_to_trial_pct", label: "Follow-up to Trial", format: pct },
+    { key: "followup_to_main_pct", label: "Follow-up to Main", format: pct },
     { key: "main_to_trial_buyer_pct", label: "Main / Trial", format: pct },
   ], 20);
 

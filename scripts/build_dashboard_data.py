@@ -952,12 +952,17 @@ def build_monetization(
                 "avg_transaction",
                 "avg_revenue_per_payer",
                 "trial_revenue",
+                "trial_amount",
                 "trial_buyers",
                 "trial_transactions",
                 "main_revenue",
+                "main_amount",
                 "main_buyers",
                 "main_transactions",
                 "main_to_trial_buyer_pct",
+                "followup_users",
+                "followup_to_trial_pct",
+                "followup_to_main_pct",
             ]
         )
         subscription_stage_performance = pd.DataFrame(
@@ -986,6 +991,8 @@ def build_monetization(
             main_df = plan_df[plan_df["stage"].eq("Main")]
             trial_buyers = int(trial_df["user_id"].nunique())
             main_buyers = int(main_df["user_id"].nunique())
+            trial_amount = float(trial_df["amount"].dropna().iloc[0]) if not trial_df["amount"].dropna().empty else None
+            main_amount = float(main_df["amount"].dropna().iloc[0]) if not main_df["amount"].dropna().empty else None
             plan_rows.append(
                 {
                     "selection": f"subscription plan = {plan_code}",
@@ -998,12 +1005,17 @@ def build_monetization(
                     "avg_transaction": round(plan_revenue / plan_transactions, 2) if plan_transactions else 0,
                     "avg_revenue_per_payer": round(plan_revenue / plan_payers, 2) if plan_payers else 0,
                     "trial_revenue": round(float(trial_df["revenue"].sum()), 2),
+                    "trial_amount": trial_amount,
                     "trial_buyers": trial_buyers,
                     "trial_transactions": int(trial_df["transactions"].sum()),
                     "main_revenue": round(float(main_df["revenue"].sum()), 2),
+                    "main_amount": main_amount,
                     "main_buyers": main_buyers,
                     "main_transactions": int(main_df["transactions"].sum()),
                     "main_to_trial_buyer_pct": safe_div(main_buyers, trial_buyers),
+                    "followup_users": 0,
+                    "followup_to_trial_pct": 0,
+                    "followup_to_main_pct": 0,
                 }
             )
         subscription_plan_performance = pd.DataFrame(plan_rows).sort_values("revenue", ascending=False)
@@ -1861,6 +1873,38 @@ def build_config_funnel(
     return rows
 
 
+def enrich_subscription_plan_followup(
+    monetization: dict[str, Any],
+    config_funnel: list[dict[str, Any]],
+) -> None:
+    config_by_trial_amount = {
+        int(row["trial_amount"]): row
+        for row in config_funnel
+        if row.get("trial_amount") is not None
+    }
+    enriched_rows = []
+    for row in monetization.get("subscription_plan_performance", []):
+        enriched = dict(row)
+        trial_amount = enriched.get("trial_amount")
+        if trial_amount is not None:
+            try:
+                config_row = config_by_trial_amount.get(int(round(float(trial_amount))))
+            except (TypeError, ValueError):
+                config_row = None
+            if config_row:
+                followup_users = int(config_row.get("followup_users") or 0)
+                enriched["trial_type"] = config_row.get("trial_type")
+                enriched["followup_users"] = followup_users
+                enriched["followup_to_trial_pct"] = safe_div(int(enriched.get("trial_buyers") or 0), followup_users)
+                enriched["followup_to_main_pct"] = safe_div(int(enriched.get("main_buyers") or 0), followup_users)
+                enriched["selection"] = (
+                    f"subscription plan = {enriched.get('plan_code')}; "
+                    f"trial cohort = {config_row.get('trial_type')}"
+                )
+        enriched_rows.append(enriched)
+    monetization["subscription_plan_performance"] = enriched_rows
+
+
 def build_retention(engine, profiles: pd.DataFrame, ranges: dict[str, Any]) -> dict[str, Any]:
     cohort_start = ranges["prior_30_start"]
     cohort_end = ranges["current_end"] - timedelta(days=7)
@@ -2402,6 +2446,7 @@ def build_period_dashboard(
 
     acquisition = build_acquisition(profiles, ranges, mixpanel, user_revenue_current, user_family_revenue_current)
     config_funnel = build_config_funnel(engine, ranges, set(mixpanel["followup_users"].keys()), mixpanel)
+    enrich_subscription_plan_followup(monetization, config_funnel)
     retention = build_retention(engine, profiles, ranges)
     engagement = build_engagement(mixpanel, profiles, ranges)
     period_dashboard = {
