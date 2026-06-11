@@ -142,6 +142,36 @@ function card(label, value, sub = "") {
   `;
 }
 
+function insightCard(label, value, sub = "", tone = "neutral") {
+  return `
+    <article class="insight-card ${tone}">
+      <div class="insight-label">${escapeHtml(label)}</div>
+      <div class="insight-value">${value}</div>
+      <div class="insight-sub">${sub}</div>
+    </article>
+  `;
+}
+
+function actionCard(label, value, sub = "", tone = "neutral") {
+  return `
+    <article class="action-card ${tone}">
+      <div class="action-label">${escapeHtml(label)}</div>
+      <div class="action-value">${value}</div>
+      <div class="action-sub">${sub}</div>
+    </article>
+  `;
+}
+
+function funnelStep(label, value, sub = "") {
+  return `
+    <article class="funnel-step">
+      <div class="funnel-label">${escapeHtml(label)}</div>
+      <div class="funnel-value">${value}</div>
+      <div class="funnel-sub">${sub}</div>
+    </article>
+  `;
+}
+
 function streamCard(row, accent = COLORS.blue) {
   return `
     <article class="stream-card" style="--accent: ${accent}">
@@ -455,6 +485,17 @@ function renderOverview(data) {
     card("D1 Chat Retention", pct(r?.retention_pct || 0), `${number(r?.retained_users || 0)} retained users`),
     card("Avg Time / User", `${e.avg_minutes_per_user}m`, `${number(e.sessions)} app sessions`),
     card("BIM Opens", number(e.bim_notification_opens), `${number(e.bim_notification_users)} users`),
+  ].join("");
+
+  const materialFamilies = familyRows(data.monetization).filter((row) => Number(row.revenue_share_pct || 0) >= 5);
+  const bestFamily = topRows(materialFamilies.length ? materialFamilies : familyRows(data.monetization), "revenue_growth_vs_prior_7_pct", 1)[0] || sub;
+  const weakestFamily = [...familyRows(data.monetization)].sort((x, y) => Number(x.revenue_growth_vs_prior_7_pct || 0) - Number(y.revenue_growth_vs_prior_7_pct || 0))[0] || payg;
+  const paymentGap = Number(a.new_user_to_followup_pct || 0) - Number(a.new_user_to_payment_pct || 0);
+  document.getElementById("decisionInsights").innerHTML = [
+    insightCard("Revenue Momentum", `${trend(g7.revenue)} vs prior`, `${money(m.revenue)} total revenue`, Number(g7.revenue || 0) >= 0 ? "good" : "risk"),
+    insightCard("Fastest Stream", bestFamily.family_label || familyLabel(bestFamily.family), `${trend(bestFamily.revenue_growth_vs_prior_7_pct)} revenue growth | ${money(bestFamily.revenue)}`, "good"),
+    insightCard("Watch Area", weakestFamily.family_label || familyLabel(weakestFamily.family), `${trend(weakestFamily.revenue_growth_vs_prior_7_pct)} revenue growth | ${number(weakestFamily.payers)} payers`, Number(weakestFamily.revenue_growth_vs_prior_7_pct || 0) < 0 ? "risk" : "neutral"),
+    insightCard("Conversion Gap", `${paymentGap.toFixed(1)} pts`, `${pct(a.new_user_to_followup_pct)} follow-up vs ${pct(a.new_user_to_payment_pct)} payment`, paymentGap > 30 ? "risk" : "neutral"),
   ].join("");
 }
 
@@ -990,6 +1031,24 @@ function renderAcquisition(data) {
     card("PayG Payers", number(paygPayment.payers), `${pct(paygPayment.new_to_payment_pct)} of new users | ${money(paygPayment.revenue)}`),
     card("Day Pass Payers", number(dayPassPayment.payers), `${pct(dayPassPayment.new_to_payment_pct)} of new users | ${money(dayPassPayment.revenue)}`),
     card("Payment Users", number(a.funnel[2].users), `${pct(a.funnel[2].conversion_from_previous_pct)} from follow-up`),
+  ].join("");
+
+  const followupStage = a.funnel.find((row) => row.stage.toLowerCase().includes("follow")) || a.funnel[1] || {};
+  const paymentStage = a.funnel.find((row) => row.stage.toLowerCase().includes("payment") || row.stage.toLowerCase().includes("payer")) || a.funnel[2] || {};
+  document.getElementById("acquisitionFunnelStrip").innerHTML = [
+    funnelStep("New Users", number(a.kpis.new_users), "SQL signups"),
+    funnelStep("Follow-up", number(followupStage.users), `${pct(followupStage.conversion_from_start_pct)} of new users`),
+    funnelStep("Paid", number(paymentStage.users), `${pct(paymentStage.conversion_from_start_pct)} of new users`),
+    funnelStep("Revenue", money(paymentRows.reduce((sum, row) => sum + Number(row.revenue || 0), 0)), "from new-user payments"),
+  ].join("");
+
+  const strongestPayment = topRows(paymentRows, "revenue", 1)[0] || {};
+  const strongestSegment = topRows((a.segment_opportunities || []), "opportunity_score", 1)[0] || {};
+  const followupToPayment = Number(paymentStage.conversion_from_previous_pct || 0);
+  document.getElementById("acquisitionActionCards").innerHTML = [
+    actionCard("Primary Bottleneck", `${pct(followupToPayment)}`, "Follow-up users converting to payment", followupToPayment < 10 ? "risk" : "neutral"),
+    actionCard("Best Payment Stream", strongestPayment.family_label || "No payment", `${money(strongestPayment.revenue)} | ${number(strongestPayment.payers)} payers`, "good"),
+    actionCard("Segment to Inspect", strongestSegment.selection || "No segment", `${number(Math.round(strongestSegment.opportunity_score || 0))} expected payers`, "neutral"),
   ].join("");
 
   chart("newUsersChart", "line", {
@@ -1560,6 +1619,9 @@ function scrollToCurrentSection() {
   const section = document.querySelector(window.location.hash);
   if (!section) return;
   section.scrollIntoView({ block: "start" });
+  document.querySelectorAll(".section-nav a").forEach((link) => {
+    link.classList.toggle("active", link.getAttribute("href") === window.location.hash);
+  });
 }
 
 function renderDataPolicy(meta) {

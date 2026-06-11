@@ -227,12 +227,106 @@ main {
   margin-bottom: 14px;
 }
 
+.insight-strip,
+.action-grid,
+.funnel-strip {
+  display: grid;
+  gap: 10px;
+}
+
+.insight-strip {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 12px 0 28px;
+}
+
+.action-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0 0 14px;
+}
+
+.funnel-strip {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0 0 12px;
+}
+
 .kpi-card,
-.panel {
+.panel,
+.insight-card,
+.action-card,
+.funnel-step {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: var(--shadow);
+}
+
+.insight-card,
+.action-card,
+.funnel-step {
+  position: relative;
+  min-width: 0;
+  padding: 13px 14px;
+  overflow: hidden;
+}
+
+.insight-card::before,
+.action-card::before,
+.funnel-step::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: #7c8da1;
+}
+
+.insight-card.good::before,
+.action-card.good::before {
+  background: var(--green);
+}
+
+.insight-card.risk::before,
+.action-card.risk::before {
+  background: var(--rose);
+}
+
+.insight-label,
+.action-label,
+.funnel-label {
+  color: #5e6b7a;
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.insight-value,
+.action-value,
+.funnel-value {
+  margin-top: 8px;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 850;
+  line-height: 1.15;
+}
+
+.action-value {
+  font-size: 18px;
+}
+
+.funnel-value {
+  font-size: 24px;
+}
+
+.insight-sub,
+.action-sub,
+.funnel-sub {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.funnel-step {
+  background: linear-gradient(180deg, #ffffff, #fbfdff);
 }
 
 .kpi-card {
@@ -579,6 +673,9 @@ tbody tr:last-child td {
   .kpi-grid,
   .kpi-grid.compact,
   .grid.two,
+  .insight-strip,
+  .action-grid,
+  .funnel-strip,
   .stream-grid,
   .policy-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -645,12 +742,15 @@ tbody tr:last-child td {
   }
 
   .grid.two,
+  .action-grid,
   .policy-grid {
     grid-template-columns: 1fr;
   }
 
   .kpi-grid,
   .kpi-grid.compact,
+  .insight-strip,
+  .funnel-strip,
   .stream-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -681,6 +781,8 @@ tbody tr:last-child td {
 
   .kpi-grid,
   .kpi-grid.compact,
+  .insight-strip,
+  .funnel-strip,
   .stream-grid {
     grid-template-columns: 1fr;
   }

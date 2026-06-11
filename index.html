@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HiAstro Business Dashboard</title>
-    <link rel="stylesheet" href="assets/styles.css?v=20260611-executive-ui-4" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260611-decision-ui-2" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -32,6 +32,7 @@
 
     <main>
       <section class="kpi-grid" id="overviewCards"></section>
+      <section class="insight-strip" id="decisionInsights"></section>
 
       <section class="band" id="monetization">
         <div class="section-heading">
@@ -237,6 +238,8 @@
           <button type="button" data-tab-target="acquisition-followup">Follow-up Query</button>
         </div>
         <div class="tab-panel active" id="acquisition-overview">
+          <div class="funnel-strip" id="acquisitionFunnelStrip"></div>
+          <div class="action-grid" id="acquisitionActionCards"></div>
           <div class="grid two">
             <div class="panel"><canvas id="newUsersChart"></canvas></div>
             <div class="panel"><canvas id="acquisitionRateChart"></canvas></div>
@@ -455,6 +458,6 @@
       </section>
     </main>
 
-    <script src="assets/app.js?v=20260611-executive-ui-4"></script>
+    <script src="assets/app.js?v=20260611-decision-ui-2"></script>
   </body>
 </html>
