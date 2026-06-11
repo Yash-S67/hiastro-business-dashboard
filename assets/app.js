@@ -578,10 +578,12 @@ function renderOverview(data) {
   const materialFamilies = familyRows(data.monetization).filter((row) => Number(row.revenue_share_pct || 0) >= 5);
   const bestFamily = topRows(materialFamilies.length ? materialFamilies : familyRows(data.monetization), "revenue_growth_vs_prior_7_pct", 1)[0] || sub;
   const weakestFamily = [...familyRows(data.monetization)].sort((x, y) => Number(x.revenue_growth_vs_prior_7_pct || 0) - Number(y.revenue_growth_vs_prior_7_pct || 0))[0] || payg;
+  const bestFamilyGrowth = Number(bestFamily.revenue_growth_vs_prior_7_pct || 0);
+  const bestFamilyLabel = bestFamilyGrowth > 0 ? "Growing Stream" : "Least Decline";
   const paymentGap = Number(a.new_user_to_followup_pct || 0) - Number(a.new_user_to_payment_pct || 0);
   document.getElementById("decisionInsights").innerHTML = [
     insightCard("Revenue Momentum", `${trend(g7.revenue)} vs prior`, `${money(m.revenue)} total revenue`, Number(g7.revenue || 0) >= 0 ? "good" : "risk"),
-    insightCard("Fastest Stream", bestFamily.family_label || familyLabel(bestFamily.family), `${trend(bestFamily.revenue_growth_vs_prior_7_pct)} revenue growth | ${money(bestFamily.revenue)}`, "good"),
+    insightCard(bestFamilyLabel, bestFamily.family_label || familyLabel(bestFamily.family), `${trend(bestFamily.revenue_growth_vs_prior_7_pct)} revenue growth | ${money(bestFamily.revenue)}`, bestFamilyGrowth > 0 ? "good" : "risk"),
     insightCard("Watch Area", weakestFamily.family_label || familyLabel(weakestFamily.family), `${trend(weakestFamily.revenue_growth_vs_prior_7_pct)} revenue growth | ${number(weakestFamily.payers)} payers`, Number(weakestFamily.revenue_growth_vs_prior_7_pct || 0) < 0 ? "risk" : "neutral"),
     insightCard("Conversion Gap", `${paymentGap.toFixed(1)} pts`, `${pct(a.new_user_to_followup_pct)} follow-up vs ${pct(a.new_user_to_payment_pct)} payment`, paymentGap > 30 ? "risk" : "neutral"),
   ].join("");
