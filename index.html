@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HiAstro Business Dashboard</title>
-    <link rel="stylesheet" href="assets/styles.css?v=20260610-table-filters" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260611-clean-monetization" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -43,27 +43,40 @@
         </div>
         <div class="kpi-grid compact" id="monetizationCards"></div>
         <div class="section-tabs" data-tab-group="monetization">
-          <button type="button" class="active" data-tab-target="monetization-overview">Overview</button>
-          <button type="button" data-tab-target="monetization-packs">Packs</button>
+          <button type="button" class="active" data-tab-target="monetization-streams">Revenue Streams</button>
+          <button type="button" data-tab-target="monetization-subscription">Subscription</button>
+          <button type="button" data-tab-target="monetization-payg">PayG</button>
+          <button type="button" data-tab-target="monetization-packs">Pack Comparison</button>
           <button type="button" data-tab-target="monetization-funnels">Funnels</button>
-          <button type="button" data-tab-target="monetization-entities">Entities</button>
+          <button type="button" data-tab-target="monetization-diagnostics">Segments</button>
         </div>
-        <div class="tab-panel active" id="monetization-overview">
+        <div class="tab-panel active" id="monetization-streams">
+          <div class="split-heading">
+            <div>
+              <p class="eyebrow">Subscription vs PayG vs Day Pass</p>
+              <h3>Revenue Stream Distribution</h3>
+            </div>
+            <p>Use this view to see which stream is driving revenue, payers, transaction volume, and average transaction.</p>
+          </div>
+          <div class="stream-grid" id="streamSplitCards"></div>
           <div class="grid two">
             <div class="panel"><canvas id="revenueDailyChart"></canvas></div>
             <div class="panel"><canvas id="revenueRateChart"></canvas></div>
+          </div>
+          <div class="grid two">
+            <div class="panel"><canvas id="revenueFamilyChart"></canvas></div>
+            <div class="panel"><canvas id="streamEfficiencyChart"></canvas></div>
           </div>
           <div class="grid two">
             <div class="panel"><canvas id="familyPayerChart"></canvas></div>
             <div class="panel"><canvas id="familyAvgTxnChart"></canvas></div>
           </div>
           <div class="grid two">
-            <div class="panel"><canvas id="revenueFamilyChart"></canvas></div>
             <div class="panel"><canvas id="revenueCohortChart"></canvas></div>
-          </div>
-          <div class="panel">
-            <h3>Revenue Stream KPI Detail</h3>
-            <div id="revenueStreamKpiTable"></div>
+            <div class="panel">
+              <h3>Revenue Stream KPI Detail</h3>
+              <div id="revenueStreamKpiTable"></div>
+            </div>
           </div>
           <div class="grid two">
             <div class="panel">
@@ -75,71 +88,86 @@
               <div id="revenueCohortTable"></div>
             </div>
           </div>
-          <div class="panel">
-            <h3>Payer Segment Detail</h3>
-            <div class="table-controls" id="payerSegmentControls"></div>
-            <div id="payerSegmentTable"></div>
-          </div>
-          <div class="panel">
-            <h3>Payer Segment by Revenue Stream</h3>
-            <div class="table-controls" id="payerFamilySegmentControls"></div>
-            <div id="payerFamilySegmentTable"></div>
-          </div>
-          <div class="panel">
-            <h3>Revenue Family Detail</h3>
-            <div id="revenueFamilyTable"></div>
-          </div>
         </div>
-        <div class="tab-panel" id="monetization-packs">
-          <div class="kpi-grid compact" id="packPerformanceCards"></div>
+        <div class="tab-panel" id="monetization-subscription">
+          <div class="split-heading">
+            <div>
+              <p class="eyebrow">Trial, Main Pack, Plan Code</p>
+              <h3>Subscription Performance</h3>
+            </div>
+            <p>Focused on Rs 499 vs Rs 199 main pack users, trial-to-main movement, and plan-level revenue quality.</p>
+          </div>
+          <div class="kpi-grid compact" id="subscriptionFocusCards"></div>
           <div class="grid two">
             <div class="panel"><canvas id="mainPackBuyerChart"></canvas></div>
+            <div class="panel"><canvas id="subscriptionStageChart"></canvas></div>
+          </div>
+          <div class="grid two">
+            <div class="panel"><canvas id="subscriptionPlanDailyChart"></canvas></div>
             <div class="panel">
               <h3>Main Subscription Pack Users</h3>
               <div id="mainPackAmountTable"></div>
             </div>
           </div>
-          <div class="grid two">
-            <div class="panel"><canvas id="subscriptionPlanDailyChart"></canvas></div>
-            <div class="panel"><canvas id="paygDailyChart"></canvas></div>
-          </div>
           <div class="panel">
-            <h3>Subscription Plan Performance</h3>
+            <h3>Subscription Plan Comparison</h3>
             <div id="subscriptionPlanTable"></div>
           </div>
+          <div class="panel">
+            <h3>Trial and Main Pack Split</h3>
+            <div id="subscriptionStageTable"></div>
+          </div>
+        </div>
+        <div class="tab-panel" id="monetization-payg">
+          <div class="split-heading">
+            <div>
+              <p class="eyebrow">Wallet Recharge Revenue</p>
+              <h3>Pay as You Go Performance</h3>
+            </div>
+            <p>PayG is shown merged first, then broken into wallet amount tiers for distribution and mix quality.</p>
+          </div>
+          <div class="kpi-grid compact" id="paygFocusCards"></div>
+          <div class="grid two">
+            <div class="panel"><canvas id="paygDailyChart"></canvas></div>
+            <div class="panel"><canvas id="paygAmountMixChart"></canvas></div>
+          </div>
           <div class="grid two">
             <div class="panel">
-              <h3>Subscription Trial and Main Pack Split</h3>
-              <div id="subscriptionStageTable"></div>
-            </div>
-            <div class="panel">
-              <h3>Merged Pay as You Go</h3>
+              <h3>Merged PayG Summary</h3>
               <div id="paygMergedTable"></div>
             </div>
+            <div class="panel">
+              <h3>PayG Amount Distribution</h3>
+              <div id="paygAmountTable"></div>
+            </div>
           </div>
+          <div class="panel">
+            <h3>Revenue Concentration</h3>
+            <div id="revenueConcentrationTable"></div>
+          </div>
+        </div>
+        <div class="tab-panel" id="monetization-packs">
+          <div class="split-heading">
+            <div>
+              <p class="eyebrow">All Packs Compared</p>
+              <h3>Pack Revenue and Buyer Mix</h3>
+            </div>
+            <p>This compares subscription packs, merged PayG, and day pass without mixing them into unrelated segment tables.</p>
+          </div>
+          <div class="kpi-grid compact" id="packPerformanceCards"></div>
           <div class="grid two">
             <div class="panel"><canvas id="packDailyChart"></canvas></div>
             <div class="panel"><canvas id="payerFrequencyChart"></canvas></div>
           </div>
           <div class="panel">
-            <h3>Pack Revenue, PayG Merged</h3>
+            <h3>Pack Comparison</h3>
             <div class="table-controls" id="packControls"></div>
             <div id="packTable"></div>
           </div>
           <div class="grid two">
             <div class="panel">
-              <h3>Pay as You Go Amount Drilldown</h3>
-              <div id="paygAmountTable"></div>
-            </div>
-            <div class="panel">
               <h3>All Amount Breakdown</h3>
               <div id="amountBreakdownTable"></div>
-            </div>
-          </div>
-          <div class="grid two">
-            <div class="panel">
-              <h3>Revenue Concentration</h3>
-              <div id="revenueConcentrationTable"></div>
             </div>
             <div class="panel">
               <h3>Raw Pack Detail</h3>
@@ -162,7 +190,28 @@
             </div>
           </div>
         </div>
-        <div class="tab-panel" id="monetization-entities">
+        <div class="tab-panel" id="monetization-diagnostics">
+          <div class="split-heading">
+            <div>
+              <p class="eyebrow">Lookup and Diagnostics</p>
+              <h3>Segments and Entity Earnings</h3>
+            </div>
+            <p>These tables are for investigation after the stream and pack views show what moved.</p>
+          </div>
+          <div class="panel">
+            <h3>Payer Segment Detail</h3>
+            <div class="table-controls" id="payerSegmentControls"></div>
+            <div id="payerSegmentTable"></div>
+          </div>
+          <div class="panel">
+            <h3>Payer Segment by Revenue Stream</h3>
+            <div class="table-controls" id="payerFamilySegmentControls"></div>
+            <div id="payerFamilySegmentTable"></div>
+          </div>
+          <div class="panel">
+            <h3>Revenue Family Detail</h3>
+            <div id="revenueFamilyTable"></div>
+          </div>
           <div class="grid two">
             <div class="panel"><canvas id="entityConversionChart"></canvas></div>
             <div class="panel">
@@ -406,6 +455,6 @@
       </section>
     </main>
 
-    <script src="assets/app.js?v=20260610-table-filters"></script>
+    <script src="assets/app.js?v=20260611-clean-monetization"></script>
   </body>
 </html>

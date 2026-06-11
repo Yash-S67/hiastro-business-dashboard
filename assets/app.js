@@ -142,6 +142,23 @@ function card(label, value, sub = "") {
   `;
 }
 
+function streamCard(row, accent = COLORS.blue) {
+  return `
+    <article class="stream-card" style="--accent: ${accent}">
+      <div>
+        <div class="stream-title">${escapeHtml(row.family_label || familyLabel(row.family))}</div>
+        <div class="stream-value">${money(row.revenue)}</div>
+      </div>
+      <div class="stream-metrics">
+        <span>Share <strong>${pct(row.revenue_share_pct)}</strong></span>
+        <span>Payers <strong>${number(row.payers)}</strong></span>
+        <span>Avg txn <strong>${money(row.avg_transaction)}</strong></span>
+        <span>Growth <strong>${trend(row.revenue_growth_vs_prior_7_pct) || "-"}</strong></span>
+      </div>
+    </article>
+  `;
+}
+
 function table(containerId, rows, columns, limit = 12) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -462,6 +479,12 @@ function renderMonetization(data) {
     card("Avg Transaction", money(k.avg_transaction), `${comparison.label || "previous period"} ${trend(g7.avg_transaction)} | 30-day avg ${trend(g30.avg_transaction)}`),
   ].join("");
 
+  document.getElementById("streamSplitCards").innerHTML = [
+    streamCard(sub, COLORS.subscription),
+    streamCard(payg, COLORS.pay_as_you_go),
+    streamCard(dayPass, COLORS.day_pass),
+  ].join("");
+
   const daily = groupedDaily(m.daily);
   daily.labels = daily.labels.map(shortDate);
   chart("revenueDailyChart", "line", daily, {
@@ -503,6 +526,18 @@ function renderMonetization(data) {
     datasets: [{ data: m.family.map((r) => r.revenue), backgroundColor: [COLORS.subscription, COLORS.pay_as_you_go, COLORS.day_pass] }],
   }, {
     plugins: { title: { display: true, text: "Revenue Mix" }, legend: { position: "bottom" } },
+  });
+
+  chart("streamEfficiencyChart", "bar", {
+    labels: m.family.map((r) => r.family_label || familyLabel(r.family)),
+    datasets: [
+      { label: "Revenue share %", data: m.family.map((r) => r.revenue_share_pct), backgroundColor: COLORS.blue },
+      { label: "Payer share %", data: m.family.map((r) => r.payer_share_pct), backgroundColor: COLORS.teal },
+      { label: "Transaction share %", data: m.family.map((r) => r.transaction_share_pct), backgroundColor: COLORS.gold },
+    ],
+  }, {
+    plugins: { title: { display: true, text: "Revenue, Payer and Transaction Distribution" }, legend: { position: "bottom" } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, max: 100, grid: { color: "#eef2f6" } } },
   });
 
   const cohortRevenue = groupedLine(m.daily_user_cohort || [], "day", "user_cohort", "revenue");
@@ -621,6 +656,15 @@ function renderMonetization(data) {
   const mainPackDaily = groupedLine(mainPackDailyRows, "day", "pack_amount", "payers");
   mainPackDaily.labels = mainPackDaily.labels.map(shortDate);
 
+  document.getElementById("subscriptionFocusCards").innerHTML = [
+    card("Subscription Revenue", money(sub.revenue), `${pct(sub.revenue_share_pct)} of total | ${trend(sub.revenue_growth_vs_prior_7_pct)} vs prev`),
+    card("Sub Payers", number(sub.payers), `${number(sub.transactions)} transactions | ARPP ${money(sub.avg_revenue_per_payer)}`),
+    card("Rs 499 Main Users", number(main499.payers), `${money(main499.revenue)} revenue`),
+    card("Rs 199 Main Users", number(main199.payers), `${money(main199.revenue)} revenue`),
+    card("Trial Buyers", number((subscriptionStages || []).filter((row) => row.stage === "Trial").reduce((sum, row) => sum + Number(row.payers || 0), 0)), "Rs 1 and Rs 49 trials"),
+    card("Main Buyers", number((subscriptionStages || []).filter((row) => row.stage === "Main").reduce((sum, row) => sum + Number(row.payers || 0), 0)), "Rs 199 and Rs 499 main packs"),
+  ].join("");
+
   document.getElementById("packPerformanceCards").innerHTML = [
     card("Rs 499 Main Users", number(main499.payers), `${money(main499.revenue)} | ${number(main499.transactions)} txns`),
     card("Rs 199 Main Users", number(main199.payers), `${money(main199.revenue)} | ${number(main199.transactions)} txns`),
@@ -632,9 +676,23 @@ function renderMonetization(data) {
     card("Top Wallet Amount", optionalMoney(topWalletAmount.amount), `${money(topWalletAmount.revenue)} | ${number(topWalletAmount.transactions)} txns`),
   ].join("");
 
+  document.getElementById("paygFocusCards").innerHTML = [
+    card("PayG Revenue", money(paygMerged.revenue), `${pct(paygMerged.revenue_share_pct)} of total | ${trend(paygMerged.revenue_growth_vs_prior_7_pct)} vs prev`),
+    card("PayG Payers", number(paygMerged.payers), `${number(paygMerged.transactions)} transactions`),
+    card("PayG Avg Transaction", money(paygMerged.avg_transaction), `ARPP ${money(paygMerged.avg_revenue_per_payer)}`),
+    card("Top Wallet Amount", optionalMoney(topWalletAmount.amount), `${money(topWalletAmount.revenue)} | ${number(topWalletAmount.payers)} payers`),
+  ].join("");
+
   chart("mainPackBuyerChart", "line", mainPackDaily, {
     plugins: { title: { display: true, text: "Rs 499 vs Rs 199 Main Buyers" }, legend: { position: "bottom" } },
     scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Users" } } },
+  });
+
+  chart("subscriptionStageChart", "doughnut", {
+    labels: subscriptionStages.map((row) => `${row.stage} ${money(row.amount)}`),
+    datasets: [{ data: subscriptionStages.map((row) => row.revenue), backgroundColor: [COLORS.blue, COLORS.teal, COLORS.gold, COLORS.rose] }],
+  }, {
+    plugins: { title: { display: true, text: "Subscription Revenue: Trial vs Main" }, legend: { position: "bottom" } },
   });
 
   table("mainPackAmountTable", mainPackRows, [
@@ -668,6 +726,22 @@ function renderMonetization(data) {
     ],
   }, {
     plugins: { title: { display: true, text: "Merged Pay as You Go Trend" }, legend: { position: "bottom" } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Revenue" } },
+      y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Payers" } },
+    },
+  });
+
+  const paygAmountRows = topRows(paygAmounts, "revenue", 8);
+  chart("paygAmountMixChart", "bar", {
+    labels: paygAmountRows.map((row) => money(row.amount)),
+    datasets: [
+      { label: "Revenue", data: paygAmountRows.map((row) => row.revenue), backgroundColor: COLORS.pay_as_you_go },
+      { label: "Payers", data: paygAmountRows.map((row) => row.payers), backgroundColor: COLORS.gold, yAxisID: "y1" },
+    ],
+  }, {
+    plugins: { title: { display: true, text: "PayG Wallet Amount Mix" }, legend: { position: "bottom" } },
     scales: {
       x: { grid: { display: false } },
       y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Revenue" } },
@@ -1435,6 +1509,7 @@ function setupTabs() {
             panel.classList.toggle("active", panel.id === targetId);
           }
         });
+        renderDashboard();
         const resizeVisibleCharts = () => {
           Object.values(CHARTS).forEach((chartInstance) => {
             chartInstance.resize();
