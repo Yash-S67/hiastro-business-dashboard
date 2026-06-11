@@ -783,6 +783,20 @@ function renderMonetization(data) {
     .sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0));
   const main499 = mainPackRows.find((row) => Number(row.amount) === 499) || {};
   const main199 = mainPackRows.find((row) => Number(row.amount) === 199) || {};
+  const trialRows = subscriptionStages.filter((row) => row.stage === "Trial");
+  const trialBuyers = trialRows.reduce((sum, row) => sum + Number(row.payers || 0), 0);
+  const trialRevenue = trialRows.reduce((sum, row) => sum + Number(row.revenue || 0), 0);
+  const mainBuyers = mainPackRows.reduce((sum, row) => sum + Number(row.payers || 0), 0);
+  const mainRevenue = mainPackRows.reduce((sum, row) => sum + Number(row.revenue || 0), 0);
+  const main499BuyerShare = safePercent(main499.payers, mainBuyers);
+  const main199BuyerShare = safePercent(main199.payers, mainBuyers);
+  const main499RevenueShare = safePercent(main499.revenue, mainRevenue);
+  const main199RevenueShare = safePercent(main199.revenue, mainRevenue);
+  const trialToMainPct = safePercent(mainBuyers, trialBuyers);
+  const bestConversionPlan = [...subscriptionPlans]
+    .filter((row) => Number(row.trial_buyers || 0) >= 10)
+    .sort((a, b) => Number(b.main_to_trial_buyer_pct || 0) - Number(a.main_to_trial_buyer_pct || 0))[0] || {};
+  const bestRevenuePlan = topRows(subscriptionPlans, "revenue", 1)[0] || {};
   const mainPackDailyRows = (mTrend.daily_pack || m.daily_pack || [])
     .filter((row) => row.family === "subscription" && String(row.pack || "").startsWith("Main Rs ") && [199, 499].includes(Number(row.amount)))
     .map((row) => ({ ...row, pack_amount: `Rs ${Number(row.amount)}` }));
@@ -794,19 +808,29 @@ function renderMonetization(data) {
     card("Sub Payers", number(sub.payers), `${number(sub.transactions)} transactions | ARPP ${money(sub.avg_revenue_per_payer)}`),
     card("Rs 499 Main Users", number(main499.payers), `${money(main499.revenue)} revenue`),
     card("Rs 199 Main Users", number(main199.payers), `${money(main199.revenue)} revenue`),
-    card("Trial Buyers", number((subscriptionStages || []).filter((row) => row.stage === "Trial").reduce((sum, row) => sum + Number(row.payers || 0), 0)), "Rs 1 and Rs 49 trials"),
-    card("Main Buyers", number((subscriptionStages || []).filter((row) => row.stage === "Main").reduce((sum, row) => sum + Number(row.payers || 0), 0)), "Rs 199 and Rs 499 main packs"),
+    card("Trial Buyers", number(trialBuyers), `${money(trialRevenue)} from Rs 1 and Rs 49 trials`),
+    card("Main Buyers", number(mainBuyers), `${pct(trialToMainPct)} of trial buyers | ${money(mainRevenue)}`),
+  ].join("");
+  document.getElementById("subscriptionConversionCards").innerHTML = [
+    actionCard("Trial to Main", pct(trialToMainPct), `${number(mainBuyers)} main buyers from ${number(trialBuyers)} trial buyers`, trialToMainPct >= 20 ? "good" : "risk"),
+    actionCard("Rs 499 Main Share", pct(main499BuyerShare), `${number(main499.payers)} users | ${pct(main499RevenueShare)} of main revenue`, main499BuyerShare >= main199BuyerShare ? "good" : "neutral"),
+    actionCard("Best Plan Conversion", bestConversionPlan.plan_code || "-", `${pct(bestConversionPlan.main_to_trial_buyer_pct)} main/trial | ${number(bestConversionPlan.main_buyers)} main buyers`, "good"),
   ].join("");
 
   document.getElementById("packPerformanceCards").innerHTML = [
     card("Rs 499 Main Users", number(main499.payers), `${money(main499.revenue)} | ${number(main499.transactions)} txns`),
     card("Rs 199 Main Users", number(main199.payers), `${money(main199.revenue)} | ${number(main199.transactions)} txns`),
-    card("Rs 499 vs 199", `${number(main499.payers)} / ${number(main199.payers)}`, "Main subscription users"),
-    card("Best Sub Plan", topPlan.plan_code || "No plan", `${money(topPlan.revenue)} | ${number(topPlan.payers)} payers`),
-    card("Sub Main Buyers", number((subscriptionPlans || []).reduce((sum, row) => sum + Number(row.main_buyers || 0), 0)), "Users buying main subscription packs"),
-    card("Sub Trial Buyers", number((subscriptionPlans || []).reduce((sum, row) => sum + Number(row.trial_buyers || 0), 0)), "Users buying trial subscription packs"),
+    card("Rs 499 vs 199", `${number(main499.payers)} / ${number(main199.payers)}`, `${pct(main499BuyerShare)} / ${pct(main199BuyerShare)} of main buyers`),
+    card("Best Sub Plan", topPlan.plan_code || "No plan", `${money(topPlan.revenue)} | ${pct(topPlan.main_to_trial_buyer_pct)} main/trial`),
+    card("Sub Main Buyers", number(mainBuyers), `${pct(trialToMainPct)} converted from trial`),
+    card("Sub Trial Buyers", number(trialBuyers), `${money(trialRevenue)} trial revenue`),
     card("Merged PayG", money(paygMerged.revenue), `${number(paygMerged.payers)} payers | ${trend(paygMerged.revenue_growth_vs_prior_7_pct)} vs prev`),
     card("Top Wallet Amount", optionalMoney(topWalletAmount.amount), `${money(topWalletAmount.revenue)} | ${number(topWalletAmount.transactions)} txns`),
+  ].join("");
+  document.getElementById("packConversionCards").innerHTML = [
+    actionCard("Main Conversion", pct(trialToMainPct), `${number(trialBuyers)} trial buyers to ${number(mainBuyers)} main buyers`, trialToMainPct >= 20 ? "good" : "risk"),
+    actionCard("499 vs 199 Revenue", `${pct(main499RevenueShare)} / ${pct(main199RevenueShare)}`, `${money(main499.revenue)} vs ${money(main199.revenue)}`, main499RevenueShare >= main199RevenueShare ? "good" : "neutral"),
+    actionCard("Best Revenue Plan", bestRevenuePlan.plan_code || "-", `${money(bestRevenuePlan.revenue)} | ${number(bestRevenuePlan.payers)} payers`, "neutral"),
   ].join("");
 
   document.getElementById("paygFocusCards").innerHTML = [
