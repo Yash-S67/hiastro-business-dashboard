@@ -600,37 +600,31 @@ def build_monetization(
         SUM(amount) AS revenue
     FROM (
         SELECT
-            cs.trial_starts_at AS event_time,
-            LOWER(BIN_TO_UUID(cs.user_id)) AS user_id,
+            COALESCE(sle.event_created_at, sle.created_at, sle.charge_at, sle.current_start) AS event_time,
+            LOWER(BIN_TO_UUID(sle.user_id)) AS user_id,
             'subscription' AS family,
-            CONCAT('Trial Rs ', CAST(ROUND(sp.trial_amount, 0) AS CHAR)) AS pack,
+            CONCAT(
+                CASE
+                    WHEN sle.revenue_type = 'subscription_authenticated'
+                         OR sle.event_type = 'subscription.authenticated'
+                    THEN 'Trial'
+                    WHEN sle.revenue_type = 'subscription_charged'
+                         OR sle.event_type = 'subscription.charged'
+                    THEN 'Main'
+                    ELSE 'Subscription'
+                END,
+                ' Rs ',
+                CAST(ROUND(sle.charge_amount, 0) AS CHAR)
+            ) AS pack,
             COALESCE(sp.code, 'unknown_plan') AS plan_code,
-            sp.trial_amount AS amount
-        FROM prod.customer_subscriptions cs
-        LEFT JOIN prod.subscription_plans sp ON cs.plan_id = sp.id
-        WHERE cs.trial_starts_at >= :start_utc
-          AND cs.trial_starts_at < :end_utc
-          AND cs.status <> 'PENDING_AUTH'
-          AND sp.trial_amount IS NOT NULL
-          AND sp.trial_amount > 0
-
-        UNION ALL
-
-        SELECT
-            cs.current_period_starts_at AS event_time,
-            LOWER(BIN_TO_UUID(cs.user_id)) AS user_id,
-            'subscription' AS family,
-            CONCAT('Main Rs ', CAST(ROUND(sp.billing_amount, 0) AS CHAR)) AS pack,
-            COALESCE(sp.code, 'unknown_plan') AS plan_code,
-            sp.billing_amount AS amount
-        FROM prod.customer_subscriptions cs
-        LEFT JOIN prod.subscription_plans sp ON cs.plan_id = sp.id
-        WHERE cs.current_period_starts_at >= :start_utc
-          AND cs.current_period_starts_at < :end_utc
-          AND cs.subscription_case IN ('PLAN', 'CANCELED_PLAN', 'PLAN_ENDED')
-          AND cs.status IN ('ACTIVE', 'CANCELED')
-          AND sp.billing_amount IS NOT NULL
-          AND sp.billing_amount > 0
+            sle.charge_amount AS amount
+        FROM prod.subscription_lifecycle_events sle
+        LEFT JOIN prod.subscription_plans sp ON sle.plan_id = sp.id
+        WHERE COALESCE(sle.event_created_at, sle.created_at, sle.charge_at, sle.current_start) >= :start_utc
+          AND COALESCE(sle.event_created_at, sle.created_at, sle.charge_at, sle.current_start) < :end_utc
+          AND sle.revenue_recorded = 1
+          AND sle.charge_amount IS NOT NULL
+          AND sle.charge_amount > 0
 
         UNION ALL
 
@@ -1764,37 +1758,23 @@ def build_config_funnel(
         engine,
         """
         SELECT
-            LOWER(BIN_TO_UUID(cs.user_id)) AS user_id,
-            event_type,
-            amount
-        FROM (
-            SELECT
-                cs.user_id,
-                'subscription.authenticated' AS event_type,
-                sp.trial_amount AS amount,
-                cs.trial_starts_at AS event_time
-            FROM prod.customer_subscriptions cs
-            LEFT JOIN prod.subscription_plans sp ON cs.plan_id = sp.id
-            WHERE cs.status <> 'PENDING_AUTH'
-              AND sp.trial_amount IS NOT NULL
-              AND sp.trial_amount > 0
-
-            UNION ALL
-
-            SELECT
-                cs.user_id,
-                'subscription.charged' AS event_type,
-                sp.billing_amount AS amount,
-                cs.current_period_starts_at AS event_time
-            FROM prod.customer_subscriptions cs
-            LEFT JOIN prod.subscription_plans sp ON cs.plan_id = sp.id
-            WHERE cs.subscription_case IN ('PLAN', 'CANCELED_PLAN', 'PLAN_ENDED')
-              AND cs.status IN ('ACTIVE', 'CANCELED')
-              AND sp.billing_amount IS NOT NULL
-              AND sp.billing_amount > 0
-        ) cs
-        WHERE event_time >= :start_utc
-          AND event_time < :end_utc
+            LOWER(BIN_TO_UUID(sle.user_id)) AS user_id,
+            CASE
+                WHEN sle.revenue_type = 'subscription_authenticated'
+                     OR sle.event_type = 'subscription.authenticated'
+                THEN 'subscription.authenticated'
+                WHEN sle.revenue_type = 'subscription_charged'
+                     OR sle.event_type = 'subscription.charged'
+                THEN 'subscription.charged'
+                ELSE sle.event_type
+            END AS event_type,
+            sle.charge_amount AS amount
+        FROM prod.subscription_lifecycle_events sle
+        WHERE COALESCE(sle.event_created_at, sle.created_at, sle.charge_at, sle.current_start) >= :start_utc
+          AND COALESCE(sle.event_created_at, sle.created_at, sle.charge_at, sle.current_start) < :end_utc
+          AND sle.revenue_recorded = 1
+          AND sle.charge_amount IS NOT NULL
+          AND sle.charge_amount > 0
         """,
         {
             "start_utc": utc_naive(local_midnight(ranges["current_start"])),
@@ -2559,11 +2539,11 @@ def main() -> None:
                 "raw_data": "Raw SQL rows, Mixpanel event exports, user-level funnel rows, and credentials are not stored in this repo.",
             },
             "source_notes": [
-                "Subscription revenue comes from MySQL customer_subscriptions joined to subscription_plans.",
+                "Subscription revenue comes from MySQL subscription_lifecycle_events where revenue_recorded = 1 and charge_amount > 0, joined to subscription_plans.",
                 "Pay as you go means successful ADD_MONEY wallet payment orders.",
                 "Customized day pass revenue comes from MySQL customer_day_pass joined to day_pass_config.",
                 "Acquisition new users come from MySQL users.created_at; login success comes from Mixpanel.",
-                "Config funnel paywall shown and trial CTA clicks come from Mixpanel; config, purchases, gender, and DOB-derived age buckets come from MySQL.",
+                "Config funnel paywall shown and trial CTA clicks come from Mixpanel; config, gender, and DOB-derived age buckets come from MySQL users/profiles; subscription purchases come from lifecycle revenue events.",
                 "Subscription renewal readiness comes from customer_subscriptions current period dates and cancel-at-period-end state; true autopay success needs recurring charge result events.",
                 "Follow-up entity values are resolved to bot names using chat_session bot_id and normalized bot-name slugs.",
                 "Retention uses completed MySQL chat_session activity for new-user cohorts.",
