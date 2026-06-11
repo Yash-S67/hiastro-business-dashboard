@@ -176,6 +176,16 @@ function funnelStep(label, value, sub = "") {
   `;
 }
 
+function miniMetric(label, value, sub = "") {
+  return `
+    <article class="mini-metric">
+      <div class="mini-metric-label">${escapeHtml(label)}</div>
+      <div class="mini-metric-value">${value}</div>
+      <div class="mini-metric-sub">${sub}</div>
+    </article>
+  `;
+}
+
 function streamCard(row, accent = COLORS.blue) {
   return `
     <article class="stream-card" style="--accent: ${accent}">
@@ -1130,6 +1140,16 @@ function renderMonetization(data) {
   }, {});
   const bestTrialConfig = [...configRows].sort((a, b) => Number(b.followup_to_trial_pct || 0) - Number(a.followup_to_trial_pct || 0))[0] || {};
   const bestMainConfig = [...configRows].sort((a, b) => Number(b.trial_to_main_pct || 0) - Number(a.trial_to_main_pct || 0))[0] || {};
+  const rs1Flow = configRows.find((row) => Number(row.trial_amount) === 1) || {};
+  const rs49Flow = configRows.find((row) => Number(row.trial_amount) === 49) || {};
+  const renderTrialFlow = (row) => [
+    miniMetric("Follow-up", number(row.followup_users), `${pct(row.assigned_to_followup_pct)} of assigned users`),
+    miniMetric("Paywall", number(row.paywall_shown_users), `${pct(row.followup_to_paywall_pct)} of follow-up`),
+    miniMetric("Trial CTA", number(row.trial_cta_users), `${pct(row.paywall_to_trial_cta_pct)} of paywall users`),
+    miniMetric("Trial Buyers", number(row.trial_buyers), `${pct(row.trial_cta_to_trial_purchase_pct)} of CTA users`),
+    miniMetric("Main Buyers", number(row.main_plan_buyers), `${pct(row.trial_to_main_pct)} of trial buyers`),
+    miniMetric("Main Split", `${number(row.main_499_buyers)} / ${number(row.main_199_buyers)}`, "Rs 499 / Rs 199 buyers"),
+  ].join("");
   document.getElementById("monetizationFunnelSummary").innerHTML = [
     funnelStep("Assigned", number(funnelTotals.assigned_users), "Config 18 + 20 users"),
     funnelStep("Follow-up", number(funnelTotals.followup_users), `${pct(safePercent(funnelTotals.followup_users, funnelTotals.assigned_users))} of assigned`),
@@ -1142,6 +1162,8 @@ function renderMonetization(data) {
     actionCard("Best Main Conversion", bestMainConfig.trial_type || "-", `${pct(bestMainConfig.trial_to_main_pct)} trial to main`, "good"),
     actionCard("Main Pack Split", `${number(funnelTotals.main_499_buyers)} / ${number(funnelTotals.main_199_buyers)}`, "Rs 499 buyers / Rs 199 buyers", "neutral"),
   ].join("");
+  document.getElementById("rs1TrialFlowCards").innerHTML = renderTrialFlow(rs1Flow);
+  document.getElementById("rs49TrialFlowCards").innerHTML = renderTrialFlow(rs49Flow);
 
   chart("configFunnelRateChart", "bar", {
     labels: m.config_funnel.map((r) => r.trial_type),
@@ -1157,9 +1179,32 @@ function renderMonetization(data) {
     scales: { x: { grid: { display: false } }, y: { beginAtZero: true, max: 100, grid: { color: "#eef2f6" } } },
   });
 
+  chart("trialPackMainSplitChart", "bar", {
+    labels: configRows.map((row) => row.trial_type),
+    datasets: [
+      { label: "Rs 499 main buyers", data: configRows.map((row) => row.main_499_buyers), backgroundColor: COLORS.blue },
+      { label: "Rs 199 main buyers", data: configRows.map((row) => row.main_199_buyers), backgroundColor: COLORS.gold },
+    ],
+  }, {
+    plugins: { title: { display: true, text: "Main Plan Buyers by Trial Pack" }, legend: { position: "bottom" } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" } } },
+  });
+
+  chart("trialPackConversionChart", "bar", {
+    labels: configRows.map((row) => row.trial_type),
+    datasets: [
+      { label: "Follow-up to trial %", data: configRows.map((row) => row.followup_to_trial_pct), backgroundColor: COLORS.teal },
+      { label: "Trial to main %", data: configRows.map((row) => row.trial_to_main_pct), backgroundColor: COLORS.green },
+      { label: "Follow-up to main %", data: configRows.map((row) => row.followup_to_main_pct), backgroundColor: COLORS.rose },
+    ],
+  }, {
+    plugins: { title: { display: true, text: "Rs 1 vs Rs 49 Conversion Comparison" }, legend: { position: "bottom" } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, max: 100, grid: { color: "#eef2f6" } } },
+  });
+
   table("configFunnelTable", m.config_funnel, [
     { key: "config_id", label: "Config ID", text: true },
-    { key: "trial_type", label: "Config", text: true },
+    { key: "trial_type", label: "Trial Pack", text: true },
     { key: "trial_amount", label: "Trial Amt", format: money },
     { key: "assigned_users", label: "Assigned", format: number },
     { key: "followup_users", label: "Follow-up", format: number },
@@ -1169,15 +1214,15 @@ function renderMonetization(data) {
     { key: "main_plan_buyers", label: "Main Buyers", format: number },
     { key: "trial_cta_199_pack_users", label: "CTA Rs 199", format: number },
     { key: "trial_cta_499_pack_users", label: "CTA Rs 499", format: number },
-    { key: "main_199_buyers", label: "Rs 199", format: number },
-    { key: "main_499_buyers", label: "Rs 499", format: number },
-    { key: "assigned_to_followup_pct", label: "Assigned to F", format: pct },
-    { key: "followup_to_paywall_pct", label: "F to Paywall", format: pct },
+    { key: "main_199_buyers", label: "Main Rs 199", format: number },
+    { key: "main_499_buyers", label: "Main Rs 499", format: number },
+    { key: "assigned_to_followup_pct", label: "Assigned to Follow-up", format: pct },
+    { key: "followup_to_paywall_pct", label: "Follow-up to Paywall", format: pct },
     { key: "paywall_to_trial_cta_pct", label: "Paywall to CTA", format: pct },
     { key: "trial_cta_to_trial_purchase_pct", label: "CTA to Trial", format: pct },
-    { key: "followup_to_trial_pct", label: "F to Trial", format: pct },
+    { key: "followup_to_trial_pct", label: "Follow-up to Trial", format: pct },
     { key: "trial_to_main_pct", label: "Trial to Main", format: pct },
-    { key: "followup_to_main_pct", label: "F to Main", format: pct },
+    { key: "followup_to_main_pct", label: "Follow-up to Main", format: pct },
   ]);
 
   const entityRows = m.entity_distribution || [];

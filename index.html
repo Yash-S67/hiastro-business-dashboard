@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HiAstro Business Dashboard</title>
-    <link rel="stylesheet" href="assets/styles.css?v=20260611-persona-coverage" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260611-trial-pack-funnel" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -226,9 +226,23 @@
           <div class="funnel-strip funnel-strip-wide" id="monetizationFunnelSummary"></div>
           <div class="action-grid" id="monetizationFunnelCards"></div>
           <div class="grid two">
-            <div class="panel"><canvas id="configFunnelRateChart"></canvas></div>
             <div class="panel">
-              <h3>Trial Funnel by Config, Paywall, and CTA</h3>
+              <h3>Rs 1 Trial Flow</h3>
+              <div id="rs1TrialFlowCards" class="mini-metric-grid"></div>
+            </div>
+            <div class="panel">
+              <h3>Rs 49 Trial Flow</h3>
+              <div id="rs49TrialFlowCards" class="mini-metric-grid"></div>
+            </div>
+          </div>
+          <div class="grid two">
+            <div class="panel"><canvas id="configFunnelRateChart"></canvas></div>
+            <div class="panel"><canvas id="trialPackMainSplitChart"></canvas></div>
+          </div>
+          <div class="grid two">
+            <div class="panel"><canvas id="trialPackConversionChart"></canvas></div>
+            <div class="panel">
+              <h3>Rs 1 vs Rs 49 Funnel Table</h3>
               <div id="configFunnelTable"></div>
             </div>
           </div>
@@ -500,6 +514,6 @@
       </section>
     </main>
 
-    <script src="assets/app.js?v=20260611-persona-coverage"></script>
+    <script src="assets/app.js?v=20260611-trial-pack-funnel"></script>
   </body>
 </html>
