@@ -14,6 +14,7 @@
   --slate: #cbd5e1;
   --shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
   --soft-shadow: 0 8px 22px rgba(0, 0, 0, 0.16);
+  --topbar-clearance: 244px;
 }
 
 * {
@@ -363,12 +364,14 @@ body[data-theme="day"] .theme-toggle {
 
 .section-nav {
   position: fixed;
-  top: 116px;
+  top: var(--topbar-clearance);
   left: 24px;
   z-index: 20;
   display: flex;
   flex-direction: column;
   width: 214px;
+  max-height: calc(100vh - var(--topbar-clearance) - 24px);
+  overflow-y: auto;
   gap: 7px;
   padding: 16px;
   background: rgba(17, 24, 39, 0.82);
@@ -1285,11 +1288,12 @@ body.drilldown-open {
 @media (max-width: 1100px) {
   .section-nav {
     position: sticky;
-    top: 0;
+    top: 8px;
     left: auto;
     width: auto;
     flex-direction: row;
     overflow-x: auto;
+    overflow-y: hidden;
     margin: 0;
     padding: 8px 18px;
     border-radius: 0;
@@ -1386,6 +1390,7 @@ body.drilldown-open {
   }
 
   .section-nav {
+    top: 0;
     overflow-x: auto;
     padding-top: 7px;
     padding-bottom: 7px;
