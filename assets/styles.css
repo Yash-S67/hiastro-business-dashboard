@@ -83,7 +83,8 @@ body[data-theme="day"] .period-toggle button.active {
 
 body[data-theme="day"] .download-controls select,
 body[data-theme="day"] .download-controls input,
-body[data-theme="day"] .table-controls select {
+body[data-theme="day"] .table-controls select,
+body[data-theme="day"] .file-upload {
   color: var(--ink);
   background: #ffffff;
 }
@@ -257,6 +258,88 @@ body[data-theme="day"] .theme-toggle {
   font-size: 12px;
   font-weight: 700;
   line-height: 1.2;
+}
+
+.upload-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.upload-copy {
+  max-width: 680px;
+}
+
+.upload-copy h3 {
+  margin: 2px 0 6px;
+}
+
+.upload-copy p:last-child {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.upload-actions button,
+.file-upload {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 0 11px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.file-upload {
+  color: #05131d;
+  background: var(--teal);
+  border-color: transparent;
+}
+
+.file-upload input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.upload-status {
+  flex: 0 0 260px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.upload-status strong,
+.upload-status span {
+  display: block;
+}
+
+.upload-status strong {
+  color: var(--ink);
+  margin-bottom: 2px;
 }
 
 .period-toggle button {
@@ -1261,6 +1344,19 @@ body.drilldown-open {
     flex-wrap: wrap;
     justify-content: space-between;
     width: 100%;
+  }
+
+  .upload-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .upload-actions {
+    justify-content: flex-start;
+  }
+
+  .upload-status {
+    flex-basis: auto;
   }
 
   .period-toggle button {

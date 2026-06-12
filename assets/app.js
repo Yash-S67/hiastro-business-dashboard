@@ -63,6 +63,37 @@ let DATE_STATUS_MESSAGE = "";
 let LIVE_API_STATUS = null;
 let ACTIVE_SECTION = "monetization";
 let THEME = localStorage.getItem("hiastro-dashboard-theme") || "night";
+let MARKETING_UPLOAD_STATE = null;
+const MARKETING_TEMPLATE_COLUMNS = [
+  "Date",
+  "Platform",
+  "Campaign Type",
+  "Campaign ID",
+  "Campaign Name",
+  "Spend",
+  "Installs",
+  "Impressions",
+  "Clicks",
+  "New Logins",
+  "Trials",
+  "Subscribers",
+  "Revenue",
+];
+const MARKETING_COLUMN_CANDIDATES = {
+  date: ["date", "day", "dt", "metric_date", "campaign_date"],
+  platform: ["platform", "os", "acquisition_device", "source_platform", "channel"],
+  campaign_type: ["campaign_type", "campaign_category", "type", "objective"],
+  campaign_id: ["campaign_id", "campaignid", "ad_campaign_id", "id"],
+  campaign: ["campaign", "campaign_name", "campaigns", "name"],
+  spend: ["spend", "cost", "amount_spent", "marketing_spend", "marketing_spends", "total_spend"],
+  installs: ["installs", "install", "app_installs", "ps_installs", "as_installs"],
+  impressions: ["impressions", "impression", "views"],
+  clicks: ["clicks", "click", "link_clicks", "taps"],
+  new_logins: ["new_logins", "logins", "login", "new_users"],
+  trials: ["trials", "trial_starts", "successful_trials", "trial_purchases"],
+  subscribers: ["paid_subs", "subscribers", "new_paid_subscribers", "subscriptions", "paid_subscribers"],
+  revenue: ["revenue", "subscription_revenue", "sub_revenue", "gross_revenue", "total_revenue"],
+};
 const TABLE_FILTERS = {
   payerSegment: { segment: "all", limit: 25 },
   payerFamilySegment: { family_label: "all", segment: "all", limit: 25 },
@@ -98,6 +129,262 @@ function pct(value) {
 
 function safePercent(num, den) {
   return den ? (Number(num || 0) / Number(den || 0)) * 100 : 0;
+}
+
+function safeRatioValue(num, den) {
+  return den ? Number(num || 0) / Number(den || 0) : null;
+}
+
+function numericValue(value) {
+  if (value === null || value === undefined || value === "") return 0;
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  const cleaned = String(value).trim().replace(/[₹$,]/g, "").replace(/%$/, "");
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizeHeader(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+function firstColumn(columns, candidates) {
+  return candidates.find((candidate) => columns.includes(candidate)) || null;
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
+    if (char === '"' && inQuotes && next === '"') {
+      cell += '"';
+      i += 1;
+    } else if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === "," && !inQuotes) {
+      row.push(cell);
+      cell = "";
+    } else if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && next === "\n") i += 1;
+      row.push(cell);
+      if (row.some((value) => String(value).trim() !== "")) rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += char;
+    }
+  }
+  row.push(cell);
+  if (row.some((value) => String(value).trim() !== "")) rows.push(row);
+  if (!rows.length) return [];
+  const headers = rows[0].map(normalizeHeader);
+  return rows.slice(1).map((values) => {
+    const out = {};
+    headers.forEach((header, index) => {
+      if (header) out[header] = values[index] ?? "";
+    });
+    return out;
+  });
+}
+
+function datesBetween(start, end) {
+  if (!start || !end) return [];
+  const dates = [];
+  const current = new Date(`${start}T00:00:00`);
+  const last = new Date(`${end}T00:00:00`);
+  while (current <= last) {
+    const year = current.getFullYear();
+    const month = String(current.getMonth() + 1).padStart(2, "0");
+    const day = String(current.getDate()).padStart(2, "0");
+    dates.push(`${year}-${month}-${day}`);
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
+}
+
+function marketingDateValue(value) {
+  const text = String(value || "").trim();
+  const isoMatch = text.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (isoMatch) return isoMatch[1];
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) return text.slice(0, 10);
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function selectedDateRange(data) {
+  const meta = data.metadata || {};
+  const window = meta.current_window || DASHBOARD_DATA?.metadata?.current_window || {};
+  if (SELECTED_PERIOD === "daily" && SELECTED_DAY) return [SELECTED_DAY];
+  if (window.start && window.end) return datesBetween(window.start, window.end);
+  return dashboardDateOptions();
+}
+
+function dashboardDailyMarketingTotals(data) {
+  const days = selectedDateRange(data);
+  const out = Object.fromEntries(days.map((day) => [day, {
+    date: day,
+    revenue: 0,
+    trials: 0,
+    subscribers: 0,
+    new_logins: 0,
+  }]));
+  (data.monetization?.daily || []).forEach((row) => {
+    if (!out[row.day]) return;
+    out[row.day].revenue += Number(row.revenue || 0);
+  });
+  (data.monetization?.daily_pack_merged || data.monetization?.daily_pack || []).forEach((row) => {
+    if (!out[row.day] || row.family !== "subscription") return;
+    const pack = String(row.pack || "").toLowerCase();
+    if (pack.includes("trial")) out[row.day].trials += Number(row.payers || row.transactions || 0);
+    if (pack.includes("main")) out[row.day].subscribers += Number(row.payers || row.transactions || 0);
+  });
+  (data.acquisition?.daily || []).forEach((row) => {
+    const day = row.signup_date || row.date || row.day;
+    if (!out[day]) return;
+    out[day].new_logins += Number(row.new_users || row.logins || 0);
+  });
+  return out;
+}
+
+function addMarketingRates(rows) {
+  return (rows || []).map((row) => {
+    const out = { ...row };
+    out.ctr_pct = safePercent(out.clicks, out.impressions);
+    out.cpc = safeRatioValue(out.spend, out.clicks);
+    out.cpm = safeRatioValue(out.spend * 1000, out.impressions);
+    out.cpi = safeRatioValue(out.spend, out.installs);
+    out.cost_per_trial = safeRatioValue(out.spend, out.trials);
+    out.subscriber_cac = safeRatioValue(out.spend, out.subscribers);
+    out.login_to_trial_pct = safePercent(out.trials, out.new_logins);
+    out.install_to_trial_pct = safePercent(out.trials, out.installs);
+    out.roas_pct = safePercent(out.revenue, out.spend);
+    return out;
+  });
+}
+
+function sumRows(rows, groupKeys, valueKeys) {
+  const grouped = {};
+  (rows || []).forEach((row) => {
+    const key = groupKeys.map((groupKey) => row[groupKey] || "Unattributed").join("||");
+    if (!grouped[key]) {
+      grouped[key] = Object.fromEntries(groupKeys.map((groupKey) => [groupKey, row[groupKey] || "Unattributed"]));
+      valueKeys.forEach((valueKey) => { grouped[key][valueKey] = 0; });
+    }
+    valueKeys.forEach((valueKey) => {
+      grouped[key][valueKey] += Number(row[valueKey] || 0);
+    });
+  });
+  return Object.values(grouped);
+}
+
+function buildMarketingFromRows(rows, data) {
+  const normalizedRows = rows || [];
+  const columns = [...new Set(normalizedRows.flatMap((row) => Object.keys(row)))];
+  const mapping = Object.fromEntries(
+    Object.entries(MARKETING_COLUMN_CANDIDATES).map(([key, candidates]) => [key, firstColumn(columns, candidates)]),
+  );
+  if (!mapping.date) {
+    return {
+      source_status: "error",
+      source_message: "Uploaded CSV could not be used because no Date column was found.",
+      kpis: { spend: 0, trial_cac: null, subscriber_cac: null, roas_pct: null, payback_days: null },
+      daily: [],
+      campaigns: [],
+      platforms: [],
+      detected_columns: columns,
+      mapping,
+    };
+  }
+  const dateSet = new Set(selectedDateRange(data));
+  const dashboardTotals = dashboardDailyMarketingTotals(data);
+  const parsedRows = normalizedRows
+    .map((row) => {
+      const date = marketingDateValue(row[mapping.date]);
+      return {
+        date,
+        platform: mapping.platform ? String(row[mapping.platform] || "Unattributed").trim().toLowerCase() : "Unattributed",
+        campaign_type: mapping.campaign_type ? String(row[mapping.campaign_type] || "Unattributed").trim() : "Unattributed",
+        campaign_id: mapping.campaign_id ? String(row[mapping.campaign_id] || "").trim() : "",
+        campaign: mapping.campaign ? String(row[mapping.campaign] || "Unattributed").trim() : "Unattributed",
+        spend: mapping.spend ? numericValue(row[mapping.spend]) : 0,
+        installs: mapping.installs ? numericValue(row[mapping.installs]) : 0,
+        impressions: mapping.impressions ? numericValue(row[mapping.impressions]) : 0,
+        clicks: mapping.clicks ? numericValue(row[mapping.clicks]) : 0,
+        new_logins: mapping.new_logins ? numericValue(row[mapping.new_logins]) : 0,
+        trials: mapping.trials ? numericValue(row[mapping.trials]) : 0,
+        subscribers: mapping.subscribers ? numericValue(row[mapping.subscribers]) : 0,
+        revenue: mapping.revenue ? numericValue(row[mapping.revenue]) : 0,
+      };
+    })
+    .filter((row) => dateSet.has(row.date));
+
+  if (!parsedRows.length) {
+    return {
+      source_status: "empty",
+      source_message: "Uploaded CSV has no rows in the selected dashboard window.",
+      kpis: { spend: 0, trial_cac: null, subscriber_cac: null, roas_pct: null, payback_days: null },
+      daily: [],
+      campaigns: [],
+      platforms: [],
+      detected_columns: columns,
+      mapping,
+    };
+  }
+
+  const daily = addMarketingRates(sumRows(parsedRows, ["date"], ["spend", "installs", "impressions", "clicks", "new_logins", "trials", "subscribers", "revenue"])
+    .map((row) => {
+      const dashboardRow = dashboardTotals[row.date] || {};
+      return {
+        ...row,
+        new_logins: mapping.new_logins ? row.new_logins : Number(dashboardRow.new_logins || 0),
+        trials: mapping.trials ? row.trials : Number(dashboardRow.trials || 0),
+        subscribers: mapping.subscribers ? row.subscribers : Number(dashboardRow.subscribers || 0),
+        revenue: mapping.revenue ? row.revenue : Number(dashboardRow.revenue || 0),
+      };
+    }))
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  const campaignRows = addMarketingRates(sumRows(parsedRows, ["campaign", "campaign_type", "campaign_id"], ["spend", "installs", "impressions", "clicks", "new_logins", "trials", "subscribers", "revenue"]))
+    .sort((a, b) => Number(b.spend || 0) - Number(a.spend || 0));
+  const platformRows = addMarketingRates(sumRows(parsedRows, ["platform"], ["spend", "installs", "impressions", "clicks", "new_logins", "trials", "subscribers", "revenue"]))
+    .sort((a, b) => Number(b.spend || 0) - Number(a.spend || 0));
+  const total = daily.reduce((acc, row) => {
+    ["spend", "installs", "impressions", "clicks", "new_logins", "trials", "subscribers", "revenue"].forEach((key) => {
+      acc[key] = Number(acc[key] || 0) + Number(row[key] || 0);
+    });
+    return acc;
+  }, {});
+  return {
+    source_status: "uploaded",
+    source_message: mapping.revenue
+      ? "Uploaded CSV is powering marketing spend and attributed revenue metrics for this browser session."
+      : "Uploaded CSV is powering spend/click/install metrics. CAC and ROAS use total dashboard conversions and revenue for the same selected dates because campaign-level conversion columns were not present.",
+    kpis: {
+      spend: total.spend || 0,
+      installs: total.installs || 0,
+      impressions: total.impressions || 0,
+      clicks: total.clicks || 0,
+      ctr_pct: safePercent(total.clicks, total.impressions),
+      cpc: safeRatioValue(total.spend, total.clicks),
+      cpi: safeRatioValue(total.spend, total.installs),
+      trial_cac: safeRatioValue(total.spend, total.trials),
+      subscriber_cac: safeRatioValue(total.spend, total.subscribers),
+      roas_pct: safePercent(total.revenue, total.spend),
+      payback_days: total.revenue ? Number(((total.spend / total.revenue) * daily.length).toFixed(1)) : null,
+    },
+    daily,
+    campaigns: campaignRows.slice(0, 50),
+    platforms: platformRows,
+    detected_columns: columns,
+    mapping,
+    row_count: parsedRows.length,
+    has_campaign_attribution: Boolean(mapping.revenue || mapping.trials || mapping.subscribers),
+  };
 }
 
 function familyLabel(value) {
@@ -565,7 +852,11 @@ function csvValue(value) {
 
 function downloadCsv(filename, rows) {
   if (!rows.length) return;
-  const columns = ["area", "table", ...[...new Set(rows.flatMap((row) => Object.keys(row)))].filter((key) => !["area", "table"].includes(key))];
+  const keys = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+  const hasExportArea = keys.includes("area") || keys.includes("table");
+  const columns = hasExportArea
+    ? ["area", "table", ...keys.filter((key) => !["area", "table"].includes(key))]
+    : keys;
   const csv = [
     columns.join(","),
     ...rows.map((row) => columns.map((column) => csvValue(row[column])).join(",")),
@@ -579,6 +870,68 @@ function downloadCsv(filename, rows) {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+function formatNullableMoney(value) {
+  return value === null || value === undefined ? "Pending" : money(value);
+}
+
+function formatNullableNumber(value) {
+  return value === null || value === undefined ? "Pending" : number(value);
+}
+
+function setupMarketingUploadControls(data) {
+  const input = document.getElementById("marketingCsvInput");
+  const status = document.getElementById("marketingUploadStatus");
+  const clear = document.getElementById("marketingUploadClear");
+  const template = document.getElementById("marketingTemplateDownload");
+  if (!input || !status || !clear || !template) return;
+
+  if (MARKETING_UPLOAD_STATE) {
+    status.innerHTML = `
+      <strong>${number(MARKETING_UPLOAD_STATE.rows.length)} uploaded rows ready.</strong>
+      <span>${escapeHtml(MARKETING_UPLOAD_STATE.fileName)} is applied to the current Marketing view only.</span>
+    `;
+  } else {
+    status.innerHTML = `
+      <strong>No CSV uploaded.</strong>
+      <span>Use Campaign Data columns: Date, Platform, Campaign Type, Campaign ID, Campaign Name, Spend, Installs, Impressions, Clicks.</span>
+    `;
+  }
+
+  input.onchange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const rows = parseCsv(text);
+      if (!rows.length) throw new Error("No rows found in CSV.");
+      MARKETING_UPLOAD_STATE = {
+        fileName: file.name,
+        rows,
+        loadedAt: new Date().toISOString(),
+      };
+      renderDashboard();
+      resizeVisibleCharts();
+    } catch (error) {
+      MARKETING_UPLOAD_STATE = null;
+      status.innerHTML = `<strong>Upload failed.</strong><span>${escapeHtml(error.message)}</span>`;
+    } finally {
+      input.value = "";
+    }
+  };
+
+  clear.onclick = () => {
+    MARKETING_UPLOAD_STATE = null;
+    renderDashboard();
+    resizeVisibleCharts();
+  };
+
+  template.onclick = () => {
+    downloadCsv("hiastro-marketing-campaign-template.csv", [
+      Object.fromEntries(MARKETING_TEMPLATE_COLUMNS.map((column) => [column, ""])),
+    ]);
+  };
 }
 
 function dayRows(rows, key, day) {
@@ -2316,16 +2669,20 @@ function renderAcquisition(data) {
 }
 
 function renderMarketing(data) {
-  const mk = data.marketing || {};
+  const mk = MARKETING_UPLOAD_STATE ? buildMarketingFromRows(MARKETING_UPLOAD_STATE.rows, data) : (data.marketing || {});
   const k = mk.kpis || {};
-  const sourceOk = mk.source_status === "available";
+  const sourceOk = mk.source_status === "available" || mk.source_status === "uploaded";
+  setupMarketingUploadControls(data);
   document.getElementById("marketingNote").textContent = sourceOk
-    ? "Campaign spend is loaded from the configured daily Campaign Data feed."
+    ? (mk.source_status === "uploaded" ? "Campaign spend is loaded from your uploaded CSV for this browser session." : "Campaign spend is loaded from the configured daily Campaign Data feed.")
     : (mk.source_message || "Marketing spend feed is not connected yet.");
   document.getElementById("marketingCards").innerHTML = [
-    card("Spend", money(k.spend), sourceOk ? "Campaign Data feed" : "Source pending"),
-    card("Trial CAC", k.trial_cac === null || k.trial_cac === undefined ? "Pending" : money(k.trial_cac), "Spend / trials"),
-    card("Subscriber CAC", k.subscriber_cac === null || k.subscriber_cac === undefined ? "Pending" : money(k.subscriber_cac), "Spend / subscribers"),
+    card("Spend", money(k.spend), sourceOk ? (mk.source_status === "uploaded" ? "Uploaded CSV" : "Campaign Data feed") : "Source pending"),
+    card("Installs", number(k.installs), "From marketing CSV"),
+    card("Clicks", number(k.clicks), `${pct(k.ctr_pct)} CTR`),
+    card("CPI", formatNullableMoney(k.cpi), "Spend / installs"),
+    card("Trial CAC", formatNullableMoney(k.trial_cac), "Spend / trials"),
+    card("Subscriber CAC", formatNullableMoney(k.subscriber_cac), "Spend / subscribers"),
     card("ROAS", k.roas_pct === null || k.roas_pct === undefined ? "Pending" : pct(k.roas_pct), "Revenue / spend"),
     card("Payback", k.payback_days === null || k.payback_days === undefined ? "Pending" : `${k.payback_days} days`, "Spend recovery pace"),
   ].join("");
@@ -2353,47 +2710,92 @@ function renderMarketing(data) {
     labels: campaigns.slice(0, 10).map((row) => row.campaign),
     datasets: [
       { label: "Spend", data: campaigns.slice(0, 10).map((row) => row.spend), backgroundColor: COLORS.blue },
-      { label: "Subscriber CAC", data: campaigns.slice(0, 10).map((row) => row.subscriber_cac), backgroundColor: COLORS.gold, yAxisID: "y1" },
+      { label: "CPI", data: campaigns.slice(0, 10).map((row) => row.cpi), backgroundColor: COLORS.gold, yAxisID: "y1" },
     ],
   }, {
     indexAxis: "y",
-    plugins: { title: { display: true, text: "Campaign Spend and Subscriber CAC" }, legend: { position: "bottom" } },
+    plugins: { title: { display: true, text: "Campaign Spend and Install Efficiency" }, legend: { position: "bottom" } },
     scales: {
       x: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" } },
       y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false } },
     },
   });
 
+  chart("marketingClickInstallChart", "line", {
+    labels: daily.map((row) => shortDate(row.date)),
+    datasets: [
+      { label: "Installs", data: daily.map((row) => row.installs), borderColor: COLORS.blue, tension: 0.25 },
+      { label: "Clicks", data: daily.map((row) => row.clicks), borderColor: COLORS.teal, tension: 0.25 },
+      { label: "CTR %", data: daily.map((row) => row.ctr_pct), borderColor: COLORS.gold, yAxisID: "y1", tension: 0.25 },
+    ],
+  }, {
+    plugins: { title: { display: true, text: "Daily Click, Install and CTR Movement" }, legend: { position: "bottom" } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Clicks / installs" } },
+      y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "CTR %" } },
+    },
+  });
+
+  const mappingRows = Object.entries(MARKETING_COLUMN_CANDIDATES).map(([metric]) => ({
+    metric: metric.replaceAll("_", " "),
+    csv_column: mk.mapping?.[metric] || "Not present",
+    status: mk.mapping?.[metric] ? "Mapped" : (["date", "spend"].includes(metric) ? "Needed" : "Optional"),
+  }));
+  table("marketingMappingTable", mappingRows, [
+    { key: "metric", label: "Metric", text: true },
+    { key: "csv_column", label: "CSV Column", text: true },
+    { key: "status", label: "Status", text: true },
+  ], 20);
+
   table("marketingDailyTable", daily, [
     { key: "date", label: "Date", text: true, format: shortDate },
     { key: "spend", label: "Spend", format: money },
     { key: "installs", label: "Installs", format: number },
+    { key: "impressions", label: "Impressions", format: number },
+    { key: "clicks", label: "Clicks", format: number },
+    { key: "ctr_pct", label: "CTR", format: pct },
+    { key: "cpc", label: "CPC", format: formatNullableMoney },
+    { key: "cpi", label: "CPI", format: formatNullableMoney },
     { key: "new_logins", label: "Logins", format: number },
     { key: "trials", label: "Trials", format: number },
     { key: "subscribers", label: "Subscribers", format: number },
     { key: "revenue", label: "Revenue", format: money },
-    { key: "trial_cac", label: "Trial CAC", format: money },
-    { key: "subscriber_cac", label: "Sub CAC", format: money },
+    { key: "cost_per_trial", label: "Trial CAC", format: formatNullableMoney },
+    { key: "subscriber_cac", label: "Sub CAC", format: formatNullableMoney },
     { key: "roas_pct", label: "ROAS", format: pct },
   ], 14);
   table("marketingCampaignTable", campaigns, [
     { key: "campaign", label: "Campaign", text: true },
+    { key: "campaign_type", label: "Type", text: true },
+    { key: "campaign_id", label: "Campaign ID", text: true },
     { key: "spend", label: "Spend", format: money },
     { key: "installs", label: "Installs", format: number },
+    { key: "impressions", label: "Impressions", format: number },
+    { key: "clicks", label: "Clicks", format: number },
+    { key: "ctr_pct", label: "CTR", format: pct },
+    { key: "cpc", label: "CPC", format: formatNullableMoney },
+    { key: "cpi", label: "CPI", format: formatNullableMoney },
     { key: "new_logins", label: "Logins", format: number },
     { key: "trials", label: "Trials", format: number },
     { key: "subscribers", label: "Subscribers", format: number },
-    { key: "cost_per_trial", label: "Cost / Trial", format: money },
-    { key: "subscriber_cac", label: "Sub CAC", format: money },
+    { key: "cost_per_trial", label: "Cost / Trial", format: formatNullableMoney },
+    { key: "subscriber_cac", label: "Sub CAC", format: formatNullableMoney },
     { key: "roas_pct", label: "ROAS", format: pct },
   ], 20);
   table("marketingPlatformTable", mk.platforms || [], [
     { key: "platform", label: "Platform", text: true },
     { key: "spend", label: "Spend", format: money },
+    { key: "installs", label: "Installs", format: number },
+    { key: "impressions", label: "Impressions", format: number },
+    { key: "clicks", label: "Clicks", format: number },
+    { key: "ctr_pct", label: "CTR", format: pct },
+    { key: "cpc", label: "CPC", format: formatNullableMoney },
+    { key: "cpi", label: "CPI", format: formatNullableMoney },
     { key: "trials", label: "Trials", format: number },
     { key: "subscribers", label: "Subscribers", format: number },
-    { key: "cost_per_trial", label: "Cost / Trial", format: money },
-    { key: "subscriber_cac", label: "Sub CAC", format: money },
+    { key: "cost_per_trial", label: "Cost / Trial", format: formatNullableMoney },
+    { key: "subscriber_cac", label: "Sub CAC", format: formatNullableMoney },
     { key: "login_to_trial_pct", label: "Login to Trial", format: pct },
     { key: "roas_pct", label: "ROAS", format: pct },
   ], 12);
@@ -3211,22 +3613,39 @@ function engagementDetail(data) {
 }
 
 function marketingDetail(data) {
-  const mk = data.marketing || {};
+  const mk = MARKETING_UPLOAD_STATE ? buildMarketingFromRows(MARKETING_UPLOAD_STATE.rows, data) : (data.marketing || {});
   const k = mk.kpis || {};
+  const mappingRows = Object.entries(MARKETING_COLUMN_CANDIDATES).map(([metric]) => ({
+    metric: metric.replaceAll("_", " "),
+    csv_column: mk.mapping?.[metric] || "Not present",
+    status: mk.mapping?.[metric] ? "Mapped" : (["date", "spend"].includes(metric) ? "Needed" : "Optional"),
+  }));
   return `
     ${detailMetrics([
-      detailMetric("Spend", money(k.spend), mk.source_status === "available" ? "Campaign Data feed" : "Source pending"),
-      detailMetric("Trial CAC", k.trial_cac === null || k.trial_cac === undefined ? "Pending" : money(k.trial_cac), "Spend / trial"),
-      detailMetric("Subscriber CAC", k.subscriber_cac === null || k.subscriber_cac === undefined ? "Pending" : money(k.subscriber_cac), "Spend / subscriber"),
+      detailMetric("Spend", money(k.spend), mk.source_status === "uploaded" ? "Uploaded CSV" : (mk.source_status === "available" ? "Campaign Data feed" : "Source pending")),
+      detailMetric("Installs", number(k.installs), `${formatNullableMoney(k.cpi)} CPI`),
+      detailMetric("Clicks", number(k.clicks), `${pct(k.ctr_pct)} CTR`),
+      detailMetric("Trial CAC", formatNullableMoney(k.trial_cac), "Spend / trial"),
+      detailMetric("Subscriber CAC", formatNullableMoney(k.subscriber_cac), "Spend / subscriber"),
       detailMetric("ROAS", k.roas_pct === null || k.roas_pct === undefined ? "Pending" : pct(k.roas_pct), "Revenue / spend"),
     ])}
     ${detailNote("Source Status", mk.source_message || "Marketing feed status is not available.")}
+    ${detailTable("CSV Field Mapping", mappingRows, [
+      { key: "metric", label: "Metric", text: true },
+      { key: "csv_column", label: "CSV Column", text: true },
+      { key: "status", label: "Status", text: true },
+    ], 20)}
     ${detailTable("Top Campaigns", mk.campaigns, [
       { key: "campaign", label: "Campaign", text: true },
+      { key: "campaign_type", label: "Type", text: true },
       { key: "spend", label: "Spend", format: money },
+      { key: "installs", label: "Installs", format: number },
+      { key: "clicks", label: "Clicks", format: number },
+      { key: "ctr_pct", label: "CTR", format: pct },
+      { key: "cpi", label: "CPI", format: formatNullableMoney },
       { key: "trials", label: "Trials", format: number },
       { key: "subscribers", label: "Subscribers", format: number },
-      { key: "subscriber_cac", label: "Sub CAC", format: money },
+      { key: "subscriber_cac", label: "Sub CAC", format: formatNullableMoney },
       { key: "roas_pct", label: "ROAS", format: pct },
     ], 8)}
   `;

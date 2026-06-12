@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HiAstro Business Dashboard</title>
-    <link rel="stylesheet" href="assets/styles.css?v=20260612-single-executive" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260612-marketing-csv-upload" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -533,10 +533,33 @@
           </div>
           <p id="marketingNote"></p>
         </div>
+        <div class="panel upload-panel">
+          <div class="upload-copy">
+            <p class="eyebrow">Campaign Data CSV</p>
+            <h3>Upload Marketing Spend</h3>
+            <p>Use the Campaign Data export format from your workbook. Uploaded rows are used only in this browser session and are not committed to the dashboard data file.</p>
+          </div>
+          <div class="upload-actions">
+            <label class="file-upload">
+              <input type="file" id="marketingCsvInput" accept=".csv,text/csv" />
+              Upload CSV
+            </label>
+            <button type="button" id="marketingTemplateDownload">Download Template</button>
+            <button type="button" id="marketingUploadClear">Clear Upload</button>
+          </div>
+          <div class="upload-status" id="marketingUploadStatus"></div>
+        </div>
         <div class="kpi-grid compact" id="marketingCards"></div>
         <div class="grid two">
           <div class="panel"><canvas id="marketingSpendRevenueChart"></canvas></div>
           <div class="panel"><canvas id="marketingCampaignChart"></canvas></div>
+        </div>
+        <div class="grid two">
+          <div class="panel"><canvas id="marketingClickInstallChart"></canvas></div>
+          <div class="panel">
+            <h3>CSV Field Mapping</h3>
+            <div id="marketingMappingTable"></div>
+          </div>
         </div>
         <div class="grid two">
           <div class="panel">
@@ -749,7 +772,7 @@
       <div class="drilldown-body" id="drilldownBody"></div>
     </aside>
 
-    <script src="assets/config.js?v=20260612-single-executive"></script>
-    <script src="assets/app.js?v=20260612-single-executive"></script>
+    <script src="assets/config.js?v=20260612-marketing-csv-upload"></script>
+    <script src="assets/app.js?v=20260612-marketing-csv-upload"></script>
   </body>
 </html>

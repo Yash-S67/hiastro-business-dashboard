@@ -33,6 +33,22 @@ This local server also enables flexible daily selection. When you pick a date th
 
 The endpoint fetches aggregate metrics from MySQL and Mixpanel using the parent `.env` file. It does not write the selected-date result to the repo and does not return raw rows or credentials to the browser.
 
+## Marketing CSV upload
+
+The Marketing tab can use a session-only CSV upload for campaign spend when the Google Sheet feed is not available. Use the `Campaign Data` export format:
+
+```text
+Date, Platform, Campaign Type, Campaign ID, Campaign Name, Spend, Installs, Impressions, Clicks
+```
+
+Optional columns are also supported:
+
+```text
+New Logins, Trials, Subscribers, Revenue
+```
+
+If optional conversion/revenue columns are missing, the dashboard uses the uploaded CSV for spend, clicks, impressions, installs, CTR, CPC, CPM, and CPI, then uses the existing dashboard totals for selected-date trial/subscriber/revenue CAC and ROAS. Uploaded CSV rows are not stored in the repo; they apply only to the current browser session.
+
 ## GitHub Pages
 
 This folder is ready to push as a static GitHub Pages site. Do not commit credentials; the dashboard only includes aggregated JSON.

@@ -65,7 +65,7 @@ def dashboard_source_notes() -> list[str]:
         "LLM cost is not calculated yet because the current MySQL schema does not expose model, prompt token, completion token, provider cost, or request-level usage fields.",
         "Subscription renewal readiness comes from customer_subscriptions current period dates and cancel-at-period-end state; true autopay success needs recurring charge result events.",
         "Payment method success, retries, and refunds come from MySQL payment_orders; gateway failure reason is unavailable because failure payloads are not stored in the current table.",
-        "Marketing spend/CAC can be pulled daily from a published Campaign Data CSV URL; the provided Google Sheet currently requires authentication, so spend metrics remain gated until access is refreshed or a publish-to-web CSV URL is supplied.",
+        "Marketing spend/CAC can be pulled daily from a published Campaign Data CSV URL or uploaded as a session-only CSV in the browser; Campaign Data supports spend, installs, impressions, clicks, campaign id/name/type, and optional trial/subscriber/revenue columns.",
         "Follow-up entity values are resolved to bot names using chat_session bot_id and normalized bot-name slugs.",
         "Retention uses completed MySQL chat_session activity for new-user cohorts.",
         "Engagement duration and BIM notification opens come from Mixpanel app events.",
@@ -2509,10 +2509,11 @@ def build_marketing(env: dict[str, str], ranges: dict[str, Any], acquisition: di
     empty = {
         "source_status": status,
         "source_message": message,
-        "kpis": {"spend": 0, "trial_cac": None, "subscriber_cac": None, "roas_pct": None, "payback_days": None},
+        "kpis": {"spend": 0, "installs": 0, "impressions": 0, "clicks": 0, "ctr_pct": 0, "cpc": None, "cpi": None, "trial_cac": None, "subscriber_cac": None, "roas_pct": None, "payback_days": None},
         "daily": [],
         "campaigns": [],
         "platforms": [],
+        "mapping": {},
     }
     if raw.empty:
         return empty
@@ -2528,16 +2529,22 @@ def build_marketing(env: dict[str, str], ranges: dict[str, Any], acquisition: di
         empty["source_message"] = "Marketing CSV has no rows in the selected dashboard window."
         return empty
     spend_col = next((col for col in raw.columns if col in {"spend", "cost", "amount_spent", "marketing_spend", "marketing_spends", "total_spend"}), None)
-    campaign_col = next((col for col in raw.columns if col in {"campaign", "campaign_name", "campaigns"}), None)
-    platform_col = next((col for col in raw.columns if col in {"platform", "os", "acquisition_device"}), None)
-    install_col = next((col for col in raw.columns if col in {"installs", "install", "app_installs"}), None)
+    campaign_col = next((col for col in raw.columns if col in {"campaign", "campaign_name", "campaigns", "name"}), None)
+    campaign_type_col = next((col for col in raw.columns if col in {"campaign_type", "campaign_category", "type", "objective"}), None)
+    campaign_id_col = next((col for col in raw.columns if col in {"campaign_id", "campaignid", "ad_campaign_id", "id"}), None)
+    platform_col = next((col for col in raw.columns if col in {"platform", "os", "acquisition_device", "source_platform", "channel"}), None)
+    install_col = next((col for col in raw.columns if col in {"installs", "install", "app_installs", "ps_installs", "as_installs"}), None)
+    impression_col = next((col for col in raw.columns if col in {"impressions", "impression", "views"}), None)
+    click_col = next((col for col in raw.columns if col in {"clicks", "click", "link_clicks", "taps"}), None)
     login_col = next((col for col in raw.columns if col in {"new_logins", "logins", "login", "new_users"}), None)
-    trial_col = next((col for col in raw.columns if col in {"trials", "trial_starts", "successful_trials"}), None)
-    sub_col = next((col for col in raw.columns if col in {"paid_subs", "subscribers", "new_paid_subscribers", "subscriptions"}), None)
-    revenue_col = next((col for col in raw.columns if col in {"revenue", "subscription_revenue", "sub_revenue", "gross_revenue"}), None)
+    trial_col = next((col for col in raw.columns if col in {"trials", "trial_starts", "successful_trials", "trial_purchases"}), None)
+    sub_col = next((col for col in raw.columns if col in {"paid_subs", "subscribers", "new_paid_subscribers", "subscriptions", "paid_subscribers"}), None)
+    revenue_col = next((col for col in raw.columns if col in {"revenue", "subscription_revenue", "sub_revenue", "gross_revenue", "total_revenue"}), None)
     for target, col in [
         ("spend", spend_col),
         ("installs", install_col),
+        ("impressions", impression_col),
+        ("clicks", click_col),
         ("new_logins", login_col),
         ("trials", trial_col),
         ("subscribers", sub_col),
@@ -2545,28 +2552,81 @@ def build_marketing(env: dict[str, str], ranges: dict[str, Any], acquisition: di
     ]:
         raw[target] = raw[col].apply(numeric_value) if col else 0.0
     raw["campaign"] = raw[campaign_col].fillna("Unattributed").astype(str) if campaign_col else "Unattributed"
+    raw["campaign_type"] = raw[campaign_type_col].fillna("Unattributed").astype(str) if campaign_type_col else "Unattributed"
+    raw["campaign_id"] = raw[campaign_id_col].fillna("").astype(str) if campaign_id_col else ""
     raw["platform"] = raw[platform_col].fillna("Unattributed").astype(str).str.lower() if platform_col else "Unattributed"
-    daily = raw.groupby("date", as_index=False).agg(spend=("spend", "sum"), installs=("installs", "sum"), new_logins=("new_logins", "sum"), trials=("trials", "sum"), subscribers=("subscribers", "sum"), revenue=("revenue", "sum"))
-    daily["trial_cac"] = (daily["spend"] / daily["trials"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+
+    dashboard_daily = defaultdict(lambda: {"revenue": 0.0, "trials": 0.0, "subscribers": 0.0, "new_logins": 0.0})
+    for row in monetization.get("daily", []):
+        dashboard_daily[str(row.get("day"))]["revenue"] += numeric_value(row.get("revenue"))
+    for row in monetization.get("daily_pack_merged") or monetization.get("daily_pack") or []:
+        if row.get("family") != "subscription":
+            continue
+        pack = str(row.get("pack") or "").lower()
+        if "trial" in pack:
+            dashboard_daily[str(row.get("day"))]["trials"] += numeric_value(row.get("payers") or row.get("transactions"))
+        if "main" in pack:
+            dashboard_daily[str(row.get("day"))]["subscribers"] += numeric_value(row.get("payers") or row.get("transactions"))
+    for row in acquisition.get("daily", []):
+        day = str(row.get("signup_date") or row.get("date") or row.get("day"))
+        dashboard_daily[day]["new_logins"] += numeric_value(row.get("new_users") or row.get("logins"))
+
+    daily = raw.groupby("date", as_index=False).agg(spend=("spend", "sum"), installs=("installs", "sum"), impressions=("impressions", "sum"), clicks=("clicks", "sum"), new_logins=("new_logins", "sum"), trials=("trials", "sum"), subscribers=("subscribers", "sum"), revenue=("revenue", "sum"))
+    if not login_col:
+        daily["new_logins"] = daily["date"].astype(str).map(lambda day: dashboard_daily[day]["new_logins"])
+    if not trial_col:
+        daily["trials"] = daily["date"].astype(str).map(lambda day: dashboard_daily[day]["trials"])
+    if not sub_col:
+        daily["subscribers"] = daily["date"].astype(str).map(lambda day: dashboard_daily[day]["subscribers"])
+    if not revenue_col:
+        daily["revenue"] = daily["date"].astype(str).map(lambda day: dashboard_daily[day]["revenue"])
+    daily["ctr_pct"] = (daily["clicks"] / daily["impressions"] * 100).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+    daily["cpc"] = (daily["spend"] / daily["clicks"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+    daily["cpm"] = (daily["spend"] * 1000 / daily["impressions"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+    daily["cpi"] = (daily["spend"] / daily["installs"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+    daily["cost_per_trial"] = (daily["spend"] / daily["trials"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
     daily["subscriber_cac"] = (daily["spend"] / daily["subscribers"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+    daily["login_to_trial_pct"] = (daily["trials"] / daily["new_logins"] * 100).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+    daily["install_to_trial_pct"] = (daily["trials"] / daily["installs"] * 100).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
     daily["roas_pct"] = (daily["revenue"] / daily["spend"] * 100).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
     daily["date"] = daily["date"].astype(str)
-    campaigns = raw.groupby("campaign", as_index=False).agg(spend=("spend", "sum"), installs=("installs", "sum"), new_logins=("new_logins", "sum"), trials=("trials", "sum"), subscribers=("subscribers", "sum"), revenue=("revenue", "sum")).sort_values("spend", ascending=False)
-    platforms = raw.groupby("platform", as_index=False).agg(spend=("spend", "sum"), installs=("installs", "sum"), new_logins=("new_logins", "sum"), trials=("trials", "sum"), subscribers=("subscribers", "sum"), revenue=("revenue", "sum")).sort_values("spend", ascending=False)
+    campaigns = raw.groupby(["campaign", "campaign_type", "campaign_id"], as_index=False).agg(spend=("spend", "sum"), installs=("installs", "sum"), impressions=("impressions", "sum"), clicks=("clicks", "sum"), new_logins=("new_logins", "sum"), trials=("trials", "sum"), subscribers=("subscribers", "sum"), revenue=("revenue", "sum")).sort_values("spend", ascending=False)
+    platforms = raw.groupby("platform", as_index=False).agg(spend=("spend", "sum"), installs=("installs", "sum"), impressions=("impressions", "sum"), clicks=("clicks", "sum"), new_logins=("new_logins", "sum"), trials=("trials", "sum"), subscribers=("subscribers", "sum"), revenue=("revenue", "sum")).sort_values("spend", ascending=False)
     for df in [campaigns, platforms]:
         df["cost_per_trial"] = (df["spend"] / df["trials"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
         df["subscriber_cac"] = (df["spend"] / df["subscribers"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        df["ctr_pct"] = (df["clicks"] / df["impressions"] * 100).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        df["cpc"] = (df["spend"] / df["clicks"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        df["cpm"] = (df["spend"] * 1000 / df["impressions"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        df["cpi"] = (df["spend"] / df["installs"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
         df["roas_pct"] = (df["revenue"] / df["spend"] * 100).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
         df["login_to_trial_pct"] = (df["trials"] / df["new_logins"] * 100).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
     total_spend = float(raw["spend"].sum())
+    total_installs = float(raw["installs"].sum())
+    total_impressions = float(raw["impressions"].sum())
+    total_clicks = float(raw["clicks"].sum())
     total_trials = float(raw["trials"].sum())
     total_subscribers = float(raw["subscribers"].sum())
-    total_revenue = float(raw["revenue"].sum()) or float((monetization.get("kpis") or {}).get("current", {}).get("revenue") or 0)
+    total_revenue = float(raw["revenue"].sum()) or float(daily["revenue"].sum()) or float((monetization.get("kpis") or {}).get("current", {}).get("revenue") or 0)
+    if not trial_col:
+        total_trials = float(daily["trials"].sum())
+    if not sub_col:
+        total_subscribers = float(daily["subscribers"].sum())
     return {
         "source_status": status,
-        "source_message": message,
+        "source_message": (
+            message
+            if revenue_col or trial_col or sub_col
+            else f"{message} Spend/click/install columns are campaign-level; CAC/ROAS use total dashboard conversions and revenue for the same selected dates."
+        ),
         "kpis": {
             "spend": round(total_spend, 2),
+            "installs": round(total_installs, 2),
+            "impressions": round(total_impressions, 2),
+            "clicks": round(total_clicks, 2),
+            "ctr_pct": safe_div(total_clicks, total_impressions),
+            "cpc": round(total_spend / total_clicks, 2) if total_clicks else None,
+            "cpi": round(total_spend / total_installs, 2) if total_installs else None,
             "trial_cac": round(total_spend / total_trials, 2) if total_trials else None,
             "subscriber_cac": round(total_spend / total_subscribers, 2) if total_subscribers else None,
             "roas_pct": safe_div(total_revenue, total_spend),
@@ -2575,6 +2635,21 @@ def build_marketing(env: dict[str, str], ranges: dict[str, Any], acquisition: di
         "daily": records(daily),
         "campaigns": records(campaigns.head(30)),
         "platforms": records(platforms),
+        "mapping": {
+            "date": date_col,
+            "platform": platform_col,
+            "campaign_type": campaign_type_col,
+            "campaign_id": campaign_id_col,
+            "campaign": campaign_col,
+            "spend": spend_col,
+            "installs": install_col,
+            "impressions": impression_col,
+            "clicks": click_col,
+            "new_logins": login_col,
+            "trials": trial_col,
+            "subscribers": sub_col,
+            "revenue": revenue_col,
+        },
     }
 
 
