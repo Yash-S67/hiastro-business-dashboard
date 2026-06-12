@@ -241,6 +241,30 @@ main {
   margin-bottom: 18px;
 }
 
+.executive-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 18px;
+  padding-bottom: 4px;
+}
+
+.executive-heading h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 24px;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
+.executive-heading p:last-child {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 750;
+  text-align: right;
+}
+
 .guide-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -873,9 +897,14 @@ tbody tr:last-child td {
 
 @media (max-width: 720px) {
   .section-heading,
-  .split-heading {
+  .split-heading,
+  .executive-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .executive-heading p:last-child {
+    text-align: left;
   }
 
   .header-actions {

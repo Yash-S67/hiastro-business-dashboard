@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HiAstro Business Dashboard</title>
-    <link rel="stylesheet" href="assets/styles.css?v=20260612-structured-dynamic" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260612-investor-ui" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -28,15 +28,21 @@
       <a href="#acquisition">Acquisition</a>
       <a href="#retention">Retention</a>
       <a href="#engagement">Engagement</a>
-      <a href="#coverage">Metric Coverage</a>
+      <a href="#coverage">Data Quality</a>
     </nav>
 
     <main>
       <section class="dashboard-guide" aria-label="Dashboard operating summary">
+        <div class="executive-heading">
+          <div>
+            <p class="eyebrow">Executive Summary</p>
+            <h2>Operating Performance</h2>
+          </div>
+          <p id="executivePeriod"></p>
+        </div>
         <div class="guide-grid" id="dashboardGuide"></div>
         <div class="workflow-strip" id="businessFlow"></div>
       </section>
-      <section class="kpi-grid" id="overviewCards"></section>
       <section class="insight-strip" id="decisionInsights"></section>
 
       <section class="band" id="monetization">
@@ -528,16 +534,16 @@
       <section class="band" id="coverage">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">Available, Partial, Missing</p>
-            <h2>Metric Coverage</h2>
+            <p class="eyebrow">Confidence and Readiness</p>
+            <h2>Data Quality</h2>
           </div>
-          <p>Shows which datapoints are fully calculable today and which need another event, table, or denominator.</p>
+          <p>Highlights where the dashboard is decision-ready and where measurement depth can still improve.</p>
         </div>
         <div class="kpi-grid compact" id="metricCoverageCards"></div>
         <div class="grid two">
           <div class="panel"><canvas id="metricCoverageChart"></canvas></div>
           <div class="panel">
-            <h3>Missing and Partial Data Points</h3>
+            <h3>Measurement Gaps</h3>
             <div id="metricCoverageTable"></div>
           </div>
         </div>
@@ -549,12 +555,12 @@
       </section>
 
       <section class="source-note">
-        <h2>Sources</h2>
+        <h2>Methodology</h2>
         <ul id="sourceNotes"></ul>
       </section>
     </main>
 
-    <script src="assets/config.js?v=20260612-structured-dynamic"></script>
-    <script src="assets/app.js?v=20260612-structured-dynamic"></script>
+    <script src="assets/config.js?v=20260612-investor-ui"></script>
+    <script src="assets/app.js?v=20260612-investor-ui"></script>
   </body>
 </html>

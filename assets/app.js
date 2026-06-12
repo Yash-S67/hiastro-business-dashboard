@@ -489,10 +489,10 @@ function upsertDailyPeriod(day, period) {
 async function ensureDailyPeriod(day) {
   if (hasDailyPeriod(day)) return true;
   if (!LIVE_API_STATUS?.live_daily_api) {
-    setDateStatus("Live API not connected; using preloaded dates");
+    setDateStatus("Selected date is outside the published reporting range");
     return false;
   }
-  setDateStatus(`Fetching ${shortDate(day)}...`);
+  setDateStatus(`Loading ${shortDate(day)}...`);
   try {
     const response = await fetch(apiUrl(`/api/dashboard?date=${encodeURIComponent(day)}`), { cache: "no-store" });
     const payload = await response.json();
@@ -510,10 +510,10 @@ async function ensureDailyPeriod(day) {
     if (cleaned.metadata?.data_retention_policy) {
       DASHBOARD_DATA.metadata.data_retention_policy = cleaned.metadata.data_retention_policy;
     }
-    setDateStatus(`Loaded ${shortDate(day)} live`);
+    setDateStatus(`Showing ${shortDate(day)}`);
     return true;
   } catch (error) {
-    setDateStatus(`Live fetch unavailable: ${error.message}`);
+    setDateStatus(`Could not load selected date: ${error.message}`);
     return false;
   }
 }
@@ -758,6 +758,17 @@ function compactWindowLabel(windowMeta) {
   return `${shortDate(windowMeta.start)} - ${shortDate(windowMeta.end)}`;
 }
 
+function formalWindowLabel(windowMeta) {
+  if (!windowMeta?.start || !windowMeta?.end) return "Current reporting period";
+  const start = new Date(`${windowMeta.start}T00:00:00`);
+  const end = new Date(`${windowMeta.end}T00:00:00`);
+  const fmt = { day: "2-digit", month: "short", year: "numeric" };
+  if (windowMeta.start === windowMeta.end) {
+    return start.toLocaleDateString("en-IN", fmt);
+  }
+  return `${start.toLocaleDateString("en-IN", fmt)} to ${end.toLocaleDateString("en-IN", fmt)}`;
+}
+
 function guideCard(label, value, sub = "", tone = "neutral") {
   return `
     <article class="guide-card ${tone}">
@@ -782,37 +793,35 @@ function renderDashboardGuide(data) {
   const rootMeta = DASHBOARD_DATA.metadata || {};
   const meta = data.metadata || rootMeta;
   const m = data.monetization?.kpis?.current || {};
+  const g7 = data.monetization?.kpis?.growth_vs_prior_7 || {};
   const a = data.acquisition?.kpis || {};
   const r = (data.retention?.curve || []).find((row) => row.day_n === 1) || {};
+  const r7 = (data.retention?.curve || []).find((row) => row.day_n === 7) || {};
   const e = data.engagement?.kpis || {};
   const coverageRows = data.metric_coverage?.rows || [];
   const availableMetrics = coverageRows.filter((row) => row.status === "Available").length;
-  const partialMetrics = coverageRows.filter((row) => row.status !== "Available").length;
-  const liveMode = LIVE_API_STATUS?.live_daily_api;
-  const connectedMode = liveMode ? "Live API" : "Static Data";
-  const latestDay = latestSelectableDate();
   const selectedWindow = meta.current_window || rootMeta.current_window;
-  const selectedLabel = SELECTED_PERIOD === "daily" ? "Daily View" : "Weekly View";
-  const dateModeText = liveMode
-    ? `Any complete date through ${shortDate(latestDay)}`
-    : `Preloaded through ${shortDate(latestDay)}`;
-  const sourceModeText = liveMode
-    ? "Local/API fetches MySQL and Mixpanel on demand"
-    : "GitHub Pages reads the latest committed aggregate JSON";
+  const sub = familyMetric(data.monetization, "subscription");
+  const payg = familyMetric(data.monetization, "pay_as_you_go");
+  const viewLabel = SELECTED_PERIOD === "daily" ? "Daily view" : "7-day view";
+  const executivePeriod = document.getElementById("executivePeriod");
+  if (executivePeriod) {
+    executivePeriod.textContent = `${viewLabel} | ${formalWindowLabel(selectedWindow)}`;
+  }
 
   document.getElementById("dashboardGuide").innerHTML = [
-    guideCard("Data Mode", connectedMode, sourceModeText, liveMode ? "good" : "neutral"),
-    guideCard("Selected Window", compactWindowLabel(selectedWindow), `${selectedLabel} | ${dateModeText}`),
-    guideCard("Operating Revenue", money(m.revenue), `${number(m.payers)} payers | ${number(m.transactions)} transactions`),
-    guideCard("Metric Trust", `${number(availableMetrics)} ready`, `${number(partialMetrics)} partial or missing metrics`, partialMetrics ? "risk" : "good"),
+    guideCard("Operating Revenue", money(m.revenue), `${trend(g7.revenue)} vs prior period | ${number(m.payers)} payers`, Number(g7.revenue || 0) >= 0 ? "good" : "risk"),
+    guideCard("Subscription Mix", pct(sub.revenue_share_pct), `${money(sub.revenue)} revenue | ${number(sub.payers)} payers`, "good"),
+    guideCard("New User Payment", pct(a.new_user_to_payment_pct), `${number(a.new_users)} new users | ${pct(a.new_user_to_followup_pct)} reached follow-up`, Number(a.new_user_to_payment_pct || 0) >= 8 ? "good" : "risk"),
+    guideCard("D1 Retention", pct(r.retention_pct || 0), `D7 ${pct(r7.retention_pct || 0)} | ${number(e.sessions)} sessions`, Number(r.retention_pct || 0) >= 8 ? "good" : "risk"),
   ].join("");
 
   document.getElementById("businessFlow").innerHTML = [
-    flowCard("#monetization", "1. Monetization", money(m.revenue), `${number(m.payers)} payers`, "good"),
-    flowCard("#acquisition", "2. Acquisition", number(a.new_users), `${pct(a.new_user_to_followup_pct)} to follow-up`),
-    flowCard("#retention", "3. Retention", pct(r.retention_pct || 0), "D1 chat retention"),
-    flowCard("#engagement", "4. Engagement", number(e.sessions), `${e.avg_minutes_per_user || 0} min/user`),
-    flowCard("#coverage", "5. Coverage", `${number(availableMetrics)}/${number(coverageRows.length)}`, "metrics ready", partialMetrics ? "risk" : "good"),
+    flowCard("#monetization", "Monetization", money(m.revenue), `Subscription ${pct(sub.revenue_share_pct)} | PayG ${pct(payg.revenue_share_pct)}`, "good"),
+    flowCard("#acquisition", "Acquisition", number(a.new_users), `${pct(a.new_user_to_payment_pct)} new-user payment`),
+    flowCard("#retention", "Retention", pct(r.retention_pct || 0), "Day-1 returning users", Number(r.retention_pct || 0) >= 8 ? "good" : "risk"),
+    flowCard("#engagement", "Engagement", `${e.avg_minutes_per_user || 0}m`, `${number(e.sessions)} sessions`),
+    flowCard("#coverage", "Data Quality", `${number(availableMetrics)}/${number(coverageRows.length)}`, "metric families ready"),
   ].join("");
 }
 
@@ -821,23 +830,7 @@ function renderOverview(data) {
   const g7 = data.monetization.kpis.growth_vs_prior_7;
   const sub = familyMetric(data.monetization, "subscription");
   const payg = familyMetric(data.monetization, "pay_as_you_go");
-  const dayPass = familyMetric(data.monetization, "day_pass");
   const a = data.acquisition.kpis;
-  const r = data.retention.curve.find((x) => x.day_n === 1);
-  const e = data.engagement.kpis;
-  const comparison = data.metadata?.comparison_window?.label || "previous period";
-  document.getElementById("overviewCards").innerHTML = [
-    card("Revenue", money(m.revenue), `vs ${comparison} ${trend(g7.revenue)}`),
-    card("Subscription Rev", money(sub.revenue), `${pct(sub.revenue_share_pct)} of revenue | ${number(sub.payers)} payers`),
-    card("PayG Rev", money(payg.revenue), `${pct(payg.revenue_share_pct)} of revenue | ${number(payg.payers)} payers`),
-    card("Day Pass Rev", money(dayPass.revenue), `${pct(dayPass.revenue_share_pct)} of revenue | ${number(dayPass.payers)} payers`),
-    card("Payers", number(m.payers), `vs ${comparison} ${trend(g7.payers)}`),
-    card("Avg Transaction", money(m.avg_transaction), `vs ${comparison} ${trend(g7.avg_transaction)}`),
-    card("New Users", number(a.new_users), `${pct(a.new_user_to_followup_pct)} reached follow-up`),
-    card("D1 Chat Retention", pct(r?.retention_pct || 0), `${number(r?.retained_users || 0)} retained users`),
-    card("Avg Time / User", `${e.avg_minutes_per_user}m`, `${number(e.sessions)} app sessions`),
-    card("BIM Opens", number(e.bim_notification_opens), `${number(e.bim_notification_users)} users`),
-  ].join("");
 
   const materialFamilies = familyRows(data.monetization).filter((row) => Number(row.revenue_share_pct || 0) >= 5);
   const bestFamily = topRows(materialFamilies.length ? materialFamilies : familyRows(data.monetization), "revenue_growth_vs_prior_7_pct", 1)[0] || sub;
@@ -1597,7 +1590,7 @@ function renderMonetization(data) {
       { label: "Step conversion %", data: funnelStageRows.map((row) => row.conversion_pct), backgroundColor: COLORS.gold, yAxisID: "y1" },
     ],
   }, {
-    plugins: { title: { display: true, text: "Selected Window Funnel Drop-off" }, legend: { position: "bottom" } },
+    plugins: { title: { display: true, text: "Reporting Period Funnel Drop-off" }, legend: { position: "bottom" } },
     scales: {
       x: { grid: { display: false } },
       y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Users" } },
@@ -2173,7 +2166,7 @@ function renderMetricCoverage(data) {
     }) }],
   }, {
     indexAxis: "y",
-    plugins: { title: { display: true, text: "Metric Coverage Status" }, legend: { display: false } },
+    plugins: { title: { display: true, text: "Data Quality Status" }, legend: { display: false } },
     scales: { x: { beginAtZero: true, grid: { color: "#eef2f6" } }, y: { grid: { display: false } } },
   });
 
@@ -2299,11 +2292,10 @@ function scrollToCurrentSection() {
 }
 
 function renderDataPolicy(meta) {
-  const policy = meta.data_retention_policy || {};
   const policyRows = [
-    ["Storage", policy.storage || "Latest aggregate JSON only"],
-    ["Refresh", policy.refresh_behavior || "Each refresh replaces the previous dashboard data file"],
-    ["Raw Data", policy.raw_data || "Raw SQL rows and Mixpanel events are not saved in the dashboard repo"],
+    ["Published Dataset", "Dashboard stores only the latest aggregated reporting dataset"],
+    ["Refresh Cadence", "Each refresh replaces the previous published dashboard view"],
+    ["Source Privacy", "Raw SQL rows, Mixpanel exports, user-level event rows, and credentials are not stored in the dashboard repository"],
   ];
   document.getElementById("dataPolicy").innerHTML = policyRows
     .map(([label, value]) => `
@@ -2315,11 +2307,21 @@ function renderDataPolicy(meta) {
     .join("");
 }
 
+function businessSourceNotes(notes = []) {
+  const replacements = [
+    "Date selection updates every metric, funnel, chart, and export for the selected reporting period.",
+  ];
+  const filtered = notes.filter((note) => !/preloaded|GitHub Pages|local dashboard server|api\/dashboard/i.test(note));
+  return [...filtered, ...replacements];
+}
+
 function renderDashboard() {
   const data = selectedData();
   const rootMeta = DASHBOARD_DATA.metadata;
-  const meta = data.metadata || rootMeta;
-  document.getElementById("freshness").textContent = `Generated ${new Date(rootMeta.generated_at_ist).toLocaleString("en-IN")} IST | ${SELECTED_PERIOD.toUpperCase()} ${meta.current_window.start} to ${meta.current_window.end}`;
+  const generatedAt = rootMeta.generated_at_ist
+    ? new Date(rootMeta.generated_at_ist).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+    : "";
+  document.getElementById("freshness").textContent = generatedAt ? `Updated ${generatedAt} IST` : "Updated today";
   renderDashboardGuide(data);
   renderOverview(data);
   renderMonetization(data);
@@ -2328,7 +2330,7 @@ function renderDashboard() {
   renderEngagement(data);
   renderMetricCoverage(data);
   renderDataPolicy(rootMeta);
-  document.getElementById("sourceNotes").innerHTML = rootMeta.source_notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("");
+  document.getElementById("sourceNotes").innerHTML = businessSourceNotes(rootMeta.source_notes).map((note) => `<li>${escapeHtml(note)}</li>`).join("");
 }
 
 main();
