@@ -140,9 +140,13 @@ function trend(value) {
   return `<span class="trend ${direction}">${sign}${Number(value).toFixed(1)}%</span>`;
 }
 
+function drilldownAttrs(label) {
+  return `data-drilldown-label="${escapeHtml(label)}" role="button" tabindex="0"`;
+}
+
 function card(label, value, sub = "") {
   return `
-    <article class="kpi-card">
+    <article class="kpi-card" ${drilldownAttrs(label)}>
       <div class="kpi-label">${label}</div>
       <div class="kpi-value">${value}</div>
       <div class="kpi-sub">${sub}</div>
@@ -152,7 +156,7 @@ function card(label, value, sub = "") {
 
 function insightCard(label, value, sub = "", tone = "neutral") {
   return `
-    <article class="insight-card ${tone}">
+    <article class="insight-card ${tone}" ${drilldownAttrs(label)}>
       <div class="insight-label">${escapeHtml(label)}</div>
       <div class="insight-value">${value}</div>
       <div class="insight-sub">${sub}</div>
@@ -162,7 +166,7 @@ function insightCard(label, value, sub = "", tone = "neutral") {
 
 function actionCard(label, value, sub = "", tone = "neutral") {
   return `
-    <article class="action-card ${tone}">
+    <article class="action-card ${tone}" ${drilldownAttrs(label)}>
       <div class="action-label">${escapeHtml(label)}</div>
       <div class="action-value">${value}</div>
       <div class="action-sub">${sub}</div>
@@ -172,7 +176,7 @@ function actionCard(label, value, sub = "", tone = "neutral") {
 
 function funnelStep(label, value, sub = "") {
   return `
-    <article class="funnel-step">
+    <article class="funnel-step" ${drilldownAttrs(label)}>
       <div class="funnel-label">${escapeHtml(label)}</div>
       <div class="funnel-value">${value}</div>
       <div class="funnel-sub">${sub}</div>
@@ -182,7 +186,7 @@ function funnelStep(label, value, sub = "") {
 
 function miniMetric(label, value, sub = "") {
   return `
-    <article class="mini-metric">
+    <article class="mini-metric" ${drilldownAttrs(label)}>
       <div class="mini-metric-label">${escapeHtml(label)}</div>
       <div class="mini-metric-value">${value}</div>
       <div class="mini-metric-sub">${sub}</div>
@@ -191,10 +195,11 @@ function miniMetric(label, value, sub = "") {
 }
 
 function streamCard(row, accent = COLORS.blue) {
+  const title = row.family_label || familyLabel(row.family);
   return `
-    <article class="stream-card" style="--accent: ${accent}">
+    <article class="stream-card" style="--accent: ${accent}" ${drilldownAttrs(title)}>
       <div>
-        <div class="stream-title">${escapeHtml(row.family_label || familyLabel(row.family))}</div>
+        <div class="stream-title">${escapeHtml(title)}</div>
         <div class="stream-value">${money(row.revenue)}</div>
       </div>
       <div class="stream-metrics">
@@ -216,29 +221,32 @@ function table(containerId, rows, columns, limit = 12) {
     return;
   }
   container.innerHTML = `
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>${columns.map((c) => `<th class="${c.text ? "text" : ""}">${c.label}</th>`).join("")}</tr>
-        </thead>
-        <tbody>
-          ${sliced
-            .map(
-              (row) => `
-                <tr>
-                  ${columns
-                    .map((c) => {
-                      const value = c.format ? c.format(row[c.key], row) : row[c.key];
-                      return `<td class="${c.text ? "text" : ""}">${escapeHtml(value)}</td>`;
-                    })
-                    .join("")}
-                </tr>
-              `,
-            )
-            .join("")}
-        </tbody>
-      </table>
-    </div>
+    <details class="detail-table">
+      <summary>View detail table <span>${number(sliced.length)} rows</span></summary>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>${columns.map((c) => `<th class="${c.text ? "text" : ""}">${c.label}</th>`).join("")}</tr>
+          </thead>
+          <tbody>
+            ${sliced
+              .map(
+                (row) => `
+                  <tr>
+                    ${columns
+                      .map((c) => {
+                        const value = c.format ? c.format(row[c.key], row) : row[c.key];
+                        return `<td class="${c.text ? "text" : ""}">${escapeHtml(value)}</td>`;
+                      })
+                      .join("")}
+                  </tr>
+                `,
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    </details>
   `;
 }
 
@@ -740,11 +748,12 @@ function chart(id, type, data, options = {}) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { position: "bottom" },
+        legend: { position: "bottom", labels: { color: "#cbd5e1", boxWidth: 10, boxHeight: 10 } },
+        title: { color: "#f7f9ff", font: { weight: "700" } },
       },
       scales: type === "doughnut" ? {} : {
-        x: { grid: { display: false } },
-        y: { beginAtZero: true, grid: { color: "#eef2f6" } },
+        x: { grid: { display: false }, ticks: { color: "#96a3ba" } },
+        y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, ticks: { color: "#96a3ba" } },
       },
       ...options,
     },
@@ -771,7 +780,7 @@ function formalWindowLabel(windowMeta) {
 
 function guideCard(label, value, sub = "", tone = "neutral") {
   return `
-    <article class="guide-card ${tone}">
+    <article class="guide-card ${tone}" ${drilldownAttrs(label)}>
       <div class="guide-label">${escapeHtml(label)}</div>
       <div class="guide-value">${value}</div>
       <div class="guide-sub">${sub}</div>
@@ -781,7 +790,7 @@ function guideCard(label, value, sub = "", tone = "neutral") {
 
 function flowCard(anchor, label, value, sub = "", tone = "neutral") {
   return `
-    <a class="flow-card ${tone}" href="${anchor}">
+    <a class="flow-card ${tone}" href="${anchor}" data-drilldown-label="${escapeHtml(label)}">
       <span class="flow-label">${escapeHtml(label)}</span>
       <strong>${value}</strong>
       <span>${sub}</span>
@@ -879,7 +888,7 @@ function renderMonetization(data) {
   daily.labels = daily.labels.map(shortDate);
   chart("revenueDailyChart", "line", daily, {
     plugins: { title: { display: true, text: `${chartLabel}: Daily Revenue by Family` }, legend: { position: "bottom" } },
-    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" } } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" } } },
   });
 
   const dailySummary = mTrend.daily_summary || m.daily_summary || [];
@@ -894,7 +903,7 @@ function renderMonetization(data) {
     plugins: { title: { display: true, text: `${chartLabel}: Revenue, Payers and Avg Transaction` } },
     scales: {
       x: { grid: { display: false } },
-      y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Revenue" } },
+      y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Revenue" } },
       y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Payers / Avg txn" } },
     },
   });
@@ -927,7 +936,7 @@ function renderMonetization(data) {
     ],
   }, {
     plugins: { title: { display: true, text: "Revenue, Payer and Transaction Distribution" }, legend: { position: "bottom" } },
-    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, max: 100, grid: { color: "#eef2f6" } } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, max: 100, grid: { color: "rgba(255,255,255,0.10)" } } },
   });
 
   const cohortRevenue = groupedLine(mTrend.daily_user_cohort || m.daily_user_cohort || [], "day", "user_cohort", "revenue");
@@ -1104,7 +1113,7 @@ function renderMonetization(data) {
 
   chart("mainPackBuyerChart", "line", mainPackDaily, {
     plugins: { title: { display: true, text: `${chartLabel}: Rs 499 vs Rs 199 Main Buyers` }, legend: { position: "bottom" } },
-    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Users" } } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Users" } } },
   });
 
   chart("subscriptionStageChart", "doughnut", {
@@ -1133,7 +1142,7 @@ function renderMonetization(data) {
   subscriptionPlanDaily.labels = subscriptionPlanDaily.labels.map(shortDate);
   chart("subscriptionPlanDailyChart", "line", subscriptionPlanDaily, {
     plugins: { title: { display: true, text: `${chartLabel}: Subscription Revenue by Plan` }, legend: { position: "bottom" } },
-    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" } } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" } } },
   });
 
   const renewalKpis = renewal.kpis || {};
@@ -1206,7 +1215,7 @@ function renderMonetization(data) {
     plugins: { title: { display: true, text: `${chartLabel}: Merged Pay as You Go` }, legend: { position: "bottom" } },
     scales: {
       x: { grid: { display: false } },
-      y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Revenue" } },
+      y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Revenue" } },
       y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Payers" } },
     },
   });
@@ -1222,7 +1231,7 @@ function renderMonetization(data) {
     plugins: { title: { display: true, text: "PayG Wallet Amount Mix" }, legend: { position: "bottom" } },
     scales: {
       x: { grid: { display: false } },
-      y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Revenue" } },
+      y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Revenue" } },
       y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Payers" } },
     },
   });
@@ -1447,7 +1456,7 @@ function renderMonetization(data) {
     ],
   }, {
     plugins: { title: { display: true, text: "Config Funnel: Follow-up, Paywall, CTA, Purchase" } },
-    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, max: 100, grid: { color: "#eef2f6" } } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, max: 100, grid: { color: "rgba(255,255,255,0.10)" } } },
   });
 
   chart("trialPackMainSplitChart", "bar", {
@@ -1458,7 +1467,7 @@ function renderMonetization(data) {
     ],
   }, {
     plugins: { title: { display: true, text: "Main Plan Buyers by Trial Pack" }, legend: { position: "bottom" } },
-    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" } } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" } } },
   });
 
   chart("trialPackConversionChart", "bar", {
@@ -1470,7 +1479,7 @@ function renderMonetization(data) {
     ],
   }, {
     plugins: { title: { display: true, text: "Rs 1 vs Rs 49 Conversion Comparison" }, legend: { position: "bottom" } },
-    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, max: 100, grid: { color: "#eef2f6" } } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, max: 100, grid: { color: "rgba(255,255,255,0.10)" } } },
   });
 
   chart("mainPackFollowupChart", "bar", {
@@ -1481,7 +1490,7 @@ function renderMonetization(data) {
     ],
   }, {
     plugins: { title: { display: true, text: "Rs 199 vs Rs 499 Follow-up to Main Conversion" }, legend: { position: "bottom" } },
-    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Follow-up to main %" } } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Follow-up to main %" } } },
   });
 
   table("mainPackFollowupTable", mainPackFollowupRows, [
@@ -1579,7 +1588,7 @@ function renderMonetization(data) {
   ];
   chart("funnelDailyConversionTrendChart", "line", conversionTrend, {
     plugins: { title: { display: true, text: "Daily Rs 1 vs Rs 49 Conversion Rates" }, legend: { position: "bottom" } },
-    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Conversion %" } } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Conversion %" } } },
   });
 
   const funnelStageRows = currentFunnelStageRows(configRows);
@@ -1593,7 +1602,7 @@ function renderMonetization(data) {
     plugins: { title: { display: true, text: "Reporting Period Funnel Drop-off" }, legend: { position: "bottom" } },
     scales: {
       x: { grid: { display: false } },
-      y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Users" } },
+      y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Users" } },
       y1: { beginAtZero: true, max: 100, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Step conversion %" } },
     },
   });
@@ -1608,7 +1617,7 @@ function renderMonetization(data) {
     ],
   }, {
     plugins: { title: { display: true, text: "Plan-Level Follow-up Conversion" }, legend: { position: "bottom" } },
-    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Conversion %" } } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Conversion %" } } },
   });
 
   table("planFunnelTable", planFunnelRows, [
@@ -1645,7 +1654,7 @@ function renderMonetization(data) {
   }, {
     indexAxis: "y",
     plugins: { title: { display: true, text: "Bot / Entity Conversion and Revenue Share" } },
-    scales: { x: { beginAtZero: true, grid: { color: "#eef2f6" } }, y: { grid: { display: false } } },
+    scales: { x: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" } }, y: { grid: { display: false } } },
   });
 
   table("entityTable", m.entity_distribution, [
@@ -1724,7 +1733,7 @@ function renderAcquisition(data) {
     ],
   }, {
     plugins: { title: { display: true, text: `${chartLabel}: Conversion Rate Trend` } },
-    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" } } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" } } },
   });
 
   chart("loginSignupChart", "line", {
@@ -2069,7 +2078,7 @@ function renderEngagement(data) {
     plugins: { title: { display: true, text: `${chartLabel}: BIM Notification Trend` } },
     scales: {
       x: { grid: { display: false } },
-      y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Opens / users" } },
+      y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Opens / users" } },
       y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Opens per user" } },
     },
   });
@@ -2167,7 +2176,7 @@ function renderMetricCoverage(data) {
   }, {
     indexAxis: "y",
     plugins: { title: { display: true, text: "Data Quality Status" }, legend: { display: false } },
-    scales: { x: { beginAtZero: true, grid: { color: "#eef2f6" } }, y: { grid: { display: false } } },
+    scales: { x: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" } }, y: { grid: { display: false } } },
   });
 
   table("metricCoverageTable", partialRows.length ? partialRows : rows, [
@@ -2189,6 +2198,7 @@ async function main() {
     setupPeriodControls();
     setupDayDownloadControls();
     setupTabs();
+    setupDrilldowns();
     setupSectionNav();
     renderDashboard();
     window.setTimeout(scrollToCurrentSection, 120);
@@ -2313,6 +2323,319 @@ function businessSourceNotes(notes = []) {
   ];
   const filtered = notes.filter((note) => !/preloaded|GitHub Pages|local dashboard server|api\/dashboard/i.test(note));
   return [...filtered, ...replacements];
+}
+
+function detailMetric(label, value, sub = "") {
+  return `
+    <article class="detail-metric">
+      <div class="detail-metric-label">${escapeHtml(label)}</div>
+      <div class="detail-metric-value">${value}</div>
+      <div class="detail-metric-sub">${sub}</div>
+    </article>
+  `;
+}
+
+function detailMetrics(metrics) {
+  return `<div class="detail-metric-grid">${metrics.join("")}</div>`;
+}
+
+function detailTable(title, rows, columns, limit = 8) {
+  const sourceRows = (rows || []).slice(0, limit);
+  if (!sourceRows.length) return "";
+  return `
+    <section class="detail-section">
+      <h3>${escapeHtml(title)}</h3>
+      <div class="table-wrap detail-table-wrap">
+        <table>
+          <thead>
+            <tr>${columns.map((c) => `<th class="${c.text ? "text" : ""}">${escapeHtml(c.label)}</th>`).join("")}</tr>
+          </thead>
+          <tbody>
+            ${sourceRows
+              .map((row) => `
+                <tr>
+                  ${columns
+                    .map((c) => {
+                      const value = c.format ? c.format(row[c.key], row) : row[c.key];
+                      return `<td class="${c.text ? "text" : ""}">${escapeHtml(value)}</td>`;
+                    })
+                    .join("")}
+                </tr>
+              `)
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
+function detailNote(title, text) {
+  return `
+    <section class="detail-section">
+      <h3>${escapeHtml(title)}</h3>
+      <p>${escapeHtml(text)}</p>
+    </section>
+  `;
+}
+
+function monetizationDetail(data) {
+  const m = data.monetization || {};
+  const k = m.kpis?.current || {};
+  const g7 = m.kpis?.growth_vs_prior_7 || {};
+  return `
+    ${detailMetrics([
+      detailMetric("Revenue", money(k.revenue), `${trend(g7.revenue)} vs prior period`),
+      detailMetric("Payers", number(k.payers), `${trend(g7.payers)} vs prior period`),
+      detailMetric("Transactions", number(k.transactions), `${trend(g7.transactions)} vs prior period`),
+      detailMetric("Avg Transaction", money(k.avg_transaction), `${trend(g7.avg_transaction)} vs prior period`),
+    ])}
+    ${detailTable("Revenue Stream Mix", m.family, [
+      { key: "family_label", label: "Stream", text: true },
+      { key: "revenue", label: "Revenue", format: money },
+      { key: "revenue_share_pct", label: "Share", format: pct },
+      { key: "payers", label: "Payers", format: number },
+      { key: "avg_transaction", label: "Avg Txn", format: money },
+    ], 5)}
+    ${detailTable("Top Packs", topRows(m.pack_merged || m.pack, "revenue", 8), [
+      { key: "selection", label: "Pack", text: true },
+      { key: "family_label", label: "Stream", text: true },
+      { key: "revenue", label: "Revenue", format: money },
+      { key: "payers", label: "Payers", format: number },
+      { key: "revenue_share_pct", label: "Share", format: pct },
+    ])}
+  `;
+}
+
+function subscriptionDetail(data) {
+  const m = data.monetization || {};
+  const sub = familyMetric(m, "subscription");
+  const renewal = m.subscription_renewal || { kpis: {} };
+  return `
+    ${detailMetrics([
+      detailMetric("Subscription Revenue", money(sub.revenue), `${pct(sub.revenue_share_pct)} of total revenue`),
+      detailMetric("Subscription Payers", number(sub.payers), `${trend(sub.revenue_growth_vs_prior_7_pct)} revenue growth`),
+      detailMetric("Main Buyers", number((m.subscription_stage_performance || []).filter((row) => String(row.stage).toLowerCase().includes("main")).reduce((sum, row) => sum + Number(row.payers || 0), 0)), "Users buying main subscription packs"),
+      detailMetric("Renewal Due", money(renewal.kpis?.renewal_due_revenue || 0), `${number(renewal.kpis?.subscriptions_due || 0)} subscriptions due`),
+    ])}
+    ${detailTable("Plan Performance", topRows(m.subscription_plan_performance, "revenue", 8), [
+      { key: "selection", label: "Plan", text: true },
+      { key: "revenue", label: "Revenue", format: money },
+      { key: "payers", label: "Payers", format: number },
+      { key: "trial_buyers", label: "Trial Buyers", format: number },
+      { key: "main_buyers", label: "Main Buyers", format: number },
+      { key: "followup_to_main_pct", label: "Follow-up to Main", format: pct },
+    ])}
+    ${detailTable("Trial and Main Pack Split", m.subscription_stage_performance, [
+      { key: "selection", label: "Pack", text: true },
+      { key: "stage", label: "Stage", text: true },
+      { key: "amount", label: "Amount", format: money },
+      { key: "revenue", label: "Revenue", format: money },
+      { key: "payers", label: "Payers", format: number },
+    ], 10)}
+    ${detailTable("Rs 1 vs Rs 49 Funnel", m.config_funnel, [
+      { key: "trial_type", label: "Trial", text: true },
+      { key: "assigned_users", label: "Assigned", format: number },
+      { key: "followup_users", label: "Follow-up", format: number },
+      { key: "trial_buyers", label: "Trial Buyers", format: number },
+      { key: "main_plan_buyers", label: "Main Buyers", format: number },
+    ], 5)}
+  `;
+}
+
+function paygDetail(data) {
+  const m = data.monetization || {};
+  const payg = familyMetric(m, "pay_as_you_go");
+  return `
+    ${detailMetrics([
+      detailMetric("PayG Revenue", money(payg.revenue), `${pct(payg.revenue_share_pct)} of total revenue`),
+      detailMetric("PayG Payers", number(payg.payers), `${trend(payg.revenue_growth_vs_prior_7_pct)} revenue growth`),
+      detailMetric("Transactions", number(payg.transactions), `${money(payg.avg_transaction)} avg transaction`),
+      detailMetric("ARPP", money(payg.avg_revenue_per_payer), "Average revenue per PayG payer"),
+    ])}
+    ${detailTable("Amount Distribution", topRows(m.payg_amount_breakdown, "revenue", 8), [
+      { key: "amount", label: "Amount", format: money },
+      { key: "revenue", label: "Revenue", format: money },
+      { key: "transactions", label: "Txns", format: number },
+      { key: "payers", label: "Payers", format: number },
+      { key: "revenue_share_pct", label: "Share", format: pct },
+    ])}
+    ${detailTable("Revenue Concentration", m.revenue_concentration, [
+      { key: "group", label: "Group", text: true },
+      { key: "payers", label: "Payers", format: number },
+      { key: "revenue", label: "Revenue", format: money },
+      { key: "revenue_share_pct", label: "Share", format: pct },
+    ], 5)}
+  `;
+}
+
+function dayPassDetail(data) {
+  const m = data.monetization || {};
+  const dayPass = familyMetric(m, "day_pass");
+  return `
+    ${detailMetrics([
+      detailMetric("Day Pass Revenue", money(dayPass.revenue), `${pct(dayPass.revenue_share_pct)} of total revenue`),
+      detailMetric("Day Pass Payers", number(dayPass.payers), `${trend(dayPass.revenue_growth_vs_prior_7_pct)} revenue growth`),
+      detailMetric("Transactions", number(dayPass.transactions), `${money(dayPass.avg_transaction)} avg transaction`),
+      detailMetric("ARPP", money(dayPass.avg_revenue_per_payer), "Average revenue per day-pass payer"),
+    ])}
+    ${detailTable("Day Pass Packs", topRows((m.pack_merged || []).filter((row) => row.family === "day_pass"), "revenue", 8), [
+      { key: "selection", label: "Pack", text: true },
+      { key: "revenue", label: "Revenue", format: money },
+      { key: "payers", label: "Payers", format: number },
+      { key: "transactions", label: "Txns", format: number },
+    ])}
+  `;
+}
+
+function acquisitionDetail(data) {
+  const a = data.acquisition || {};
+  const k = a.kpis || {};
+  return `
+    ${detailMetrics([
+      detailMetric("New Users", number(k.new_users), `${number(k.login_success_users)} login-success users`),
+      detailMetric("Reached Follow-up", pct(k.new_user_to_followup_pct), "New users who asked follow-up"),
+      detailMetric("Paid", pct(k.new_user_to_payment_pct), "New users who made payment"),
+      detailMetric("Gap", `${(Number(k.new_user_to_followup_pct || 0) - Number(k.new_user_to_payment_pct || 0)).toFixed(1)} pts`, "Follow-up to payment opportunity"),
+    ])}
+    ${detailTable("Funnel", a.funnel, [
+      { key: "stage", label: "Stage", text: true },
+      { key: "users", label: "Users", format: number },
+      { key: "conversion_from_previous_pct", label: "Step Conv.", format: pct },
+      { key: "conversion_from_start_pct", label: "Start Conv.", format: pct },
+    ], 5)}
+    ${detailTable("Payment Type", a.payment_type_funnel, [
+      { key: "family_label", label: "Payment", text: true },
+      { key: "payers", label: "Payers", format: number },
+      { key: "revenue", label: "Revenue", format: money },
+      { key: "new_to_payment_pct", label: "New to Payment", format: pct },
+    ], 5)}
+  `;
+}
+
+function retentionDetail(data) {
+  const r = data.retention || {};
+  const d1 = (r.curve || []).find((row) => row.day_n === 1) || {};
+  const d7 = (r.curve || []).find((row) => row.day_n === 7) || {};
+  return `
+    ${detailMetrics([
+      detailMetric("D1 Retention", pct(d1.retention_pct || 0), `${number(d1.retained_users || 0)} retained users`),
+      detailMetric("D7 Retention", pct(d7.retention_pct || 0), `${number(d7.retained_users || 0)} retained users`),
+      detailMetric("Cohort Users", number(d1.cohort_users || 0), "Users in retention cohort"),
+      detailMetric("Best Bot Repeat", pct((topRows(r.bot, "repeat_rate_pct", 1)[0] || {}).repeat_rate_pct || 0), (topRows(r.bot, "repeat_rate_pct", 1)[0] || {}).bot_name || "Bot repeat"),
+    ])}
+    ${detailTable("Retention Curve", r.curve, [
+      { key: "day_n", label: "Day", format: (v) => `D${v}` },
+      { key: "cohort_users", label: "Cohort", format: number },
+      { key: "retained_users", label: "Retained", format: number },
+      { key: "retention_pct", label: "Retention", format: pct },
+    ], 8)}
+    ${detailTable("Top Bot Repeat Usage", topRows(r.bot, "repeat_users_2plus_days", 8), [
+      { key: "bot_name", label: "Bot", text: true },
+      { key: "active_users", label: "Active", format: number },
+      { key: "repeat_users_2plus_days", label: "Repeat", format: number },
+      { key: "repeat_rate_pct", label: "Repeat Rate", format: pct },
+    ])}
+  `;
+}
+
+function engagementDetail(data) {
+  const e = data.engagement || {};
+  const k = e.kpis || {};
+  return `
+    ${detailMetrics([
+      detailMetric("Active Users", number(k.active_users), `${number(k.sessions)} sessions`),
+      detailMetric("Avg Time/User", `${k.avg_minutes_per_user || 0}m`, `${k.avg_minutes_per_session || 0}m per session`),
+      detailMetric("BIM Opens", number(k.bim_notification_opens), `${number(k.bim_notification_users)} users`),
+      detailMetric("Total Minutes", number(k.total_minutes), "Engagement minutes"),
+    ])}
+    ${detailTable("Session Intensity", e.session_intensity, [
+      { key: "bucket", label: "Bucket", text: true },
+      { key: "users", label: "Users", format: number },
+      { key: "sessions", label: "Sessions", format: number },
+      { key: "avg_minutes_per_user", label: "Min/User", format: number },
+    ], 8)}
+    ${detailTable("Notification Campaigns", e.notification_campaigns, [
+      { key: "campaign", label: "Campaign", text: true },
+      { key: "opens", label: "Opens", format: number },
+      { key: "users", label: "Users", format: number },
+      { key: "opens_per_user", label: "Opens/User", format: number },
+    ], 5)}
+  `;
+}
+
+function dataQualityDetail(data) {
+  const rows = data.metric_coverage?.rows || [];
+  const ready = rows.filter((row) => row.status === "Available").length;
+  return `
+    ${detailMetrics([
+      detailMetric("Ready Families", `${number(ready)}/${number(rows.length)}`, "Metric families available today"),
+      detailMetric("Partial or Missing", number(rows.length - ready), "Needs deeper source coverage"),
+      detailMetric("Avg Coverage", pct(rows.length ? rows.reduce((sum, row) => sum + Number(row.coverage_pct || 0), 0) / rows.length : 0), "Across tracked metrics"),
+    ])}
+    ${detailTable("Open Measurement Gaps", rows.filter((row) => row.status !== "Available"), [
+      { key: "area", label: "Area", text: true },
+      { key: "metric", label: "Metric", text: true },
+      { key: "status", label: "Status", text: true },
+      { key: "coverage_pct", label: "Coverage", format: pct },
+      { key: "missing_detail", label: "Gap", text: true },
+    ], 8)}
+  `;
+}
+
+function drilldownHtmlFor(label) {
+  const data = selectedData();
+  const key = String(label || "").toLowerCase();
+  if (key.includes("subscription") || key.includes("rs 1") || key.includes("rs 49") || key.includes("trial") || key.includes("main")) return subscriptionDetail(data);
+  if (key.includes("payg") || key.includes("pay as")) return paygDetail(data);
+  if (key.includes("day pass")) return dayPassDetail(data);
+  if (key.includes("acquisition") || key.includes("new user") || key.includes("follow") || key.includes("conversion")) return acquisitionDetail(data);
+  if (key.includes("retention") || key.includes("repeat")) return retentionDetail(data);
+  if (key.includes("engagement") || key.includes("session") || key.includes("bim") || key.includes("time")) return engagementDetail(data);
+  if (key.includes("quality") || key.includes("coverage")) return dataQualityDetail(data);
+  if (key.includes("revenue") || key.includes("monetization") || key.includes("payer") || key.includes("transaction") || key.includes("stream") || key.includes("watch area") || key.includes("growing")) return monetizationDetail(data);
+  return `
+    ${detailNote("How to read this metric", "This card is part of the selected reporting period. Use the section tabs below the executive summary for the full chart view and supporting detail.")}
+    ${monetizationDetail(data)}
+  `;
+}
+
+function openDrilldown(label) {
+  const panel = document.getElementById("drilldownPanel");
+  const backdrop = document.getElementById("drilldownBackdrop");
+  document.getElementById("drilldownTitle").textContent = label || "Metric Detail";
+  document.getElementById("drilldownBody").innerHTML = drilldownHtmlFor(label);
+  backdrop.hidden = false;
+  panel.classList.add("open");
+  panel.setAttribute("aria-hidden", "false");
+  document.body.classList.add("drilldown-open");
+}
+
+function closeDrilldown() {
+  const panel = document.getElementById("drilldownPanel");
+  const backdrop = document.getElementById("drilldownBackdrop");
+  panel.classList.remove("open");
+  panel.setAttribute("aria-hidden", "true");
+  backdrop.hidden = true;
+  document.body.classList.remove("drilldown-open");
+}
+
+function setupDrilldowns() {
+  document.addEventListener("click", (event) => {
+    const target = event.target.closest("[data-drilldown-label]");
+    if (!target || target.closest(".section-nav")) return;
+    event.preventDefault();
+    openDrilldown(target.dataset.drilldownLabel);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeDrilldown();
+    if ((event.key === "Enter" || event.key === " ") && event.target.matches("[data-drilldown-label]")) {
+      event.preventDefault();
+      openDrilldown(event.target.dataset.drilldownLabel);
+    }
+  });
+  document.getElementById("drilldownClose").addEventListener("click", closeDrilldown);
+  document.getElementById("drilldownBackdrop").addEventListener("click", closeDrilldown);
 }
 
 function renderDashboard() {

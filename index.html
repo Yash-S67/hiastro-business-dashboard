@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HiAstro Business Dashboard</title>
-    <link rel="stylesheet" href="assets/styles.css?v=20260612-investor-ui" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260612-command-center" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -560,7 +560,19 @@
       </section>
     </main>
 
-    <script src="assets/config.js?v=20260612-investor-ui"></script>
-    <script src="assets/app.js?v=20260612-investor-ui"></script>
+    <div class="drilldown-backdrop" id="drilldownBackdrop" hidden></div>
+    <aside class="drilldown-panel" id="drilldownPanel" aria-hidden="true" aria-label="Metric detail">
+      <div class="drilldown-header">
+        <div>
+          <p class="eyebrow">Metric Detail</p>
+          <h2 id="drilldownTitle">Detail</h2>
+        </div>
+        <button type="button" id="drilldownClose" aria-label="Close detail">Close</button>
+      </div>
+      <div class="drilldown-body" id="drilldownBody"></div>
+    </aside>
+
+    <script src="assets/config.js?v=20260612-command-center"></script>
+    <script src="assets/app.js?v=20260612-command-center"></script>
   </body>
 </html>
