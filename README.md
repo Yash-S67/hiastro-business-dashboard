@@ -49,6 +49,14 @@ New Logins, Trials, Subscribers, Revenue
 
 If optional conversion/revenue columns are missing, the dashboard uses the uploaded CSV for spend, clicks, impressions, installs, CTR, CPC, CPM, and CPI, then uses the existing dashboard totals for selected-date trial/subscriber/revenue CAC and ROAS. Uploaded CSV rows are not stored in the repo; they apply only to the current browser session.
 
+The uploader also supports the `Subscription Overview` workbook format where the first row is `Device Type / All`, the second row is blank, and the third row contains the real headers:
+
+```text
+Date, Installs, Marketing spends, Marketing spends - subs, New Logins, Subscription New Logins, Trial Starts, Trials @ Re 1, Trials @ Re 49, Paid Subs, Paid Subs @ 199, Paid Subs @ 499, Paid upgrades @ 300, Revenue, Trial Revenue, Sub Revenue, DAU, Subscriber DAU, Trial CAC, Subscriber CAC
+```
+
+CSV and tab-separated exports are both accepted.
+
 ## GitHub Pages
 
 This folder is ready to push as a static GitHub Pages site. Do not commit credentials; the dashboard only includes aggregated JSON.

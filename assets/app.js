@@ -71,6 +71,7 @@ const MARKETING_TEMPLATE_COLUMNS = [
   "Campaign ID",
   "Campaign Name",
   "Spend",
+  "Marketing spends - subs",
   "Installs",
   "Impressions",
   "Clicks",
@@ -86,13 +87,25 @@ const MARKETING_COLUMN_CANDIDATES = {
   campaign_id: ["campaign_id", "campaignid", "ad_campaign_id", "id"],
   campaign: ["campaign", "campaign_name", "campaigns", "name"],
   spend: ["spend", "cost", "amount_spent", "marketing_spend", "marketing_spends", "total_spend"],
+  subscription_spend: ["marketing_spends_subs", "marketing_spend_subs", "subscription_marketing_spend", "subscription_spend", "sub_spend"],
   installs: ["installs", "install", "app_installs", "ps_installs", "as_installs"],
   impressions: ["impressions", "impression", "views"],
   clicks: ["clicks", "click", "link_clicks", "taps"],
+  monetization_config_sub_pct: ["monetization_config_id_sub", "pct_monetization_config_id_sub", "monetization_config_sub_pct"],
+  subscription_new_logins: ["subscription_new_logins", "sub_new_logins"],
   new_logins: ["new_logins", "logins", "login", "new_users"],
   trials: ["trials", "trial_starts", "successful_trials", "trial_purchases"],
+  trials_1: ["trials_re_1", "trials_1_re", "trials_rs_1", "trials_1_rs"],
+  trials_49: ["trials_re_49", "trials_49_re", "trials_rs_49", "trials_49_rs"],
   subscribers: ["paid_subs", "subscribers", "new_paid_subscribers", "subscriptions", "paid_subscribers"],
+  paid_subs_199: ["paid_subs_199", "paid_subscribers_199", "subs_199"],
+  paid_subs_499: ["paid_subs_499", "paid_subscribers_499", "subs_499"],
+  paid_upgrades_300: ["paid_upgrades_300", "upgrades_300"],
   revenue: ["revenue", "subscription_revenue", "sub_revenue", "gross_revenue", "total_revenue"],
+  trial_revenue: ["trial_revenue"],
+  sub_revenue: ["sub_revenue", "subscription_revenue"],
+  dau: ["dau"],
+  subscriber_dau: ["subscriber_dau"],
 };
 const TABLE_FILTERS = {
   payerSegment: { segment: "all", limit: 25 },
@@ -151,7 +164,30 @@ function firstColumn(columns, candidates) {
   return candidates.find((candidate) => columns.includes(candidate)) || null;
 }
 
+function marketingHeaderScore(headers) {
+  const normalizedHeaders = headers.map(normalizeHeader);
+  const allCandidates = new Set(Object.values(MARKETING_COLUMN_CANDIDATES).flat());
+  const matched = normalizedHeaders.filter((header) => allCandidates.has(header)).length;
+  const hasDate = normalizedHeaders.some((header) => MARKETING_COLUMN_CANDIDATES.date.includes(header));
+  const hasSpend = normalizedHeaders.some((header) => (
+    MARKETING_COLUMN_CANDIDATES.spend.includes(header)
+    || MARKETING_COLUMN_CANDIDATES.subscription_spend.includes(header)
+  ));
+  return matched + (hasDate ? 8 : 0) + (hasSpend ? 5 : 0);
+}
+
+function detectDelimiter(text) {
+  const sample = text.split(/\r?\n/).slice(0, 8).join("\n");
+  const counts = {
+    "\t": (sample.match(/\t/g) || []).length,
+    ",": (sample.match(/,/g) || []).length,
+    ";": (sample.match(/;/g) || []).length,
+  };
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0] || ",";
+}
+
 function parseCsv(text) {
+  const delimiter = detectDelimiter(text);
   const rows = [];
   let row = [];
   let cell = "";
@@ -164,7 +200,7 @@ function parseCsv(text) {
       i += 1;
     } else if (char === '"') {
       inQuotes = !inQuotes;
-    } else if (char === "," && !inQuotes) {
+    } else if (char === delimiter && !inQuotes) {
       row.push(cell);
       cell = "";
     } else if ((char === "\n" || char === "\r") && !inQuotes) {
@@ -180,8 +216,11 @@ function parseCsv(text) {
   row.push(cell);
   if (row.some((value) => String(value).trim() !== "")) rows.push(row);
   if (!rows.length) return [];
-  const headers = rows[0].map(normalizeHeader);
-  return rows.slice(1).map((values) => {
+  const headerIndex = rows.reduce((bestIndex, candidateRow, index) => (
+    marketingHeaderScore(candidateRow) > marketingHeaderScore(rows[bestIndex] || []) ? index : bestIndex
+  ), 0);
+  const headers = rows[headerIndex].map(normalizeHeader);
+  return rows.slice(headerIndex + 1).map((values) => {
     const out = {};
     headers.forEach((header, index) => {
       if (header) out[header] = values[index] ?? "";
@@ -252,15 +291,20 @@ function dashboardDailyMarketingTotals(data) {
   return out;
 }
 
+function marketingSpendBase(row) {
+  return Number(row.subscription_spend || 0) > 0 ? Number(row.subscription_spend || 0) : Number(row.spend || 0);
+}
+
 function addMarketingRates(rows) {
   return (rows || []).map((row) => {
     const out = { ...row };
+    const spendBase = marketingSpendBase(out);
     out.ctr_pct = safePercent(out.clicks, out.impressions);
     out.cpc = safeRatioValue(out.spend, out.clicks);
     out.cpm = safeRatioValue(out.spend * 1000, out.impressions);
     out.cpi = safeRatioValue(out.spend, out.installs);
-    out.cost_per_trial = safeRatioValue(out.spend, out.trials);
-    out.subscriber_cac = safeRatioValue(out.spend, out.subscribers);
+    out.cost_per_trial = safeRatioValue(spendBase, out.trials);
+    out.subscriber_cac = safeRatioValue(spendBase, out.subscribers);
     out.login_to_trial_pct = safePercent(out.trials, out.new_logins);
     out.install_to_trial_pct = safePercent(out.trials, out.installs);
     out.roas_pct = safePercent(out.revenue, out.spend);
@@ -313,13 +357,25 @@ function buildMarketingFromRows(rows, data) {
         campaign_id: mapping.campaign_id ? String(row[mapping.campaign_id] || "").trim() : "",
         campaign: mapping.campaign ? String(row[mapping.campaign] || "Unattributed").trim() : "Unattributed",
         spend: mapping.spend ? numericValue(row[mapping.spend]) : 0,
+        subscription_spend: mapping.subscription_spend ? numericValue(row[mapping.subscription_spend]) : 0,
         installs: mapping.installs ? numericValue(row[mapping.installs]) : 0,
         impressions: mapping.impressions ? numericValue(row[mapping.impressions]) : 0,
         clicks: mapping.clicks ? numericValue(row[mapping.clicks]) : 0,
+        monetization_config_sub_pct: mapping.monetization_config_sub_pct ? numericValue(row[mapping.monetization_config_sub_pct]) : 0,
+        subscription_new_logins: mapping.subscription_new_logins ? numericValue(row[mapping.subscription_new_logins]) : 0,
         new_logins: mapping.new_logins ? numericValue(row[mapping.new_logins]) : 0,
         trials: mapping.trials ? numericValue(row[mapping.trials]) : 0,
+        trials_1: mapping.trials_1 ? numericValue(row[mapping.trials_1]) : 0,
+        trials_49: mapping.trials_49 ? numericValue(row[mapping.trials_49]) : 0,
         subscribers: mapping.subscribers ? numericValue(row[mapping.subscribers]) : 0,
+        paid_subs_199: mapping.paid_subs_199 ? numericValue(row[mapping.paid_subs_199]) : 0,
+        paid_subs_499: mapping.paid_subs_499 ? numericValue(row[mapping.paid_subs_499]) : 0,
+        paid_upgrades_300: mapping.paid_upgrades_300 ? numericValue(row[mapping.paid_upgrades_300]) : 0,
         revenue: mapping.revenue ? numericValue(row[mapping.revenue]) : 0,
+        trial_revenue: mapping.trial_revenue ? numericValue(row[mapping.trial_revenue]) : 0,
+        sub_revenue: mapping.sub_revenue ? numericValue(row[mapping.sub_revenue]) : 0,
+        dau: mapping.dau ? numericValue(row[mapping.dau]) : 0,
+        subscriber_dau: mapping.subscriber_dau ? numericValue(row[mapping.subscriber_dau]) : 0,
       };
     })
     .filter((row) => dateSet.has(row.date));
@@ -337,7 +393,7 @@ function buildMarketingFromRows(rows, data) {
     };
   }
 
-  const daily = addMarketingRates(sumRows(parsedRows, ["date"], ["spend", "installs", "impressions", "clicks", "new_logins", "trials", "subscribers", "revenue"])
+  const daily = addMarketingRates(sumRows(parsedRows, ["date"], ["spend", "subscription_spend", "installs", "impressions", "clicks", "monetization_config_sub_pct", "subscription_new_logins", "new_logins", "trials", "trials_1", "trials_49", "subscribers", "paid_subs_199", "paid_subs_499", "paid_upgrades_300", "revenue", "trial_revenue", "sub_revenue", "dau", "subscriber_dau"])
     .map((row) => {
       const dashboardRow = dashboardTotals[row.date] || {};
       return {
@@ -349,16 +405,17 @@ function buildMarketingFromRows(rows, data) {
       };
     }))
     .sort((a, b) => String(a.date).localeCompare(String(b.date)));
-  const campaignRows = addMarketingRates(sumRows(parsedRows, ["campaign", "campaign_type", "campaign_id"], ["spend", "installs", "impressions", "clicks", "new_logins", "trials", "subscribers", "revenue"]))
+  const campaignRows = addMarketingRates(sumRows(parsedRows, ["campaign", "campaign_type", "campaign_id"], ["spend", "subscription_spend", "installs", "impressions", "clicks", "new_logins", "trials", "trials_1", "trials_49", "subscribers", "paid_subs_199", "paid_subs_499", "paid_upgrades_300", "revenue", "trial_revenue", "sub_revenue"]))
     .sort((a, b) => Number(b.spend || 0) - Number(a.spend || 0));
-  const platformRows = addMarketingRates(sumRows(parsedRows, ["platform"], ["spend", "installs", "impressions", "clicks", "new_logins", "trials", "subscribers", "revenue"]))
+  const platformRows = addMarketingRates(sumRows(parsedRows, ["platform"], ["spend", "subscription_spend", "installs", "impressions", "clicks", "new_logins", "trials", "trials_1", "trials_49", "subscribers", "paid_subs_199", "paid_subs_499", "paid_upgrades_300", "revenue", "trial_revenue", "sub_revenue"]))
     .sort((a, b) => Number(b.spend || 0) - Number(a.spend || 0));
   const total = daily.reduce((acc, row) => {
-    ["spend", "installs", "impressions", "clicks", "new_logins", "trials", "subscribers", "revenue"].forEach((key) => {
+    ["spend", "subscription_spend", "installs", "impressions", "clicks", "subscription_new_logins", "new_logins", "trials", "trials_1", "trials_49", "subscribers", "paid_subs_199", "paid_subs_499", "paid_upgrades_300", "revenue", "trial_revenue", "sub_revenue", "dau", "subscriber_dau"].forEach((key) => {
       acc[key] = Number(acc[key] || 0) + Number(row[key] || 0);
     });
     return acc;
   }, {});
+  const spendBase = Number(total.subscription_spend || 0) > 0 ? Number(total.subscription_spend || 0) : Number(total.spend || 0);
   return {
     source_status: "uploaded",
     source_message: mapping.revenue
@@ -366,14 +423,15 @@ function buildMarketingFromRows(rows, data) {
       : "Uploaded CSV is powering spend/click/install metrics. CAC and ROAS use total dashboard conversions and revenue for the same selected dates because campaign-level conversion columns were not present.",
     kpis: {
       spend: total.spend || 0,
+      subscription_spend: total.subscription_spend || 0,
       installs: total.installs || 0,
       impressions: total.impressions || 0,
       clicks: total.clicks || 0,
       ctr_pct: safePercent(total.clicks, total.impressions),
       cpc: safeRatioValue(total.spend, total.clicks),
       cpi: safeRatioValue(total.spend, total.installs),
-      trial_cac: safeRatioValue(total.spend, total.trials),
-      subscriber_cac: safeRatioValue(total.spend, total.subscribers),
+      trial_cac: safeRatioValue(spendBase, total.trials),
+      subscriber_cac: safeRatioValue(spendBase, total.subscribers),
       roas_pct: safePercent(total.revenue, total.spend),
       payback_days: total.revenue ? Number(((total.spend / total.revenue) * daily.length).toFixed(1)) : null,
     },
@@ -895,7 +953,7 @@ function setupMarketingUploadControls(data) {
   } else {
     status.innerHTML = `
       <strong>No CSV uploaded.</strong>
-      <span>Use Campaign Data columns: Date, Platform, Campaign Type, Campaign ID, Campaign Name, Spend, Installs, Impressions, Clicks.</span>
+      <span>Use Campaign Data columns or the Subscription Overview format where row 3 starts with Date, Installs, Marketing spends, Marketing spends - subs.</span>
     `;
   }
 
@@ -2678,6 +2736,7 @@ function renderMarketing(data) {
     : (mk.source_message || "Marketing spend feed is not connected yet.");
   document.getElementById("marketingCards").innerHTML = [
     card("Spend", money(k.spend), sourceOk ? (mk.source_status === "uploaded" ? "Uploaded CSV" : "Campaign Data feed") : "Source pending"),
+    card("Sub Spend", formatNullableMoney(k.subscription_spend), "Used for subscription CAC when present"),
     card("Installs", number(k.installs), "From marketing CSV"),
     card("Clicks", number(k.clicks), `${pct(k.ctr_pct)} CTR`),
     card("CPI", formatNullableMoney(k.cpi), "Spend / installs"),
@@ -2751,6 +2810,7 @@ function renderMarketing(data) {
   table("marketingDailyTable", daily, [
     { key: "date", label: "Date", text: true, format: shortDate },
     { key: "spend", label: "Spend", format: money },
+    { key: "subscription_spend", label: "Sub Spend", format: formatNullableMoney },
     { key: "installs", label: "Installs", format: number },
     { key: "impressions", label: "Impressions", format: number },
     { key: "clicks", label: "Clicks", format: number },
@@ -2758,8 +2818,13 @@ function renderMarketing(data) {
     { key: "cpc", label: "CPC", format: formatNullableMoney },
     { key: "cpi", label: "CPI", format: formatNullableMoney },
     { key: "new_logins", label: "Logins", format: number },
+    { key: "subscription_new_logins", label: "Sub Logins", format: number },
     { key: "trials", label: "Trials", format: number },
+    { key: "trials_1", label: "Trials Rs 1", format: number },
+    { key: "trials_49", label: "Trials Rs 49", format: number },
     { key: "subscribers", label: "Subscribers", format: number },
+    { key: "paid_subs_199", label: "Subs Rs 199", format: number },
+    { key: "paid_subs_499", label: "Subs Rs 499", format: number },
     { key: "revenue", label: "Revenue", format: money },
     { key: "cost_per_trial", label: "Trial CAC", format: formatNullableMoney },
     { key: "subscriber_cac", label: "Sub CAC", format: formatNullableMoney },
@@ -2770,6 +2835,7 @@ function renderMarketing(data) {
     { key: "campaign_type", label: "Type", text: true },
     { key: "campaign_id", label: "Campaign ID", text: true },
     { key: "spend", label: "Spend", format: money },
+    { key: "subscription_spend", label: "Sub Spend", format: formatNullableMoney },
     { key: "installs", label: "Installs", format: number },
     { key: "impressions", label: "Impressions", format: number },
     { key: "clicks", label: "Clicks", format: number },
@@ -2778,7 +2844,11 @@ function renderMarketing(data) {
     { key: "cpi", label: "CPI", format: formatNullableMoney },
     { key: "new_logins", label: "Logins", format: number },
     { key: "trials", label: "Trials", format: number },
+    { key: "trials_1", label: "Trials Rs 1", format: number },
+    { key: "trials_49", label: "Trials Rs 49", format: number },
     { key: "subscribers", label: "Subscribers", format: number },
+    { key: "paid_subs_199", label: "Subs Rs 199", format: number },
+    { key: "paid_subs_499", label: "Subs Rs 499", format: number },
     { key: "cost_per_trial", label: "Cost / Trial", format: formatNullableMoney },
     { key: "subscriber_cac", label: "Sub CAC", format: formatNullableMoney },
     { key: "roas_pct", label: "ROAS", format: pct },
@@ -2786,6 +2856,7 @@ function renderMarketing(data) {
   table("marketingPlatformTable", mk.platforms || [], [
     { key: "platform", label: "Platform", text: true },
     { key: "spend", label: "Spend", format: money },
+    { key: "subscription_spend", label: "Sub Spend", format: formatNullableMoney },
     { key: "installs", label: "Installs", format: number },
     { key: "impressions", label: "Impressions", format: number },
     { key: "clicks", label: "Clicks", format: number },
@@ -3623,6 +3694,7 @@ function marketingDetail(data) {
   return `
     ${detailMetrics([
       detailMetric("Spend", money(k.spend), mk.source_status === "uploaded" ? "Uploaded CSV" : (mk.source_status === "available" ? "Campaign Data feed" : "Source pending")),
+      detailMetric("Sub Spend", formatNullableMoney(k.subscription_spend), "CAC base when present"),
       detailMetric("Installs", number(k.installs), `${formatNullableMoney(k.cpi)} CPI`),
       detailMetric("Clicks", number(k.clicks), `${pct(k.ctr_pct)} CTR`),
       detailMetric("Trial CAC", formatNullableMoney(k.trial_cac), "Spend / trial"),
@@ -3639,12 +3711,17 @@ function marketingDetail(data) {
       { key: "campaign", label: "Campaign", text: true },
       { key: "campaign_type", label: "Type", text: true },
       { key: "spend", label: "Spend", format: money },
+      { key: "subscription_spend", label: "Sub Spend", format: formatNullableMoney },
       { key: "installs", label: "Installs", format: number },
       { key: "clicks", label: "Clicks", format: number },
       { key: "ctr_pct", label: "CTR", format: pct },
       { key: "cpi", label: "CPI", format: formatNullableMoney },
       { key: "trials", label: "Trials", format: number },
+      { key: "trials_1", label: "Trials Rs 1", format: number },
+      { key: "trials_49", label: "Trials Rs 49", format: number },
       { key: "subscribers", label: "Subscribers", format: number },
+      { key: "paid_subs_199", label: "Subs Rs 199", format: number },
+      { key: "paid_subs_499", label: "Subs Rs 499", format: number },
       { key: "subscriber_cac", label: "Sub CAC", format: formatNullableMoney },
       { key: "roas_pct", label: "ROAS", format: pct },
     ], 8)}

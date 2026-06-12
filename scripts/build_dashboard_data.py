@@ -130,6 +130,73 @@ def normalize_header(value: Any) -> str:
     return re.sub(r"[^a-z0-9]+", "_", str(value or "").strip().lower()).strip("_")
 
 
+MARKETING_COLUMN_CANDIDATES = {
+    "date": {"date", "day", "dt", "metric_date", "campaign_date"},
+    "spend": {"spend", "cost", "amount_spent", "marketing_spend", "marketing_spends", "total_spend"},
+    "subscription_spend": {"marketing_spends_subs", "marketing_spend_subs", "subscription_marketing_spend", "subscription_spend", "sub_spend"},
+    "campaign": {"campaign", "campaign_name", "campaigns", "name"},
+    "campaign_type": {"campaign_type", "campaign_category", "type", "objective"},
+    "campaign_id": {"campaign_id", "campaignid", "ad_campaign_id", "id"},
+    "platform": {"platform", "os", "acquisition_device", "source_platform", "channel"},
+    "installs": {"installs", "install", "app_installs", "ps_installs", "as_installs"},
+    "impressions": {"impressions", "impression", "views"},
+    "clicks": {"clicks", "click", "link_clicks", "taps"},
+    "monetization_config_sub_pct": {"monetization_config_id_sub", "pct_monetization_config_id_sub", "monetization_config_sub_pct"},
+    "subscription_new_logins": {"subscription_new_logins", "sub_new_logins"},
+    "new_logins": {"new_logins", "logins", "login", "new_users"},
+    "trials": {"trials", "trial_starts", "successful_trials", "trial_purchases"},
+    "trials_1": {"trials_re_1", "trials_1_re", "trials_rs_1", "trials_1_rs"},
+    "trials_49": {"trials_re_49", "trials_49_re", "trials_rs_49", "trials_49_rs"},
+    "subscribers": {"paid_subs", "subscribers", "new_paid_subscribers", "subscriptions", "paid_subscribers"},
+    "paid_subs_199": {"paid_subs_199", "paid_subscribers_199", "subs_199"},
+    "paid_subs_499": {"paid_subs_499", "paid_subscribers_499", "subs_499"},
+    "paid_upgrades_300": {"paid_upgrades_300", "upgrades_300"},
+    "revenue": {"revenue", "subscription_revenue", "sub_revenue", "gross_revenue", "total_revenue"},
+    "trial_revenue": {"trial_revenue"},
+    "sub_revenue": {"sub_revenue", "subscription_revenue"},
+    "dau": {"dau"},
+    "subscriber_dau": {"subscriber_dau"},
+}
+
+
+def marketing_header_score(row: list[Any]) -> int:
+    headers = [normalize_header(value) for value in row]
+    all_candidates = set().union(*MARKETING_COLUMN_CANDIDATES.values())
+    matched = sum(1 for header in headers if header in all_candidates)
+    has_date = any(header in MARKETING_COLUMN_CANDIDATES["date"] for header in headers)
+    has_spend = any(
+        header in MARKETING_COLUMN_CANDIDATES["spend"] or header in MARKETING_COLUMN_CANDIDATES["subscription_spend"]
+        for header in headers
+    )
+    return matched + (8 if has_date else 0) + (5 if has_spend else 0)
+
+
+def detect_csv_delimiter(text: str) -> str:
+    sample = "\n".join(text.splitlines()[:8])
+    counts = {delimiter: sample.count(delimiter) for delimiter in ["\t", ",", ";"]}
+    return max(counts, key=counts.get) if counts else ","
+
+
+def parse_marketing_csv_text(text: str) -> list[dict[str, Any]]:
+    delimiter = detect_csv_delimiter(text)
+    raw_rows = [
+        row for row in csv.reader(io.StringIO(text), delimiter=delimiter)
+        if any(str(cell).strip() for cell in row)
+    ]
+    if not raw_rows:
+        return []
+    header_index = max(range(len(raw_rows)), key=lambda index: marketing_header_score(raw_rows[index]))
+    headers = [normalize_header(value) for value in raw_rows[header_index]]
+    rows = []
+    for values in raw_rows[header_index + 1:]:
+        rows.append({
+            header: values[index] if index < len(values) else ""
+            for index, header in enumerate(headers)
+            if header
+        })
+    return rows
+
+
 def first_present(row: dict[str, Any], candidates: list[str]) -> Any:
     for key in candidates:
         if key in row and row[key] not in (None, ""):
@@ -2487,17 +2554,14 @@ def fetch_marketing_csv(env: dict[str, str]) -> tuple[pd.DataFrame, str, str]:
         )
         return MARKETING_CSV_CACHE
     try:
-        rows = list(csv.DictReader(io.StringIO(text)))
+        rows = parse_marketing_csv_text(text)
     except csv.Error as exc:
         MARKETING_CSV_CACHE = (pd.DataFrame(), "error", f"Could not parse marketing CSV: {exc}")
         return MARKETING_CSV_CACHE
     if not rows:
         MARKETING_CSV_CACHE = (pd.DataFrame(), "empty", "Marketing CSV fetched but contained no rows.")
         return MARKETING_CSV_CACHE
-    normalized_rows = []
-    for row in rows:
-        normalized_rows.append({normalize_header(key): value for key, value in row.items()})
-    MARKETING_CSV_CACHE = (pd.DataFrame(normalized_rows), "available", "Marketing CSV fetched successfully.")
+    MARKETING_CSV_CACHE = (pd.DataFrame(rows), "available", "Marketing CSV fetched successfully.")
     raw, status, message = MARKETING_CSV_CACHE
     return raw.copy(), status, message
 
@@ -2509,7 +2573,7 @@ def build_marketing(env: dict[str, str], ranges: dict[str, Any], acquisition: di
     empty = {
         "source_status": status,
         "source_message": message,
-        "kpis": {"spend": 0, "installs": 0, "impressions": 0, "clicks": 0, "ctr_pct": 0, "cpc": None, "cpi": None, "trial_cac": None, "subscriber_cac": None, "roas_pct": None, "payback_days": None},
+        "kpis": {"spend": 0, "subscription_spend": 0, "installs": 0, "impressions": 0, "clicks": 0, "ctr_pct": 0, "cpc": None, "cpi": None, "trial_cac": None, "subscriber_cac": None, "roas_pct": None, "payback_days": None},
         "daily": [],
         "campaigns": [],
         "platforms": [],
@@ -2528,27 +2592,52 @@ def build_marketing(env: dict[str, str], ranges: dict[str, Any], acquisition: di
         empty["source_status"] = "empty"
         empty["source_message"] = "Marketing CSV has no rows in the selected dashboard window."
         return empty
-    spend_col = next((col for col in raw.columns if col in {"spend", "cost", "amount_spent", "marketing_spend", "marketing_spends", "total_spend"}), None)
-    campaign_col = next((col for col in raw.columns if col in {"campaign", "campaign_name", "campaigns", "name"}), None)
-    campaign_type_col = next((col for col in raw.columns if col in {"campaign_type", "campaign_category", "type", "objective"}), None)
-    campaign_id_col = next((col for col in raw.columns if col in {"campaign_id", "campaignid", "ad_campaign_id", "id"}), None)
-    platform_col = next((col for col in raw.columns if col in {"platform", "os", "acquisition_device", "source_platform", "channel"}), None)
-    install_col = next((col for col in raw.columns if col in {"installs", "install", "app_installs", "ps_installs", "as_installs"}), None)
-    impression_col = next((col for col in raw.columns if col in {"impressions", "impression", "views"}), None)
-    click_col = next((col for col in raw.columns if col in {"clicks", "click", "link_clicks", "taps"}), None)
-    login_col = next((col for col in raw.columns if col in {"new_logins", "logins", "login", "new_users"}), None)
-    trial_col = next((col for col in raw.columns if col in {"trials", "trial_starts", "successful_trials", "trial_purchases"}), None)
-    sub_col = next((col for col in raw.columns if col in {"paid_subs", "subscribers", "new_paid_subscribers", "subscriptions", "paid_subscribers"}), None)
-    revenue_col = next((col for col in raw.columns if col in {"revenue", "subscription_revenue", "sub_revenue", "gross_revenue", "total_revenue"}), None)
+    find_col = lambda key: next((col for col in raw.columns if col in MARKETING_COLUMN_CANDIDATES[key]), None)
+    spend_col = find_col("spend")
+    subscription_spend_col = find_col("subscription_spend")
+    campaign_col = find_col("campaign")
+    campaign_type_col = find_col("campaign_type")
+    campaign_id_col = find_col("campaign_id")
+    platform_col = find_col("platform")
+    install_col = find_col("installs")
+    impression_col = find_col("impressions")
+    click_col = find_col("clicks")
+    monetization_config_sub_pct_col = find_col("monetization_config_sub_pct")
+    subscription_new_login_col = find_col("subscription_new_logins")
+    login_col = find_col("new_logins")
+    trial_col = find_col("trials")
+    trial_1_col = find_col("trials_1")
+    trial_49_col = find_col("trials_49")
+    sub_col = find_col("subscribers")
+    sub_199_col = find_col("paid_subs_199")
+    sub_499_col = find_col("paid_subs_499")
+    upgrade_300_col = find_col("paid_upgrades_300")
+    revenue_col = find_col("revenue")
+    trial_revenue_col = find_col("trial_revenue")
+    sub_revenue_col = find_col("sub_revenue")
+    dau_col = find_col("dau")
+    subscriber_dau_col = find_col("subscriber_dau")
     for target, col in [
         ("spend", spend_col),
+        ("subscription_spend", subscription_spend_col),
         ("installs", install_col),
         ("impressions", impression_col),
         ("clicks", click_col),
+        ("monetization_config_sub_pct", monetization_config_sub_pct_col),
+        ("subscription_new_logins", subscription_new_login_col),
         ("new_logins", login_col),
         ("trials", trial_col),
+        ("trials_1", trial_1_col),
+        ("trials_49", trial_49_col),
         ("subscribers", sub_col),
+        ("paid_subs_199", sub_199_col),
+        ("paid_subs_499", sub_499_col),
+        ("paid_upgrades_300", upgrade_300_col),
         ("revenue", revenue_col),
+        ("trial_revenue", trial_revenue_col),
+        ("sub_revenue", sub_revenue_col),
+        ("dau", dau_col),
+        ("subscriber_dau", subscriber_dau_col),
     ]:
         raw[target] = raw[col].apply(numeric_value) if col else 0.0
     raw["campaign"] = raw[campaign_col].fillna("Unattributed").astype(str) if campaign_col else "Unattributed"
@@ -2571,7 +2660,29 @@ def build_marketing(env: dict[str, str], ranges: dict[str, Any], acquisition: di
         day = str(row.get("signup_date") or row.get("date") or row.get("day"))
         dashboard_daily[day]["new_logins"] += numeric_value(row.get("new_users") or row.get("logins"))
 
-    daily = raw.groupby("date", as_index=False).agg(spend=("spend", "sum"), installs=("installs", "sum"), impressions=("impressions", "sum"), clicks=("clicks", "sum"), new_logins=("new_logins", "sum"), trials=("trials", "sum"), subscribers=("subscribers", "sum"), revenue=("revenue", "sum"))
+    value_aggs = {
+        "spend": ("spend", "sum"),
+        "subscription_spend": ("subscription_spend", "sum"),
+        "installs": ("installs", "sum"),
+        "impressions": ("impressions", "sum"),
+        "clicks": ("clicks", "sum"),
+        "monetization_config_sub_pct": ("monetization_config_sub_pct", "mean"),
+        "subscription_new_logins": ("subscription_new_logins", "sum"),
+        "new_logins": ("new_logins", "sum"),
+        "trials": ("trials", "sum"),
+        "trials_1": ("trials_1", "sum"),
+        "trials_49": ("trials_49", "sum"),
+        "subscribers": ("subscribers", "sum"),
+        "paid_subs_199": ("paid_subs_199", "sum"),
+        "paid_subs_499": ("paid_subs_499", "sum"),
+        "paid_upgrades_300": ("paid_upgrades_300", "sum"),
+        "revenue": ("revenue", "sum"),
+        "trial_revenue": ("trial_revenue", "sum"),
+        "sub_revenue": ("sub_revenue", "sum"),
+        "dau": ("dau", "sum"),
+        "subscriber_dau": ("subscriber_dau", "sum"),
+    }
+    daily = raw.groupby("date", as_index=False).agg(**value_aggs)
     if not login_col:
         daily["new_logins"] = daily["date"].astype(str).map(lambda day: dashboard_daily[day]["new_logins"])
     if not trial_col:
@@ -2584,17 +2695,19 @@ def build_marketing(env: dict[str, str], ranges: dict[str, Any], acquisition: di
     daily["cpc"] = (daily["spend"] / daily["clicks"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
     daily["cpm"] = (daily["spend"] * 1000 / daily["impressions"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
     daily["cpi"] = (daily["spend"] / daily["installs"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
-    daily["cost_per_trial"] = (daily["spend"] / daily["trials"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
-    daily["subscriber_cac"] = (daily["spend"] / daily["subscribers"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+    daily["cac_spend_base"] = daily["subscription_spend"].where(daily["subscription_spend"].gt(0), daily["spend"])
+    daily["cost_per_trial"] = (daily["cac_spend_base"] / daily["trials"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+    daily["subscriber_cac"] = (daily["cac_spend_base"] / daily["subscribers"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
     daily["login_to_trial_pct"] = (daily["trials"] / daily["new_logins"] * 100).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
     daily["install_to_trial_pct"] = (daily["trials"] / daily["installs"] * 100).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
     daily["roas_pct"] = (daily["revenue"] / daily["spend"] * 100).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
     daily["date"] = daily["date"].astype(str)
-    campaigns = raw.groupby(["campaign", "campaign_type", "campaign_id"], as_index=False).agg(spend=("spend", "sum"), installs=("installs", "sum"), impressions=("impressions", "sum"), clicks=("clicks", "sum"), new_logins=("new_logins", "sum"), trials=("trials", "sum"), subscribers=("subscribers", "sum"), revenue=("revenue", "sum")).sort_values("spend", ascending=False)
-    platforms = raw.groupby("platform", as_index=False).agg(spend=("spend", "sum"), installs=("installs", "sum"), impressions=("impressions", "sum"), clicks=("clicks", "sum"), new_logins=("new_logins", "sum"), trials=("trials", "sum"), subscribers=("subscribers", "sum"), revenue=("revenue", "sum")).sort_values("spend", ascending=False)
+    campaigns = raw.groupby(["campaign", "campaign_type", "campaign_id"], as_index=False).agg(**value_aggs).sort_values("spend", ascending=False)
+    platforms = raw.groupby("platform", as_index=False).agg(**value_aggs).sort_values("spend", ascending=False)
     for df in [campaigns, platforms]:
-        df["cost_per_trial"] = (df["spend"] / df["trials"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
-        df["subscriber_cac"] = (df["spend"] / df["subscribers"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        df["cac_spend_base"] = df["subscription_spend"].where(df["subscription_spend"].gt(0), df["spend"])
+        df["cost_per_trial"] = (df["cac_spend_base"] / df["trials"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        df["subscriber_cac"] = (df["cac_spend_base"] / df["subscribers"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
         df["ctr_pct"] = (df["clicks"] / df["impressions"] * 100).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
         df["cpc"] = (df["spend"] / df["clicks"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
         df["cpm"] = (df["spend"] * 1000 / df["impressions"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
@@ -2602,6 +2715,7 @@ def build_marketing(env: dict[str, str], ranges: dict[str, Any], acquisition: di
         df["roas_pct"] = (df["revenue"] / df["spend"] * 100).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
         df["login_to_trial_pct"] = (df["trials"] / df["new_logins"] * 100).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
     total_spend = float(raw["spend"].sum())
+    total_subscription_spend = float(raw["subscription_spend"].sum())
     total_installs = float(raw["installs"].sum())
     total_impressions = float(raw["impressions"].sum())
     total_clicks = float(raw["clicks"].sum())
@@ -2612,6 +2726,7 @@ def build_marketing(env: dict[str, str], ranges: dict[str, Any], acquisition: di
         total_trials = float(daily["trials"].sum())
     if not sub_col:
         total_subscribers = float(daily["subscribers"].sum())
+    spend_base = total_subscription_spend if total_subscription_spend else total_spend
     return {
         "source_status": status,
         "source_message": (
@@ -2621,14 +2736,15 @@ def build_marketing(env: dict[str, str], ranges: dict[str, Any], acquisition: di
         ),
         "kpis": {
             "spend": round(total_spend, 2),
+            "subscription_spend": round(total_subscription_spend, 2),
             "installs": round(total_installs, 2),
             "impressions": round(total_impressions, 2),
             "clicks": round(total_clicks, 2),
             "ctr_pct": safe_div(total_clicks, total_impressions),
             "cpc": round(total_spend / total_clicks, 2) if total_clicks else None,
             "cpi": round(total_spend / total_installs, 2) if total_installs else None,
-            "trial_cac": round(total_spend / total_trials, 2) if total_trials else None,
-            "subscriber_cac": round(total_spend / total_subscribers, 2) if total_subscribers else None,
+            "trial_cac": round(spend_base / total_trials, 2) if total_trials else None,
+            "subscriber_cac": round(spend_base / total_subscribers, 2) if total_subscribers else None,
             "roas_pct": safe_div(total_revenue, total_spend),
             "payback_days": round((total_spend / total_revenue) * ranges["period_days"], 1) if total_revenue else None,
         },
@@ -2642,13 +2758,25 @@ def build_marketing(env: dict[str, str], ranges: dict[str, Any], acquisition: di
             "campaign_id": campaign_id_col,
             "campaign": campaign_col,
             "spend": spend_col,
+            "subscription_spend": subscription_spend_col,
             "installs": install_col,
             "impressions": impression_col,
             "clicks": click_col,
+            "monetization_config_sub_pct": monetization_config_sub_pct_col,
+            "subscription_new_logins": subscription_new_login_col,
             "new_logins": login_col,
             "trials": trial_col,
+            "trials_1": trial_1_col,
+            "trials_49": trial_49_col,
             "subscribers": sub_col,
+            "paid_subs_199": sub_199_col,
+            "paid_subs_499": sub_499_col,
+            "paid_upgrades_300": upgrade_300_col,
             "revenue": revenue_col,
+            "trial_revenue": trial_revenue_col,
+            "sub_revenue": sub_revenue_col,
+            "dau": dau_col,
+            "subscriber_dau": subscriber_dau_col,
         },
     }
 
