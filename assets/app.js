@@ -303,6 +303,41 @@ function marketingDateValue(value) {
   return `${year}-${month}-${day}`;
 }
 
+function marketingUploadCoverage(state) {
+  const rows = state?.rows || [];
+  const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+  const dateColumn = firstColumn(columns, MARKETING_COLUMN_CANDIDATES.date);
+  if (!dateColumn) return { dateColumn: null, minDate: null, maxDate: null, rowCount: rows.length };
+  const dates = rows
+    .map((row) => marketingDateValue(row[dateColumn]))
+    .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+    .sort();
+  return {
+    dateColumn,
+    minDate: dates[0] || null,
+    maxDate: dates[dates.length - 1] || null,
+    rowCount: rows.length,
+  };
+}
+
+function marketingUploadFreshness(data, state = MARKETING_UPLOAD_STATE) {
+  if (!state) return { status: "missing" };
+  const coverage = marketingUploadCoverage(state);
+  const selectedDays = selectedDateRange(data).filter(Boolean).sort();
+  const selectedMax = selectedDays[selectedDays.length - 1] || null;
+  const selectedMin = selectedDays[0] || null;
+  const stale = Boolean(coverage.maxDate && selectedMax && selectedMax > coverage.maxDate);
+  const beforeCoverage = Boolean(coverage.minDate && selectedMin && selectedMin < coverage.minDate);
+  return {
+    ...coverage,
+    selectedMin,
+    selectedMax,
+    stale,
+    beforeCoverage,
+    status: stale ? "stale" : (beforeCoverage ? "partial" : "current"),
+  };
+}
+
 function selectedDateRange(data) {
   const meta = data.metadata || {};
   const window = meta.current_window || DASHBOARD_DATA?.metadata?.current_window || {};
@@ -1038,9 +1073,16 @@ function setupMarketingUploadControls(data) {
     const loadedAt = MARKETING_UPLOAD_STATE.loadedAt
       ? new Date(MARKETING_UPLOAD_STATE.loadedAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
       : "saved";
+    const freshness = marketingUploadFreshness(data);
+    const coverageText = freshness.maxDate
+      ? `CSV data through ${shortDate(freshness.maxDate)}`
+      : "CSV date coverage not detected";
+    const freshnessText = freshness.stale
+      ? `Upload new CSV for ${shortDate(freshness.selectedMax)}. ${coverageText}.`
+      : `${coverageText}. Upload a newer CSV to replace it.`;
     status.innerHTML = `
       <strong>${number(MARKETING_UPLOAD_STATE.rows.length)} uploaded rows ready.</strong>
-      <span>${escapeHtml(MARKETING_UPLOAD_STATE.fileName)} is saved in this browser from ${loadedAt}. Upload a newer CSV to replace it.</span>
+      <span>${escapeHtml(MARKETING_UPLOAD_STATE.fileName)} is saved in this browser from ${loadedAt}. ${escapeHtml(freshnessText)}</span>
     `;
   } else {
     status.innerHTML = `
@@ -2850,10 +2892,13 @@ function renderMarketing(data) {
   const k = mk.kpis || {};
   const sourceOk = mk.source_status === "available" || mk.source_status === "uploaded";
   const isOverview = mk.marketing_format === "subscription_overview";
+  const uploadFreshness = MARKETING_UPLOAD_STATE ? marketingUploadFreshness(data) : null;
   setupMarketingUploadControls(data);
-  document.getElementById("marketingNote").textContent = sourceOk
-    ? (isOverview ? "Subscription Overview CSV is powering spend, subscription funnel, CAC, ARPU, and retention metrics." : (mk.source_status === "uploaded" ? "Campaign spend is loaded from your uploaded CSV for this browser session." : "Campaign spend is loaded from the configured daily Campaign Data feed."))
-    : (mk.source_message || "Marketing spend feed is not connected yet.");
+  document.getElementById("marketingNote").textContent = uploadFreshness?.stale
+    ? `Saved marketing CSV is current through ${shortDate(uploadFreshness.maxDate)}. Upload new CSV for ${shortDate(uploadFreshness.selectedMax)} before using this date.`
+    : (sourceOk
+      ? (isOverview ? "Subscription Overview CSV is powering spend, subscription funnel, CAC, ARPU, and retention metrics." : (mk.source_status === "uploaded" ? "Campaign spend is loaded from your uploaded CSV for this browser session." : "Campaign spend is loaded from the configured daily Campaign Data feed."))
+      : (mk.source_message || "Marketing spend feed is not connected yet."));
   document.getElementById("marketingCards").innerHTML = isOverview
     ? [
       card("Spend", money(k.spend), "Total marketing spends"),
