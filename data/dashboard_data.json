@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generated_at_ist": "2026-06-12T14:26:53+05:30",
+    "generated_at_ist": "2026-06-12T14:35:12+05:30",
     "default_period": "weekly",
     "current_window": {
       "start": "2026-06-05",
@@ -213,6 +213,7 @@
       "Acquisition new users come from MySQL users.created_at; login success comes from Mixpanel.",
       "Config funnel paywall shown and trial CTA clicks come from Mixpanel; config, gender, and DOB-derived age buckets come from MySQL users/profiles; subscription purchases come from lifecycle revenue events.",
       "Subscription sheet-style daily funnel, trial cohort conversion, active paid subscriber stock, MRR, and subscriber engagement are rebuilt from MySQL users, subscription_lifecycle_events, customer_subscriptions, and chat_session.",
+      "LLM cost is not calculated yet because the current MySQL schema does not expose model, prompt token, completion token, provider cost, or request-level usage fields.",
       "Subscription renewal readiness comes from customer_subscriptions current period dates and cancel-at-period-end state; true autopay success needs recurring charge result events.",
       "Follow-up entity values are resolved to bot names using chat_session bot_id and normalized bot-name slugs.",
       "Retention uses completed MySQL chat_session activity for new-user cohorts.",
@@ -3883,7 +3884,7 @@
         ],
         "subscription_renewal": {
           "kpis": {
-            "active_paid_subscriptions": 706,
+            "active_paid_subscriptions": 705,
             "trial_active_subscriptions": 111,
             "renewal_due_next_7_days": 55,
             "autopay_ready_users": 51,
@@ -3995,12 +3996,12 @@
             {
               "status": "ACTIVE",
               "subscription_case": "PLAN",
-              "users": 654
+              "users": 653
             },
             {
               "status": "CANCELED",
               "subscription_case": "PLAN_ENDED",
-              "users": 498
+              "users": 499
             },
             {
               "status": "TRIAL_ACTIVE",
@@ -4281,8 +4282,8 @@
           {
             "date": "2026-06-11",
             "plan_code": "All",
-            "active_paid_subscribers": 695,
-            "mrr": 275405.0,
+            "active_paid_subscribers": 694,
+            "mrr": 274906.0,
             "trial_active_subscribers": 111,
             "net_mrr_movement": 0.0
           }
@@ -4291,8 +4292,8 @@
           {
             "date": "2026-06-11",
             "plan_code": "ALL_1_RS",
-            "active_paid_subscribers": 192,
-            "mrr": 95808.0,
+            "active_paid_subscribers": 191,
+            "mrr": 95309.0,
             "trial_active_subscribers": 0
           },
           {
@@ -4388,7 +4389,7 @@
             "config_id": 18,
             "trial_type": "Rs 1 trial",
             "trial_amount": 1,
-            "assigned_users": 47770,
+            "assigned_users": 47777,
             "followup_users": 1154,
             "paywall_shown_users": 1053,
             "trial_cta_users": 376,
@@ -4410,7 +4411,7 @@
             "config_id": 20,
             "trial_type": "Rs 49 trial",
             "trial_amount": 49,
-            "assigned_users": 61080,
+            "assigned_users": 61087,
             "followup_users": 1318,
             "paywall_shown_users": 1146,
             "trial_cta_users": 212,
@@ -5241,18 +5242,18 @@
             "followup_events": 60
           },
           {
-            "entity_slug": "6879253dfcf00df3749da50c",
-            "bot_id": "6879253dfcf00df3749da50c",
-            "bot_name": "Priyanka",
-            "entity_label": "Priyanka",
-            "entity_match_type": "bot_id",
-            "followup_events": 36
-          },
-          {
             "entity_slug": "68792542fcf00df3749da526",
             "bot_id": "68792542fcf00df3749da526",
             "bot_name": "Prem",
             "entity_label": "Prem",
+            "entity_match_type": "bot_id",
+            "followup_events": 36
+          },
+          {
+            "entity_slug": "6879253dfcf00df3749da50c",
+            "bot_id": "6879253dfcf00df3749da50c",
+            "bot_name": "Priyanka",
+            "entity_label": "Priyanka",
             "entity_match_type": "bot_id",
             "followup_events": 36
           },
@@ -6341,7 +6342,7 @@
             "segment": "age_bucket",
             "bucket": "18-24",
             "day_n": 1,
-            "cohort_users": 33189,
+            "cohort_users": 33190,
             "retained_users": 1840,
             "retention_pct": 5.54
           },
@@ -6359,7 +6360,7 @@
             "segment": "age_bucket",
             "bucket": "<18",
             "day_n": 1,
-            "cohort_users": 7834,
+            "cohort_users": 7833,
             "retained_users": 393,
             "retention_pct": 5.02
           },
@@ -6404,7 +6405,7 @@
             "segment": "age_bucket",
             "bucket": "18-24",
             "day_n": 3,
-            "cohort_users": 33189,
+            "cohort_users": 33190,
             "retained_users": 614,
             "retention_pct": 1.85
           },
@@ -6422,7 +6423,7 @@
             "segment": "age_bucket",
             "bucket": "<18",
             "day_n": 3,
-            "cohort_users": 7834,
+            "cohort_users": 7833,
             "retained_users": 99,
             "retention_pct": 1.26
           },
@@ -6467,7 +6468,7 @@
             "segment": "age_bucket",
             "bucket": "18-24",
             "day_n": 7,
-            "cohort_users": 33189,
+            "cohort_users": 33190,
             "retained_users": 270,
             "retention_pct": 0.81
           },
@@ -6485,7 +6486,7 @@
             "segment": "age_bucket",
             "bucket": "<18",
             "day_n": 7,
-            "cohort_users": 7834,
+            "cohort_users": 7833,
             "retained_users": 50,
             "retention_pct": 0.64
           },
@@ -6692,7 +6693,7 @@
             "segment": "gender",
             "bucket": "female",
             "day_n": 1,
-            "cohort_users": 48575,
+            "cohort_users": 48576,
             "retained_users": 3099,
             "retention_pct": 6.38
           },
@@ -6701,7 +6702,7 @@
             "segment": "gender",
             "bucket": "male",
             "day_n": 1,
-            "cohort_users": 21632,
+            "cohort_users": 21631,
             "retained_users": 1416,
             "retention_pct": 6.55
           },
@@ -6728,7 +6729,7 @@
             "segment": "gender",
             "bucket": "female",
             "day_n": 3,
-            "cohort_users": 48575,
+            "cohort_users": 48576,
             "retained_users": 1039,
             "retention_pct": 2.14
           },
@@ -6737,7 +6738,7 @@
             "segment": "gender",
             "bucket": "male",
             "day_n": 3,
-            "cohort_users": 21632,
+            "cohort_users": 21631,
             "retained_users": 455,
             "retention_pct": 2.1
           },
@@ -6764,7 +6765,7 @@
             "segment": "gender",
             "bucket": "female",
             "day_n": 7,
-            "cohort_users": 48575,
+            "cohort_users": 48576,
             "retained_users": 460,
             "retention_pct": 0.95
           },
@@ -6773,7 +6774,7 @@
             "segment": "gender",
             "bucket": "male",
             "day_n": 7,
-            "cohort_users": 21632,
+            "cohort_users": 21631,
             "retained_users": 224,
             "retention_pct": 1.04
           },
@@ -7985,8 +7986,8 @@
       "engagement": {
         "kpis": {
           "active_users": 5721,
-          "sessions": 19201,
-          "total_minutes": 49552.3,
+          "sessions": 19203,
+          "total_minutes": 49555.7,
           "avg_minutes_per_user": 8.66,
           "avg_minutes_per_session": 2.58,
           "bim_notification_opens": 51,
@@ -7995,9 +7996,9 @@
         "session_daily": [
           {
             "date": "2026-06-11",
-            "sessions": 19201,
+            "sessions": 19203,
             "users": 5721,
-            "total_minutes": 49552.3,
+            "total_minutes": 49555.7,
             "avg_minutes_per_user": 8.66,
             "avg_minutes_per_session": 2.58,
             "sessions_per_user": 3.36
@@ -8006,9 +8007,9 @@
         "session_by_platform": [
           {
             "platform": "android",
-            "sessions": 17245,
+            "sessions": 17247,
             "users": 5208,
-            "total_minutes": 44684.8,
+            "total_minutes": 44688.3,
             "avg_minutes_per_user": 8.58,
             "avg_minutes_per_session": 2.59,
             "sessions_per_user": 3.31
@@ -8027,9 +8028,9 @@
           {
             "date": "2026-06-11",
             "user_cohort": "New user",
-            "sessions": 7849,
+            "sessions": 7850,
             "users": 2569,
-            "total_minutes": 23794.1,
+            "total_minutes": 23797.4,
             "avg_minutes_per_user": 9.26,
             "sessions_per_user": 3.06
           },
@@ -8067,8 +8068,8 @@
           {
             "bucket": "25-34",
             "users": 1885,
-            "sessions": 6309,
-            "total_minutes": 17486.7,
+            "sessions": 6310,
+            "total_minutes": 17489.9,
             "segment": "age_bucket",
             "selection": "age_bucket = 25-34",
             "avg_minutes_per_user": 9.28,
@@ -8144,8 +8145,8 @@
           {
             "bucket": "18.0",
             "users": 1172,
-            "sessions": 4029,
-            "total_minutes": 11554.8,
+            "sessions": 4030,
+            "total_minutes": 11558.1,
             "segment": "config_id",
             "selection": "config_id = 18.0",
             "avg_minutes_per_user": 9.86,
@@ -8243,12 +8244,12 @@
           {
             "bucket": "female",
             "users": 3612,
-            "sessions": 10673,
-            "total_minutes": 28979.5,
+            "sessions": 10674,
+            "total_minutes": 28982.8,
             "segment": "gender",
             "selection": "gender = female",
             "avg_minutes_per_user": 8.02,
-            "sessions_per_user": 2.95,
+            "sessions_per_user": 2.96,
             "user_share_pct": 63.14
           },
           {
@@ -8298,11 +8299,11 @@
           {
             "bucket": "Unknown",
             "users": 5324,
-            "sessions": 15098,
-            "total_minutes": 41285.8,
+            "sessions": 15099,
+            "total_minutes": 41289.1,
             "segment": "marital_status",
             "selection": "marital_status = Unknown",
-            "avg_minutes_per_user": 7.75,
+            "avg_minutes_per_user": 7.76,
             "sessions_per_user": 2.84,
             "user_share_pct": 93.06
           },
@@ -8342,11 +8343,11 @@
           {
             "bucket": "Unknown",
             "users": 5324,
-            "sessions": 15098,
-            "total_minutes": 41285.8,
+            "sessions": 15099,
+            "total_minutes": 41289.1,
             "segment": "occupation",
             "selection": "occupation = Unknown",
-            "avg_minutes_per_user": 7.75,
+            "avg_minutes_per_user": 7.76,
             "sessions_per_user": 2.84,
             "user_share_pct": 93.06
           },
@@ -8397,8 +8398,8 @@
           {
             "bucket": "android",
             "users": 4820,
-            "sessions": 13765,
-            "total_minutes": 37761.1,
+            "sessions": 13766,
+            "total_minutes": 37764.4,
             "segment": "platform",
             "selection": "platform = android",
             "avg_minutes_per_user": 7.83,
@@ -8441,8 +8442,8 @@
           {
             "bucket": "New user",
             "users": 2569,
-            "sessions": 7849,
-            "total_minutes": 23794.1,
+            "sessions": 7850,
+            "total_minutes": 23797.4,
             "segment": "user_cohort",
             "selection": "user_cohort = New user",
             "avg_minutes_per_user": 9.26,
@@ -8474,13 +8475,13 @@
           },
           {
             "bucket": "5-15 min",
-            "users": 1852,
-            "sessions": 5344,
-            "total_minutes": 14384.3,
+            "users": 1851,
+            "sessions": 5341,
+            "total_minutes": 14371.3,
             "selection": "total session time = 5-15 min",
-            "avg_minutes_per_user": 7.77,
+            "avg_minutes_per_user": 7.76,
             "sessions_per_user": 2.89,
-            "user_share_pct": 32.37
+            "user_share_pct": 32.35
           },
           {
             "bucket": "0-1 min",
@@ -8494,13 +8495,13 @@
           },
           {
             "bucket": "15-45 min",
-            "users": 348,
-            "sessions": 2372,
-            "total_minutes": 8870.4,
+            "users": 349,
+            "sessions": 2376,
+            "total_minutes": 8886.7,
             "selection": "total session time = 15-45 min",
-            "avg_minutes_per_user": 25.49,
-            "sessions_per_user": 6.82,
-            "user_share_pct": 6.08
+            "avg_minutes_per_user": 25.46,
+            "sessions_per_user": 6.81,
+            "user_share_pct": 6.1
           },
           {
             "bucket": "45+ min",
@@ -8551,7 +8552,7 @@
         "notification_campaigns": [
           {
             "campaign": "Unknown",
-            "opens": 7712,
+            "opens": 7713,
             "users": 3279,
             "opens_per_user": 2.35,
             "open_share_pct": 99.3
@@ -8621,6 +8622,14 @@
             "coverage_pct": 100,
             "missing_detail": "None",
             "next_data_needed": "None"
+          },
+          {
+            "area": "Unit Economics",
+            "metric": "LLM cost, cost per active user, and gross margin after AI inference",
+            "status": "Missing source",
+            "coverage_pct": 0,
+            "missing_detail": "No DB table or column currently exposes model name, prompt tokens, completion tokens, request count, provider, or request-level LLM cost.",
+            "next_data_needed": "Add an llm_usage or ai_request_usage table with user_id, chat_session_id, provider, model, prompt_tokens, completion_tokens, request_cost_usd or request_cost_inr, created_at, and status."
           },
           {
             "area": "Acquisition",
@@ -8698,7 +8707,7 @@
           },
           {
             "status": "Missing source",
-            "metrics": 1
+            "metrics": 2
           },
           {
             "status": "Partial",
@@ -15243,7 +15252,7 @@
         ],
         "subscription_renewal": {
           "kpis": {
-            "active_paid_subscriptions": 706,
+            "active_paid_subscriptions": 705,
             "trial_active_subscriptions": 111,
             "renewal_due_next_7_days": 55,
             "autopay_ready_users": 51,
@@ -15355,12 +15364,12 @@
             {
               "status": "ACTIVE",
               "subscription_case": "PLAN",
-              "users": 654
+              "users": 653
             },
             {
               "status": "CANCELED",
               "subscription_case": "PLAN_ENDED",
-              "users": 498
+              "users": 499
             },
             {
               "status": "TRIAL_ACTIVE",
@@ -16661,56 +16670,56 @@
           {
             "date": "2026-06-05",
             "plan_code": "All",
-            "active_paid_subscribers": 484,
-            "mrr": 183616.0,
+            "active_paid_subscribers": 483,
+            "mrr": 183117.0,
             "trial_active_subscribers": 111,
             "net_mrr_movement": 0.0
           },
           {
             "date": "2026-06-06",
             "plan_code": "All",
-            "active_paid_subscribers": 527,
-            "mrr": 203273.0,
+            "active_paid_subscribers": 526,
+            "mrr": 202774.0,
             "trial_active_subscribers": 111,
             "net_mrr_movement": 19657.0
           },
           {
             "date": "2026-06-07",
             "plan_code": "All",
-            "active_paid_subscribers": 555,
-            "mrr": 214845.0,
+            "active_paid_subscribers": 554,
+            "mrr": 214346.0,
             "trial_active_subscribers": 111,
             "net_mrr_movement": 11572.0
           },
           {
             "date": "2026-06-08",
             "plan_code": "All",
-            "active_paid_subscribers": 602,
-            "mrr": 234698.0,
+            "active_paid_subscribers": 601,
+            "mrr": 234199.0,
             "trial_active_subscribers": 111,
             "net_mrr_movement": 19853.0
           },
           {
             "date": "2026-06-09",
             "plan_code": "All",
-            "active_paid_subscribers": 635,
-            "mrr": 249065.0,
+            "active_paid_subscribers": 634,
+            "mrr": 248566.0,
             "trial_active_subscribers": 111,
             "net_mrr_movement": 14367.0
           },
           {
             "date": "2026-06-10",
             "plan_code": "All",
-            "active_paid_subscribers": 659,
-            "mrr": 259541.0,
+            "active_paid_subscribers": 658,
+            "mrr": 259042.0,
             "trial_active_subscribers": 111,
             "net_mrr_movement": 10476.0
           },
           {
             "date": "2026-06-11",
             "plan_code": "All",
-            "active_paid_subscribers": 695,
-            "mrr": 275405.0,
+            "active_paid_subscribers": 694,
+            "mrr": 274906.0,
             "trial_active_subscribers": 111,
             "net_mrr_movement": 15864.0
           }
@@ -16719,8 +16728,8 @@
           {
             "date": "2026-06-05",
             "plan_code": "ALL_1_RS",
-            "active_paid_subscribers": 80,
-            "mrr": 39920.0,
+            "active_paid_subscribers": 79,
+            "mrr": 39421.0,
             "trial_active_subscribers": 0
           },
           {
@@ -16747,8 +16756,8 @@
           {
             "date": "2026-06-06",
             "plan_code": "ALL_1_RS",
-            "active_paid_subscribers": 102,
-            "mrr": 50898.0,
+            "active_paid_subscribers": 101,
+            "mrr": 50399.0,
             "trial_active_subscribers": 0
           },
           {
@@ -16775,8 +16784,8 @@
           {
             "date": "2026-06-07",
             "plan_code": "ALL_1_RS",
-            "active_paid_subscribers": 119,
-            "mrr": 59381.0,
+            "active_paid_subscribers": 118,
+            "mrr": 58882.0,
             "trial_active_subscribers": 0
           },
           {
@@ -16803,8 +16812,8 @@
           {
             "date": "2026-06-08",
             "plan_code": "ALL_1_RS",
-            "active_paid_subscribers": 144,
-            "mrr": 71856.0,
+            "active_paid_subscribers": 143,
+            "mrr": 71357.0,
             "trial_active_subscribers": 0
           },
           {
@@ -16831,8 +16840,8 @@
           {
             "date": "2026-06-09",
             "plan_code": "ALL_1_RS",
-            "active_paid_subscribers": 163,
-            "mrr": 81337.0,
+            "active_paid_subscribers": 162,
+            "mrr": 80838.0,
             "trial_active_subscribers": 0
           },
           {
@@ -16859,8 +16868,8 @@
           {
             "date": "2026-06-10",
             "plan_code": "ALL_1_RS",
-            "active_paid_subscribers": 174,
-            "mrr": 86826.0,
+            "active_paid_subscribers": 173,
+            "mrr": 86327.0,
             "trial_active_subscribers": 0
           },
           {
@@ -16887,8 +16896,8 @@
           {
             "date": "2026-06-11",
             "plan_code": "ALL_1_RS",
-            "active_paid_subscribers": 192,
-            "mrr": 95808.0,
+            "active_paid_subscribers": 191,
+            "mrr": 95309.0,
             "trial_active_subscribers": 0
           },
           {
@@ -16962,11 +16971,11 @@
             "date": "2026-06-06",
             "user_type": "non_subscriber",
             "platform": "android",
-            "dau": 4406,
-            "sessions": 6954,
-            "chat_minutes": 22370.0,
+            "dau": 4407,
+            "sessions": 6956,
+            "chat_minutes": 22374.0,
             "call_minutes": 559.0,
-            "total_minutes": 22929.0,
+            "total_minutes": 22933.0,
             "minutes_per_user": 5.2
           },
           {
@@ -16984,12 +16993,12 @@
             "date": "2026-06-06",
             "user_type": "subscriber",
             "platform": "android",
-            "dau": 116,
-            "sessions": 617,
-            "chat_minutes": 3883.0,
+            "dau": 115,
+            "sessions": 615,
+            "chat_minutes": 3879.0,
             "call_minutes": 0.0,
-            "total_minutes": 3883.0,
-            "minutes_per_user": 33.47
+            "total_minutes": 3879.0,
+            "minutes_per_user": 33.73
           },
           {
             "date": "2026-06-06",
@@ -17226,21 +17235,21 @@
         "subscriber_engagement_summary": [
           {
             "user_type": "non_subscriber",
-            "active_users": 32592,
-            "sessions": 56888,
-            "chat_minutes": 175461.0,
+            "active_users": 32593,
+            "sessions": 56890,
+            "chat_minutes": 175465.0,
             "call_minutes": 5730.0,
-            "total_minutes": 181191.0,
+            "total_minutes": 181195.0,
             "minutes_per_user": 5.56
           },
           {
             "user_type": "subscriber",
-            "active_users": 311,
-            "sessions": 6063,
-            "chat_minutes": 30910.0,
+            "active_users": 310,
+            "sessions": 6061,
+            "chat_minutes": 30906.0,
             "call_minutes": 685.0,
-            "total_minutes": 31595.0,
-            "minutes_per_user": 101.59
+            "total_minutes": 31591.0,
+            "minutes_per_user": 101.91
           }
         ],
         "config_funnel": [
@@ -17248,7 +17257,7 @@
             "config_id": 18,
             "trial_type": "Rs 1 trial",
             "trial_amount": 1,
-            "assigned_users": 47770,
+            "assigned_users": 47777,
             "followup_users": 9889,
             "paywall_shown_users": 9641,
             "trial_cta_users": 4690,
@@ -17270,7 +17279,7 @@
             "config_id": 20,
             "trial_type": "Rs 49 trial",
             "trial_amount": 49,
-            "assigned_users": 61081,
+            "assigned_users": 61087,
             "followup_users": 11473,
             "paywall_shown_users": 11047,
             "trial_cta_users": 3073,
@@ -19681,7 +19690,7 @@
             "segment": "age_bucket",
             "bucket": "18-24",
             "day_n": 1,
-            "cohort_users": 44112,
+            "cohort_users": 44113,
             "retained_users": 2414,
             "retention_pct": 5.47
           },
@@ -19699,7 +19708,7 @@
             "segment": "age_bucket",
             "bucket": "<18",
             "day_n": 1,
-            "cohort_users": 10390,
+            "cohort_users": 10389,
             "retained_users": 519,
             "retention_pct": 5.0
           },
@@ -19744,7 +19753,7 @@
             "segment": "age_bucket",
             "bucket": "18-24",
             "day_n": 3,
-            "cohort_users": 44112,
+            "cohort_users": 44113,
             "retained_users": 794,
             "retention_pct": 1.8
           },
@@ -19762,7 +19771,7 @@
             "segment": "age_bucket",
             "bucket": "<18",
             "day_n": 3,
-            "cohort_users": 10390,
+            "cohort_users": 10389,
             "retained_users": 144,
             "retention_pct": 1.39
           },
@@ -19807,7 +19816,7 @@
             "segment": "age_bucket",
             "bucket": "18-24",
             "day_n": 7,
-            "cohort_users": 44112,
+            "cohort_users": 44113,
             "retained_users": 340,
             "retention_pct": 0.77
           },
@@ -19825,7 +19834,7 @@
             "segment": "age_bucket",
             "bucket": "<18",
             "day_n": 7,
-            "cohort_users": 10390,
+            "cohort_users": 10389,
             "retained_users": 69,
             "retention_pct": 0.66
           },
@@ -20032,7 +20041,7 @@
             "segment": "gender",
             "bucket": "female",
             "day_n": 1,
-            "cohort_users": 64806,
+            "cohort_users": 64807,
             "retained_users": 4140,
             "retention_pct": 6.39
           },
@@ -20041,7 +20050,7 @@
             "segment": "gender",
             "bucket": "male",
             "day_n": 1,
-            "cohort_users": 28602,
+            "cohort_users": 28601,
             "retained_users": 1839,
             "retention_pct": 6.43
           },
@@ -20068,7 +20077,7 @@
             "segment": "gender",
             "bucket": "female",
             "day_n": 3,
-            "cohort_users": 64806,
+            "cohort_users": 64807,
             "retained_users": 1362,
             "retention_pct": 2.1
           },
@@ -20077,7 +20086,7 @@
             "segment": "gender",
             "bucket": "male",
             "day_n": 3,
-            "cohort_users": 28602,
+            "cohort_users": 28601,
             "retained_users": 620,
             "retention_pct": 2.17
           },
@@ -20104,7 +20113,7 @@
             "segment": "gender",
             "bucket": "female",
             "day_n": 7,
-            "cohort_users": 64806,
+            "cohort_users": 64807,
             "retained_users": 587,
             "retention_pct": 0.91
           },
@@ -20113,7 +20122,7 @@
             "segment": "gender",
             "bucket": "male",
             "day_n": 7,
-            "cohort_users": 28602,
+            "cohort_users": 28601,
             "retained_users": 275,
             "retention_pct": 0.96
           },
@@ -21386,8 +21395,8 @@
       "engagement": {
         "kpis": {
           "active_users": 34632,
-          "sessions": 154587,
-          "total_minutes": 370036.2,
+          "sessions": 154590,
+          "total_minutes": 370039.8,
           "avg_minutes_per_user": 10.68,
           "avg_minutes_per_session": 2.39,
           "bim_notification_opens": 9822,
@@ -21407,16 +21416,16 @@
             "date": "2026-06-06",
             "sessions": 23307,
             "users": 7291,
-            "total_minutes": 55466.6,
+            "total_minutes": 55466.5,
             "avg_minutes_per_user": 7.61,
             "avg_minutes_per_session": 2.38,
             "sessions_per_user": 3.2
           },
           {
             "date": "2026-06-07",
-            "sessions": 23773,
+            "sessions": 23774,
             "users": 7564,
-            "total_minutes": 57961.4,
+            "total_minutes": 57961.7,
             "avg_minutes_per_user": 7.66,
             "avg_minutes_per_session": 2.44,
             "sessions_per_user": 3.14
@@ -21450,9 +21459,9 @@
           },
           {
             "date": "2026-06-11",
-            "sessions": 19201,
+            "sessions": 19203,
             "users": 5721,
-            "total_minutes": 49552.3,
+            "total_minutes": 49555.7,
             "avg_minutes_per_user": 8.66,
             "avg_minutes_per_session": 2.58,
             "sessions_per_user": 3.36
@@ -21461,9 +21470,9 @@
         "session_by_platform": [
           {
             "platform": "android",
-            "sessions": 140560,
+            "sessions": 140563,
             "users": 32239,
-            "total_minutes": 336651.9,
+            "total_minutes": 336655.6,
             "avg_minutes_per_user": 10.44,
             "avg_minutes_per_session": 2.4,
             "sessions_per_user": 4.36
@@ -21554,9 +21563,9 @@
           {
             "date": "2026-06-07",
             "user_cohort": "Old user",
-            "sessions": 8298,
+            "sessions": 8299,
             "users": 3636,
-            "total_minutes": 16711.9,
+            "total_minutes": 16712.2,
             "avg_minutes_per_user": 4.6,
             "sessions_per_user": 2.28
           },
@@ -21653,9 +21662,9 @@
           {
             "date": "2026-06-11",
             "user_cohort": "New user",
-            "sessions": 10141,
+            "sessions": 10142,
             "users": 3166,
-            "total_minutes": 30051.5,
+            "total_minutes": 30054.8,
             "avg_minutes_per_user": 9.49,
             "sessions_per_user": 3.2
           },
@@ -21693,8 +21702,8 @@
           {
             "bucket": "25-34",
             "users": 10604,
-            "sessions": 47674,
-            "total_minutes": 119831.9,
+            "sessions": 47675,
+            "total_minutes": 119835.1,
             "segment": "age_bucket",
             "selection": "age_bucket = 25-34",
             "avg_minutes_per_user": 11.3,
@@ -21726,8 +21735,8 @@
           {
             "bucket": "35-44",
             "users": 2598,
-            "sessions": 14053,
-            "total_minutes": 33951.6,
+            "sessions": 14054,
+            "total_minutes": 33951.8,
             "segment": "age_bucket",
             "selection": "age_bucket = 35-44",
             "avg_minutes_per_user": 13.07,
@@ -21770,8 +21779,8 @@
           {
             "bucket": "18.0",
             "users": 9837,
-            "sessions": 43321,
-            "total_minutes": 127575.3,
+            "sessions": 43322,
+            "total_minutes": 127578.5,
             "segment": "config_id",
             "selection": "config_id = 18.0",
             "avg_minutes_per_user": 12.97,
@@ -21803,8 +21812,8 @@
           {
             "bucket": "7.0",
             "users": 1519,
-            "sessions": 5888,
-            "total_minutes": 9656.6,
+            "sessions": 5889,
+            "total_minutes": 9656.9,
             "segment": "config_id",
             "selection": "config_id = 7.0",
             "avg_minutes_per_user": 6.36,
@@ -21880,8 +21889,8 @@
           {
             "bucket": "female",
             "users": 21164,
-            "sessions": 82875,
-            "total_minutes": 209026.6,
+            "sessions": 82876,
+            "total_minutes": 209029.8,
             "segment": "gender",
             "selection": "gender = female",
             "avg_minutes_per_user": 9.88,
@@ -21891,8 +21900,8 @@
           {
             "bucket": "male",
             "users": 9203,
-            "sessions": 38096,
-            "total_minutes": 98117.5,
+            "sessions": 38097,
+            "total_minutes": 98117.8,
             "segment": "gender",
             "selection": "gender = male",
             "avg_minutes_per_user": 10.66,
@@ -21935,8 +21944,8 @@
           {
             "bucket": "Unknown",
             "users": 32693,
-            "sessions": 118855,
-            "total_minutes": 302498.3,
+            "sessions": 118857,
+            "total_minutes": 302501.9,
             "segment": "marital_status",
             "selection": "marital_status = Unknown",
             "avg_minutes_per_user": 9.25,
@@ -21979,8 +21988,8 @@
           {
             "bucket": "Unknown",
             "users": 32693,
-            "sessions": 118855,
-            "total_minutes": 302498.3,
+            "sessions": 118857,
+            "total_minutes": 302501.9,
             "segment": "occupation",
             "selection": "occupation = Unknown",
             "avg_minutes_per_user": 9.25,
@@ -22034,8 +22043,8 @@
           {
             "bucket": "android",
             "users": 28984,
-            "sessions": 109956,
-            "total_minutes": 278655.8,
+            "sessions": 109958,
+            "total_minutes": 278659.3,
             "segment": "platform",
             "selection": "platform = android",
             "avg_minutes_per_user": 9.61,
@@ -22067,8 +22076,8 @@
           {
             "bucket": "New user",
             "users": 18995,
-            "sessions": 69244,
-            "total_minutes": 203346.7,
+            "sessions": 69245,
+            "total_minutes": 203350.0,
             "segment": "user_cohort",
             "selection": "user_cohort = New user",
             "avg_minutes_per_user": 10.71,
@@ -22078,8 +22087,8 @@
           {
             "bucket": "Old user",
             "users": 12270,
-            "sessions": 53788,
-            "total_minutes": 106386.3,
+            "sessions": 53789,
+            "total_minutes": 106386.5,
             "segment": "user_cohort",
             "selection": "user_cohort = Old user",
             "avg_minutes_per_user": 8.67,
@@ -22102,8 +22111,8 @@
           {
             "bucket": "1-5 min",
             "users": 13119,
-            "sessions": 27318,
-            "total_minutes": 41042.9,
+            "sessions": 27319,
+            "total_minutes": 41043.2,
             "selection": "total session time = 1-5 min",
             "avg_minutes_per_user": 3.13,
             "sessions_per_user": 2.08,
@@ -22111,13 +22120,13 @@
           },
           {
             "bucket": "5-15 min",
-            "users": 12636,
-            "sessions": 41501,
-            "total_minutes": 97875.2,
+            "users": 12635,
+            "sessions": 41498,
+            "total_minutes": 97862.1,
             "selection": "total session time = 5-15 min",
             "avg_minutes_per_user": 7.75,
             "sessions_per_user": 3.28,
-            "user_share_pct": 36.49
+            "user_share_pct": 36.48
           },
           {
             "bucket": "0-1 min",
@@ -22131,13 +22140,13 @@
           },
           {
             "bucket": "15-45 min",
-            "users": 2339,
-            "sessions": 21352,
-            "total_minutes": 57307.4,
+            "users": 2340,
+            "sessions": 21356,
+            "total_minutes": 57323.7,
             "selection": "total session time = 15-45 min",
             "avg_minutes_per_user": 24.5,
             "sessions_per_user": 9.13,
-            "user_share_pct": 6.75
+            "user_share_pct": 6.76
           },
           {
             "bucket": "45+ min",
@@ -22368,7 +22377,7 @@
         "notification_campaigns": [
           {
             "campaign": "Unknown",
-            "opens": 60788,
+            "opens": 60789,
             "users": 19368,
             "opens_per_user": 3.14,
             "open_share_pct": 85.72
@@ -22438,6 +22447,14 @@
             "coverage_pct": 100,
             "missing_detail": "None",
             "next_data_needed": "None"
+          },
+          {
+            "area": "Unit Economics",
+            "metric": "LLM cost, cost per active user, and gross margin after AI inference",
+            "status": "Missing source",
+            "coverage_pct": 0,
+            "missing_detail": "No DB table or column currently exposes model name, prompt tokens, completion tokens, request count, provider, or request-level LLM cost.",
+            "next_data_needed": "Add an llm_usage or ai_request_usage table with user_id, chat_session_id, provider, model, prompt_tokens, completion_tokens, request_cost_usd or request_cost_inr, created_at, and status."
           },
           {
             "area": "Acquisition",
@@ -22515,7 +22532,7 @@
           },
           {
             "status": "Missing source",
-            "metrics": 1
+            "metrics": 2
           },
           {
             "status": "Partial",
@@ -25749,7 +25766,7 @@
         ],
         "subscription_renewal": {
           "kpis": {
-            "active_paid_subscriptions": 538,
+            "active_paid_subscriptions": 537,
             "trial_active_subscriptions": 0,
             "renewal_due_next_7_days": 1,
             "autopay_ready_users": 0,
@@ -25795,12 +25812,12 @@
             {
               "status": "ACTIVE",
               "subscription_case": "PLAN",
-              "users": 503
+              "users": 502
             },
             {
               "status": "CANCELED",
               "subscription_case": "PLAN_ENDED",
-              "users": 397
+              "users": 398
             },
             {
               "status": "ACTIVE",
@@ -25966,8 +25983,8 @@
           {
             "date": "2026-06-05",
             "plan_code": "All",
-            "active_paid_subscribers": 484,
-            "mrr": 183616.0,
+            "active_paid_subscribers": 483,
+            "mrr": 183117.0,
             "trial_active_subscribers": 0,
             "net_mrr_movement": 0.0
           }
@@ -25976,8 +25993,8 @@
           {
             "date": "2026-06-05",
             "plan_code": "ALL_1_RS",
-            "active_paid_subscribers": 80,
-            "mrr": 39920.0,
+            "active_paid_subscribers": 79,
+            "mrr": 39421.0,
             "trial_active_subscribers": 0
           },
           {
@@ -26073,7 +26090,7 @@
             "config_id": 18,
             "trial_type": "Rs 1 trial",
             "trial_amount": 1,
-            "assigned_users": 47770,
+            "assigned_users": 47777,
             "followup_users": 1601,
             "paywall_shown_users": 1507,
             "trial_cta_users": 684,
@@ -26095,7 +26112,7 @@
             "config_id": 20,
             "trial_type": "Rs 49 trial",
             "trial_amount": 49,
-            "assigned_users": 61081,
+            "assigned_users": 61087,
             "followup_users": 2120,
             "paywall_shown_users": 1948,
             "trial_cta_users": 457,
@@ -26877,19 +26894,19 @@
             "followup_events": 17
           },
           {
-            "entity_slug": "pooja",
-            "bot_id": "68792542fcf00df3749da520",
-            "bot_name": "Pooja",
-            "entity_label": "Pooja",
-            "entity_match_type": "slug",
-            "followup_events": 15
-          },
-          {
             "entity_slug": "6879253ffcf00df3749da51a",
             "bot_id": "6879253ffcf00df3749da51a",
             "bot_name": "Amit",
             "entity_label": "Amit",
             "entity_match_type": "bot_id",
+            "followup_events": 15
+          },
+          {
+            "entity_slug": "pooja",
+            "bot_id": "68792542fcf00df3749da520",
+            "bot_name": "Pooja",
+            "entity_label": "Pooja",
+            "entity_match_type": "slug",
             "followup_events": 15
           },
           {
@@ -30156,6 +30173,14 @@
             "next_data_needed": "None"
           },
           {
+            "area": "Unit Economics",
+            "metric": "LLM cost, cost per active user, and gross margin after AI inference",
+            "status": "Missing source",
+            "coverage_pct": 0,
+            "missing_detail": "No DB table or column currently exposes model name, prompt tokens, completion tokens, request count, provider, or request-level LLM cost.",
+            "next_data_needed": "Add an llm_usage or ai_request_usage table with user_id, chat_session_id, provider, model, prompt_tokens, completion_tokens, request_cost_usd or request_cost_inr, created_at, and status."
+          },
+          {
             "area": "Acquisition",
             "metric": "New user to follow-up to payment conversion",
             "status": "Available",
@@ -30231,7 +30256,7 @@
           },
           {
             "status": "Missing source",
-            "metrics": 1
+            "metrics": 2
           },
           {
             "status": "Partial",
@@ -33663,7 +33688,7 @@
         ],
         "subscription_renewal": {
           "kpis": {
-            "active_paid_subscriptions": 562,
+            "active_paid_subscriptions": 561,
             "trial_active_subscriptions": 0,
             "renewal_due_next_7_days": 7,
             "autopay_ready_users": 6,
@@ -33726,12 +33751,12 @@
             {
               "status": "ACTIVE",
               "subscription_case": "PLAN",
-              "users": 524
+              "users": 523
             },
             {
               "status": "CANCELED",
               "subscription_case": "PLAN_ENDED",
-              "users": 427
+              "users": 428
             },
             {
               "status": "ACTIVE",
@@ -33897,8 +33922,8 @@
           {
             "date": "2026-06-06",
             "plan_code": "All",
-            "active_paid_subscribers": 527,
-            "mrr": 203273.0,
+            "active_paid_subscribers": 526,
+            "mrr": 202774.0,
             "trial_active_subscribers": 0,
             "net_mrr_movement": 0.0
           }
@@ -33907,8 +33932,8 @@
           {
             "date": "2026-06-06",
             "plan_code": "ALL_1_RS",
-            "active_paid_subscribers": 102,
-            "mrr": 50898.0,
+            "active_paid_subscribers": 101,
+            "mrr": 50399.0,
             "trial_active_subscribers": 0
           },
           {
@@ -33938,11 +33963,11 @@
             "date": "2026-06-06",
             "user_type": "non_subscriber",
             "platform": "android",
-            "dau": 4406,
-            "sessions": 6954,
-            "chat_minutes": 22370.0,
+            "dau": 4407,
+            "sessions": 6956,
+            "chat_minutes": 22374.0,
             "call_minutes": 559.0,
-            "total_minutes": 22929.0,
+            "total_minutes": 22933.0,
             "minutes_per_user": 5.2
           },
           {
@@ -33960,12 +33985,12 @@
             "date": "2026-06-06",
             "user_type": "subscriber",
             "platform": "android",
-            "dau": 116,
-            "sessions": 617,
-            "chat_minutes": 3883.0,
+            "dau": 115,
+            "sessions": 615,
+            "chat_minutes": 3879.0,
             "call_minutes": 0.0,
-            "total_minutes": 3883.0,
-            "minutes_per_user": 33.47
+            "total_minutes": 3879.0,
+            "minutes_per_user": 33.73
           },
           {
             "date": "2026-06-06",
@@ -33982,21 +34007,21 @@
         "subscriber_engagement_summary": [
           {
             "user_type": "non_subscriber",
-            "active_users": 5367,
-            "sessions": 8303,
-            "chat_minutes": 25569.0,
+            "active_users": 5368,
+            "sessions": 8305,
+            "chat_minutes": 25573.0,
             "call_minutes": 561.0,
-            "total_minutes": 26130.0,
+            "total_minutes": 26134.0,
             "minutes_per_user": 4.87
           },
           {
             "user_type": "subscriber",
-            "active_users": 146,
-            "sessions": 796,
-            "chat_minutes": 4509.0,
+            "active_users": 145,
+            "sessions": 794,
+            "chat_minutes": 4505.0,
             "call_minutes": 33.0,
-            "total_minutes": 4542.0,
-            "minutes_per_user": 31.11
+            "total_minutes": 4538.0,
+            "minutes_per_user": 31.3
           }
         ],
         "config_funnel": [
@@ -34004,7 +34029,7 @@
             "config_id": 18,
             "trial_type": "Rs 1 trial",
             "trial_amount": 1,
-            "assigned_users": 47771,
+            "assigned_users": 47777,
             "followup_users": 1864,
             "paywall_shown_users": 1723,
             "trial_cta_users": 773,
@@ -34026,7 +34051,7 @@
             "config_id": 20,
             "trial_type": "Rs 49 trial",
             "trial_amount": 49,
-            "assigned_users": 61081,
+            "assigned_users": 61087,
             "followup_users": 2302,
             "paywall_shown_users": 2126,
             "trial_cta_users": 498,
@@ -35104,12 +35129,12 @@
               "pct": 3.6
             },
             {
-              "bucket": "Kolkata",
+              "bucket": "Mumbai",
               "users": 338,
               "pct": 3.59
             },
             {
-              "bucket": "Mumbai",
+              "bucket": "Kolkata",
               "users": 338,
               "pct": 3.59
             },
@@ -35563,15 +35588,15 @@
           },
           {
             "segment": "city",
-            "bucket": "Kolkata",
-            "selection": "city = Kolkata",
+            "bucket": "Mumbai",
+            "selection": "city = Mumbai",
             "users": 338,
             "pct": 3.59
           },
           {
             "segment": "city",
-            "bucket": "Mumbai",
-            "selection": "city = Mumbai",
+            "bucket": "Kolkata",
+            "selection": "city = Kolkata",
             "users": 338,
             "pct": 3.59
           },
@@ -37558,7 +37583,7 @@
         "kpis": {
           "active_users": 7291,
           "sessions": 23307,
-          "total_minutes": 55466.6,
+          "total_minutes": 55466.5,
           "avg_minutes_per_user": 7.61,
           "avg_minutes_per_session": 2.38,
           "bim_notification_opens": 1858,
@@ -37569,7 +37594,7 @@
             "date": "2026-06-06",
             "sessions": 23307,
             "users": 7291,
-            "total_minutes": 55466.6,
+            "total_minutes": 55466.5,
             "avg_minutes_per_user": 7.61,
             "avg_minutes_per_session": 2.38,
             "sessions_per_user": 3.2
@@ -38201,6 +38226,14 @@
             "next_data_needed": "None"
           },
           {
+            "area": "Unit Economics",
+            "metric": "LLM cost, cost per active user, and gross margin after AI inference",
+            "status": "Missing source",
+            "coverage_pct": 0,
+            "missing_detail": "No DB table or column currently exposes model name, prompt tokens, completion tokens, request count, provider, or request-level LLM cost.",
+            "next_data_needed": "Add an llm_usage or ai_request_usage table with user_id, chat_session_id, provider, model, prompt_tokens, completion_tokens, request_cost_usd or request_cost_inr, created_at, and status."
+          },
+          {
             "area": "Acquisition",
             "metric": "New user to follow-up to payment conversion",
             "status": "Available",
@@ -38276,7 +38309,7 @@
           },
           {
             "status": "Missing source",
-            "metrics": 1
+            "metrics": 2
           },
           {
             "status": "Partial",
@@ -41720,7 +41753,7 @@
         ],
         "subscription_renewal": {
           "kpis": {
-            "active_paid_subscriptions": 610,
+            "active_paid_subscriptions": 609,
             "trial_active_subscriptions": 0,
             "renewal_due_next_7_days": 14,
             "autopay_ready_users": 13,
@@ -41791,12 +41824,12 @@
             {
               "status": "ACTIVE",
               "subscription_case": "PLAN",
-              "users": 567
+              "users": 566
             },
             {
               "status": "CANCELED",
               "subscription_case": "PLAN_ENDED",
-              "users": 445
+              "users": 446
             },
             {
               "status": "ACTIVE",
@@ -42004,8 +42037,8 @@
           {
             "date": "2026-06-07",
             "plan_code": "All",
-            "active_paid_subscribers": 555,
-            "mrr": 214845.0,
+            "active_paid_subscribers": 554,
+            "mrr": 214346.0,
             "trial_active_subscribers": 0,
             "net_mrr_movement": 0.0
           }
@@ -42014,8 +42047,8 @@
           {
             "date": "2026-06-07",
             "plan_code": "ALL_1_RS",
-            "active_paid_subscribers": 119,
-            "mrr": 59381.0,
+            "active_paid_subscribers": 118,
+            "mrr": 58882.0,
             "trial_active_subscribers": 0
           },
           {
@@ -42111,7 +42144,7 @@
             "config_id": 18,
             "trial_type": "Rs 1 trial",
             "trial_amount": 1,
-            "assigned_users": 47771,
+            "assigned_users": 47777,
             "followup_users": 2078,
             "paywall_shown_users": 1940,
             "trial_cta_users": 877,
@@ -42133,7 +42166,7 @@
             "config_id": 20,
             "trial_type": "Rs 49 trial",
             "trial_amount": 49,
-            "assigned_users": 61082,
+            "assigned_users": 61088,
             "followup_users": 2427,
             "paywall_shown_users": 2263,
             "trial_cta_users": 563,
@@ -43167,12 +43200,12 @@
               "pct": 3.67
             },
             {
-              "bucket": "Telangana",
+              "bucket": "Uttarakhand",
               "users": 256,
               "pct": 2.55
             },
             {
-              "bucket": "Uttarakhand",
+              "bucket": "Telangana",
               "users": 256,
               "pct": 2.55
             },
@@ -43192,12 +43225,12 @@
               "pct": 1.73
             },
             {
-              "bucket": "Himachal Pradesh",
+              "bucket": "Chandigarh",
               "users": 163,
               "pct": 1.62
             },
             {
-              "bucket": "Chandigarh",
+              "bucket": "Himachal Pradesh",
               "users": 163,
               "pct": 1.62
             },
@@ -43602,15 +43635,15 @@
           },
           {
             "segment": "region",
-            "bucket": "Telangana",
-            "selection": "region = Telangana",
+            "bucket": "Uttarakhand",
+            "selection": "region = Uttarakhand",
             "users": 256,
             "pct": 2.55
           },
           {
             "segment": "region",
-            "bucket": "Uttarakhand",
-            "selection": "region = Uttarakhand",
+            "bucket": "Telangana",
+            "selection": "region = Telangana",
             "users": 256,
             "pct": 2.55
           },
@@ -43637,15 +43670,15 @@
           },
           {
             "segment": "region",
-            "bucket": "Himachal Pradesh",
-            "selection": "region = Himachal Pradesh",
+            "bucket": "Chandigarh",
+            "selection": "region = Chandigarh",
             "users": 163,
             "pct": 1.62
           },
           {
             "segment": "region",
-            "bucket": "Chandigarh",
-            "selection": "region = Chandigarh",
+            "bucket": "Himachal Pradesh",
+            "selection": "region = Himachal Pradesh",
             "users": 163,
             "pct": 1.62
           },
@@ -45678,8 +45711,8 @@
       "engagement": {
         "kpis": {
           "active_users": 7564,
-          "sessions": 23773,
-          "total_minutes": 57961.4,
+          "sessions": 23774,
+          "total_minutes": 57961.7,
           "avg_minutes_per_user": 7.66,
           "avg_minutes_per_session": 2.44,
           "bim_notification_opens": 1771,
@@ -45688,9 +45721,9 @@
         "session_daily": [
           {
             "date": "2026-06-07",
-            "sessions": 23773,
+            "sessions": 23774,
             "users": 7564,
-            "total_minutes": 57961.4,
+            "total_minutes": 57961.7,
             "avg_minutes_per_user": 7.66,
             "avg_minutes_per_session": 2.44,
             "sessions_per_user": 3.14
@@ -45699,9 +45732,9 @@
         "session_by_platform": [
           {
             "platform": "android",
-            "sessions": 21786,
+            "sessions": 21787,
             "users": 7012,
-            "total_minutes": 52866.2,
+            "total_minutes": 52866.5,
             "avg_minutes_per_user": 7.54,
             "avg_minutes_per_session": 2.43,
             "sessions_per_user": 3.11
@@ -45729,9 +45762,9 @@
           {
             "date": "2026-06-07",
             "user_cohort": "Old user",
-            "sessions": 9595,
+            "sessions": 9596,
             "users": 4002,
-            "total_minutes": 20540.0,
+            "total_minutes": 20540.3,
             "avg_minutes_per_user": 5.13,
             "sessions_per_user": 2.4
           },
@@ -45771,8 +45804,8 @@
           {
             "bucket": "35-44",
             "users": 727,
-            "sessions": 2110,
-            "total_minutes": 5443.8,
+            "sessions": 2111,
+            "total_minutes": 5444.1,
             "segment": "age_bucket",
             "selection": "age_bucket = 35-44",
             "avg_minutes_per_user": 7.49,
@@ -45870,8 +45903,8 @@
           {
             "bucket": "7.0",
             "users": 459,
-            "sessions": 926,
-            "total_minutes": 1555.6,
+            "sessions": 927,
+            "total_minutes": 1555.9,
             "segment": "config_id",
             "selection": "config_id = 7.0",
             "avg_minutes_per_user": 3.39,
@@ -45947,8 +45980,8 @@
           {
             "bucket": "male",
             "users": 2262,
-            "sessions": 6316,
-            "total_minutes": 16412.4,
+            "sessions": 6317,
+            "total_minutes": 16412.6,
             "segment": "gender",
             "selection": "gender = male",
             "avg_minutes_per_user": 7.26,
@@ -45991,8 +46024,8 @@
           {
             "bucket": "Unknown",
             "users": 6993,
-            "sessions": 18339,
-            "total_minutes": 47756.5,
+            "sessions": 18340,
+            "total_minutes": 47756.7,
             "segment": "marital_status",
             "selection": "marital_status = Unknown",
             "avg_minutes_per_user": 6.83,
@@ -46035,8 +46068,8 @@
           {
             "bucket": "Unknown",
             "users": 6993,
-            "sessions": 18339,
-            "total_minutes": 47756.5,
+            "sessions": 18340,
+            "total_minutes": 47756.7,
             "segment": "occupation",
             "selection": "occupation = Unknown",
             "avg_minutes_per_user": 6.83,
@@ -46090,8 +46123,8 @@
           {
             "bucket": "android",
             "users": 6462,
-            "sessions": 17006,
-            "total_minutes": 43768.1,
+            "sessions": 17007,
+            "total_minutes": 43768.4,
             "segment": "platform",
             "selection": "platform = android",
             "avg_minutes_per_user": 6.77,
@@ -46123,8 +46156,8 @@
           {
             "bucket": "Old user",
             "users": 4002,
-            "sessions": 9595,
-            "total_minutes": 20540.0,
+            "sessions": 9596,
+            "total_minutes": 20540.3,
             "segment": "user_cohort",
             "selection": "user_cohort = Old user",
             "avg_minutes_per_user": 5.13,
@@ -46158,8 +46191,8 @@
           {
             "bucket": "1-5 min",
             "users": 2855,
-            "sessions": 5367,
-            "total_minutes": 8241.5,
+            "sessions": 5368,
+            "total_minutes": 8241.8,
             "selection": "total session time = 1-5 min",
             "avg_minutes_per_user": 2.89,
             "sessions_per_user": 1.88,
@@ -46324,6 +46357,14 @@
             "next_data_needed": "None"
           },
           {
+            "area": "Unit Economics",
+            "metric": "LLM cost, cost per active user, and gross margin after AI inference",
+            "status": "Missing source",
+            "coverage_pct": 0,
+            "missing_detail": "No DB table or column currently exposes model name, prompt tokens, completion tokens, request count, provider, or request-level LLM cost.",
+            "next_data_needed": "Add an llm_usage or ai_request_usage table with user_id, chat_session_id, provider, model, prompt_tokens, completion_tokens, request_cost_usd or request_cost_inr, created_at, and status."
+          },
+          {
             "area": "Acquisition",
             "metric": "New user to follow-up to payment conversion",
             "status": "Available",
@@ -46399,7 +46440,7 @@
           },
           {
             "status": "Missing source",
-            "metrics": 1
+            "metrics": 2
           },
           {
             "status": "Partial",
@@ -49865,7 +49906,7 @@
         ],
         "subscription_renewal": {
           "kpis": {
-            "active_paid_subscriptions": 645,
+            "active_paid_subscriptions": 644,
             "trial_active_subscriptions": 0,
             "renewal_due_next_7_days": 28,
             "autopay_ready_users": 25,
@@ -49944,12 +49985,12 @@
             {
               "status": "ACTIVE",
               "subscription_case": "PLAN",
-              "users": 599
+              "users": 598
             },
             {
               "status": "CANCELED",
               "subscription_case": "PLAN_ENDED",
-              "users": 464
+              "users": 465
             },
             {
               "status": "ACTIVE",
@@ -50136,8 +50177,8 @@
           {
             "date": "2026-06-08",
             "plan_code": "All",
-            "active_paid_subscribers": 602,
-            "mrr": 234698.0,
+            "active_paid_subscribers": 601,
+            "mrr": 234199.0,
             "trial_active_subscribers": 0,
             "net_mrr_movement": 0.0
           }
@@ -50146,8 +50187,8 @@
           {
             "date": "2026-06-08",
             "plan_code": "ALL_1_RS",
-            "active_paid_subscribers": 144,
-            "mrr": 71856.0,
+            "active_paid_subscribers": 143,
+            "mrr": 71357.0,
             "trial_active_subscribers": 0
           },
           {
@@ -50243,7 +50284,7 @@
             "config_id": 18,
             "trial_type": "Rs 1 trial",
             "trial_amount": 1,
-            "assigned_users": 47771,
+            "assigned_users": 47777,
             "followup_users": 2047,
             "paywall_shown_users": 1915,
             "trial_cta_users": 764,
@@ -50253,7 +50294,7 @@
             "trial_cta_499_pack_users": 703,
             "main_199_buyers": 2,
             "main_499_buyers": 15,
-            "assigned_to_followup_pct": 4.29,
+            "assigned_to_followup_pct": 4.28,
             "followup_to_paywall_pct": 93.55,
             "paywall_to_trial_cta_pct": 39.9,
             "trial_cta_to_trial_purchase_pct": 26.96,
@@ -50265,7 +50306,7 @@
             "config_id": 20,
             "trial_type": "Rs 49 trial",
             "trial_amount": 49,
-            "assigned_users": 61082,
+            "assigned_users": 61089,
             "followup_users": 2344,
             "paywall_shown_users": 2153,
             "trial_cta_users": 531,
@@ -51123,10 +51164,10 @@
             "followup_events": 21
           },
           {
-            "entity_slug": "mohit",
-            "bot_id": "68792536fcf00df3749da4d9",
-            "bot_name": "Mohit",
-            "entity_label": "Mohit",
+            "entity_slug": "prem",
+            "bot_id": "68792542fcf00df3749da526",
+            "bot_name": "Prem",
+            "entity_label": "Prem",
             "entity_match_type": "slug",
             "followup_events": 11
           }
@@ -51247,12 +51288,12 @@
               "pct": 6.47
             },
             {
-              "bucket": "West Bengal",
+              "bucket": "Rajasthan",
               "users": 570,
               "pct": 5.73
             },
             {
-              "bucket": "Rajasthan",
+              "bucket": "West Bengal",
               "users": 570,
               "pct": 5.73
             },
@@ -51666,15 +51707,15 @@
           },
           {
             "segment": "region",
-            "bucket": "West Bengal",
-            "selection": "region = West Bengal",
+            "bucket": "Rajasthan",
+            "selection": "region = Rajasthan",
             "users": 570,
             "pct": 5.73
           },
           {
             "segment": "region",
-            "bucket": "Rajasthan",
-            "selection": "region = Rajasthan",
+            "bucket": "West Bengal",
+            "selection": "region = West Bengal",
             "users": 570,
             "pct": 5.73
           },
@@ -54393,6 +54434,14 @@
             "next_data_needed": "None"
           },
           {
+            "area": "Unit Economics",
+            "metric": "LLM cost, cost per active user, and gross margin after AI inference",
+            "status": "Missing source",
+            "coverage_pct": 0,
+            "missing_detail": "No DB table or column currently exposes model name, prompt tokens, completion tokens, request count, provider, or request-level LLM cost.",
+            "next_data_needed": "Add an llm_usage or ai_request_usage table with user_id, chat_session_id, provider, model, prompt_tokens, completion_tokens, request_cost_usd or request_cost_inr, created_at, and status."
+          },
+          {
             "area": "Acquisition",
             "metric": "New user to follow-up to payment conversion",
             "status": "Available",
@@ -54468,7 +54517,7 @@
           },
           {
             "status": "Missing source",
-            "metrics": 1
+            "metrics": 2
           },
           {
             "status": "Partial",
@@ -57836,7 +57885,7 @@
         ],
         "subscription_renewal": {
           "kpis": {
-            "active_paid_subscriptions": 665,
+            "active_paid_subscriptions": 664,
             "trial_active_subscriptions": 0,
             "renewal_due_next_7_days": 38,
             "autopay_ready_users": 34,
@@ -57932,12 +57981,12 @@
             {
               "status": "ACTIVE",
               "subscription_case": "PLAN",
-              "users": 617
+              "users": 616
             },
             {
               "status": "CANCELED",
               "subscription_case": "PLAN_ENDED",
-              "users": 482
+              "users": 483
             },
             {
               "status": "ACTIVE",
@@ -58103,8 +58152,8 @@
           {
             "date": "2026-06-09",
             "plan_code": "All",
-            "active_paid_subscribers": 635,
-            "mrr": 249065.0,
+            "active_paid_subscribers": 634,
+            "mrr": 248566.0,
             "trial_active_subscribers": 0,
             "net_mrr_movement": 0.0
           }
@@ -58113,8 +58162,8 @@
           {
             "date": "2026-06-09",
             "plan_code": "ALL_1_RS",
-            "active_paid_subscribers": 163,
-            "mrr": 81337.0,
+            "active_paid_subscribers": 162,
+            "mrr": 80838.0,
             "trial_active_subscribers": 0
           },
           {
@@ -58210,7 +58259,7 @@
             "config_id": 18,
             "trial_type": "Rs 1 trial",
             "trial_amount": 1,
-            "assigned_users": 47771,
+            "assigned_users": 47777,
             "followup_users": 1783,
             "paywall_shown_users": 1650,
             "trial_cta_users": 660,
@@ -58232,7 +58281,7 @@
             "config_id": 20,
             "trial_type": "Rs 49 trial",
             "trial_amount": 49,
-            "assigned_users": 61082,
+            "assigned_users": 61089,
             "followup_users": 2217,
             "paywall_shown_users": 2038,
             "trial_cta_users": 486,
@@ -59054,19 +59103,19 @@
             "followup_events": 14
           },
           {
-            "entity_slug": "mohit",
-            "bot_id": "68792536fcf00df3749da4d9",
-            "bot_name": "Mohit",
-            "entity_label": "Mohit",
-            "entity_match_type": "slug",
-            "followup_events": 10
-          },
-          {
             "entity_slug": "68792540fcf00df3749da51e",
             "bot_id": "68792540fcf00df3749da51e",
             "bot_name": "Moniika",
             "entity_label": "Moniika",
             "entity_match_type": "bot_id",
+            "followup_events": 10
+          },
+          {
+            "entity_slug": "mohit",
+            "bot_id": "68792536fcf00df3749da4d9",
+            "bot_name": "Mohit",
+            "entity_label": "Mohit",
+            "entity_match_type": "slug",
             "followup_events": 10
           },
           {
@@ -59147,12 +59196,12 @@
               "pct": 39.05
             },
             {
-              "bucket": "<18",
+              "bucket": "35-44",
               "users": 837,
               "pct": 8.36
             },
             {
-              "bucket": "35-44",
+              "bucket": "<18",
               "users": 837,
               "pct": 8.36
             },
@@ -59555,15 +59604,15 @@
           },
           {
             "segment": "age_bucket",
-            "bucket": "<18",
-            "selection": "age_bucket = <18",
+            "bucket": "35-44",
+            "selection": "age_bucket = 35-44",
             "users": 837,
             "pct": 8.36
           },
           {
             "segment": "age_bucket",
-            "bucket": "35-44",
-            "selection": "age_bucket = 35-44",
+            "bucket": "<18",
+            "selection": "age_bucket = <18",
             "users": 837,
             "pct": 8.36
           },
@@ -62371,6 +62420,14 @@
             "next_data_needed": "None"
           },
           {
+            "area": "Unit Economics",
+            "metric": "LLM cost, cost per active user, and gross margin after AI inference",
+            "status": "Missing source",
+            "coverage_pct": 0,
+            "missing_detail": "No DB table or column currently exposes model name, prompt tokens, completion tokens, request count, provider, or request-level LLM cost.",
+            "next_data_needed": "Add an llm_usage or ai_request_usage table with user_id, chat_session_id, provider, model, prompt_tokens, completion_tokens, request_cost_usd or request_cost_inr, created_at, and status."
+          },
+          {
             "area": "Acquisition",
             "metric": "New user to follow-up to payment conversion",
             "status": "Available",
@@ -62446,7 +62503,7 @@
           },
           {
             "status": "Missing source",
-            "metrics": 1
+            "metrics": 2
           },
           {
             "status": "Partial",
@@ -65979,7 +66036,7 @@
         ],
         "subscription_renewal": {
           "kpis": {
-            "active_paid_subscriptions": 700,
+            "active_paid_subscriptions": 699,
             "trial_active_subscriptions": 11,
             "renewal_due_next_7_days": 45,
             "autopay_ready_users": 41,
@@ -66083,12 +66140,12 @@
             {
               "status": "ACTIVE",
               "subscription_case": "PLAN",
-              "users": 648
+              "users": 647
             },
             {
               "status": "CANCELED",
               "subscription_case": "PLAN_ENDED",
-              "users": 495
+              "users": 496
             },
             {
               "status": "ACTIVE",
@@ -66364,8 +66421,8 @@
           {
             "date": "2026-06-10",
             "plan_code": "All",
-            "active_paid_subscribers": 659,
-            "mrr": 259541.0,
+            "active_paid_subscribers": 658,
+            "mrr": 259042.0,
             "trial_active_subscribers": 11,
             "net_mrr_movement": 0.0
           }
@@ -66374,8 +66431,8 @@
           {
             "date": "2026-06-10",
             "plan_code": "ALL_1_RS",
-            "active_paid_subscribers": 174,
-            "mrr": 86826.0,
+            "active_paid_subscribers": 173,
+            "mrr": 86327.0,
             "trial_active_subscribers": 0
           },
           {
@@ -66471,7 +66528,7 @@
             "config_id": 18,
             "trial_type": "Rs 1 trial",
             "trial_amount": 1,
-            "assigned_users": 47771,
+            "assigned_users": 47777,
             "followup_users": 1871,
             "paywall_shown_users": 1742,
             "trial_cta_users": 712,
@@ -66493,7 +66550,7 @@
             "config_id": 20,
             "trial_type": "Rs 49 trial",
             "trial_amount": 49,
-            "assigned_users": 61082,
+            "assigned_users": 61090,
             "followup_users": 2123,
             "paywall_shown_users": 1919,
             "trial_cta_users": 465,
@@ -70787,6 +70844,14 @@
             "next_data_needed": "None"
           },
           {
+            "area": "Unit Economics",
+            "metric": "LLM cost, cost per active user, and gross margin after AI inference",
+            "status": "Missing source",
+            "coverage_pct": 0,
+            "missing_detail": "No DB table or column currently exposes model name, prompt tokens, completion tokens, request count, provider, or request-level LLM cost.",
+            "next_data_needed": "Add an llm_usage or ai_request_usage table with user_id, chat_session_id, provider, model, prompt_tokens, completion_tokens, request_cost_usd or request_cost_inr, created_at, and status."
+          },
+          {
             "area": "Acquisition",
             "metric": "New user to follow-up to payment conversion",
             "status": "Available",
@@ -70862,7 +70927,7 @@
           },
           {
             "status": "Missing source",
-            "metrics": 1
+            "metrics": 2
           },
           {
             "status": "Partial",
@@ -74533,7 +74598,7 @@
         ],
         "subscription_renewal": {
           "kpis": {
-            "active_paid_subscriptions": 706,
+            "active_paid_subscriptions": 705,
             "trial_active_subscriptions": 111,
             "renewal_due_next_7_days": 55,
             "autopay_ready_users": 51,
@@ -74645,12 +74710,12 @@
             {
               "status": "ACTIVE",
               "subscription_case": "PLAN",
-              "users": 654
+              "users": 653
             },
             {
               "status": "CANCELED",
               "subscription_case": "PLAN_ENDED",
-              "users": 498
+              "users": 499
             },
             {
               "status": "TRIAL_ACTIVE",
@@ -74931,8 +74996,8 @@
           {
             "date": "2026-06-11",
             "plan_code": "All",
-            "active_paid_subscribers": 695,
-            "mrr": 275405.0,
+            "active_paid_subscribers": 694,
+            "mrr": 274906.0,
             "trial_active_subscribers": 111,
             "net_mrr_movement": 0.0
           }
@@ -74941,8 +75006,8 @@
           {
             "date": "2026-06-11",
             "plan_code": "ALL_1_RS",
-            "active_paid_subscribers": 192,
-            "mrr": 95808.0,
+            "active_paid_subscribers": 191,
+            "mrr": 95309.0,
             "trial_active_subscribers": 0
           },
           {
@@ -75038,7 +75103,7 @@
             "config_id": 18,
             "trial_type": "Rs 1 trial",
             "trial_amount": 1,
-            "assigned_users": 47771,
+            "assigned_users": 47778,
             "followup_users": 1154,
             "paywall_shown_users": 1053,
             "trial_cta_users": 376,
@@ -75060,7 +75125,7 @@
             "config_id": 20,
             "trial_type": "Rs 49 trial",
             "trial_amount": 49,
-            "assigned_users": 61082,
+            "assigned_users": 61090,
             "followup_users": 1318,
             "paywall_shown_users": 1146,
             "trial_cta_users": 212,
@@ -75891,18 +75956,18 @@
             "followup_events": 60
           },
           {
-            "entity_slug": "6879253dfcf00df3749da50c",
-            "bot_id": "6879253dfcf00df3749da50c",
-            "bot_name": "Priyanka",
-            "entity_label": "Priyanka",
-            "entity_match_type": "bot_id",
-            "followup_events": 36
-          },
-          {
             "entity_slug": "68792542fcf00df3749da526",
             "bot_id": "68792542fcf00df3749da526",
             "bot_name": "Prem",
             "entity_label": "Prem",
+            "entity_match_type": "bot_id",
+            "followup_events": 36
+          },
+          {
+            "entity_slug": "6879253dfcf00df3749da50c",
+            "bot_id": "6879253dfcf00df3749da50c",
+            "bot_name": "Priyanka",
+            "entity_label": "Priyanka",
             "entity_match_type": "bot_id",
             "followup_events": 36
           },
@@ -76991,7 +77056,7 @@
             "segment": "age_bucket",
             "bucket": "18-24",
             "day_n": 1,
-            "cohort_users": 33189,
+            "cohort_users": 33190,
             "retained_users": 1840,
             "retention_pct": 5.54
           },
@@ -77009,7 +77074,7 @@
             "segment": "age_bucket",
             "bucket": "<18",
             "day_n": 1,
-            "cohort_users": 7834,
+            "cohort_users": 7833,
             "retained_users": 393,
             "retention_pct": 5.02
           },
@@ -77054,7 +77119,7 @@
             "segment": "age_bucket",
             "bucket": "18-24",
             "day_n": 3,
-            "cohort_users": 33189,
+            "cohort_users": 33190,
             "retained_users": 614,
             "retention_pct": 1.85
           },
@@ -77072,7 +77137,7 @@
             "segment": "age_bucket",
             "bucket": "<18",
             "day_n": 3,
-            "cohort_users": 7834,
+            "cohort_users": 7833,
             "retained_users": 99,
             "retention_pct": 1.26
           },
@@ -77117,7 +77182,7 @@
             "segment": "age_bucket",
             "bucket": "18-24",
             "day_n": 7,
-            "cohort_users": 33189,
+            "cohort_users": 33190,
             "retained_users": 270,
             "retention_pct": 0.81
           },
@@ -77135,7 +77200,7 @@
             "segment": "age_bucket",
             "bucket": "<18",
             "day_n": 7,
-            "cohort_users": 7834,
+            "cohort_users": 7833,
             "retained_users": 50,
             "retention_pct": 0.64
           },
@@ -77342,7 +77407,7 @@
             "segment": "gender",
             "bucket": "female",
             "day_n": 1,
-            "cohort_users": 48575,
+            "cohort_users": 48576,
             "retained_users": 3099,
             "retention_pct": 6.38
           },
@@ -77351,7 +77416,7 @@
             "segment": "gender",
             "bucket": "male",
             "day_n": 1,
-            "cohort_users": 21632,
+            "cohort_users": 21631,
             "retained_users": 1416,
             "retention_pct": 6.55
           },
@@ -77378,7 +77443,7 @@
             "segment": "gender",
             "bucket": "female",
             "day_n": 3,
-            "cohort_users": 48575,
+            "cohort_users": 48576,
             "retained_users": 1039,
             "retention_pct": 2.14
           },
@@ -77387,7 +77452,7 @@
             "segment": "gender",
             "bucket": "male",
             "day_n": 3,
-            "cohort_users": 21632,
+            "cohort_users": 21631,
             "retained_users": 455,
             "retention_pct": 2.1
           },
@@ -77414,7 +77479,7 @@
             "segment": "gender",
             "bucket": "female",
             "day_n": 7,
-            "cohort_users": 48575,
+            "cohort_users": 48576,
             "retained_users": 460,
             "retention_pct": 0.95
           },
@@ -77423,7 +77488,7 @@
             "segment": "gender",
             "bucket": "male",
             "day_n": 7,
-            "cohort_users": 21632,
+            "cohort_users": 21631,
             "retained_users": 224,
             "retention_pct": 1.04
           },
@@ -78635,8 +78700,8 @@
       "engagement": {
         "kpis": {
           "active_users": 5721,
-          "sessions": 19201,
-          "total_minutes": 49552.3,
+          "sessions": 19203,
+          "total_minutes": 49555.7,
           "avg_minutes_per_user": 8.66,
           "avg_minutes_per_session": 2.58,
           "bim_notification_opens": 51,
@@ -78645,9 +78710,9 @@
         "session_daily": [
           {
             "date": "2026-06-11",
-            "sessions": 19201,
+            "sessions": 19203,
             "users": 5721,
-            "total_minutes": 49552.3,
+            "total_minutes": 49555.7,
             "avg_minutes_per_user": 8.66,
             "avg_minutes_per_session": 2.58,
             "sessions_per_user": 3.36
@@ -78656,9 +78721,9 @@
         "session_by_platform": [
           {
             "platform": "android",
-            "sessions": 17245,
+            "sessions": 17247,
             "users": 5208,
-            "total_minutes": 44684.8,
+            "total_minutes": 44688.3,
             "avg_minutes_per_user": 8.58,
             "avg_minutes_per_session": 2.59,
             "sessions_per_user": 3.31
@@ -78677,9 +78742,9 @@
           {
             "date": "2026-06-11",
             "user_cohort": "New user",
-            "sessions": 7849,
+            "sessions": 7850,
             "users": 2569,
-            "total_minutes": 23794.1,
+            "total_minutes": 23797.4,
             "avg_minutes_per_user": 9.26,
             "sessions_per_user": 3.06
           },
@@ -78717,8 +78782,8 @@
           {
             "bucket": "25-34",
             "users": 1885,
-            "sessions": 6309,
-            "total_minutes": 17486.7,
+            "sessions": 6310,
+            "total_minutes": 17489.9,
             "segment": "age_bucket",
             "selection": "age_bucket = 25-34",
             "avg_minutes_per_user": 9.28,
@@ -78794,8 +78859,8 @@
           {
             "bucket": "18.0",
             "users": 1172,
-            "sessions": 4029,
-            "total_minutes": 11554.8,
+            "sessions": 4030,
+            "total_minutes": 11558.1,
             "segment": "config_id",
             "selection": "config_id = 18.0",
             "avg_minutes_per_user": 9.86,
@@ -78893,12 +78958,12 @@
           {
             "bucket": "female",
             "users": 3612,
-            "sessions": 10673,
-            "total_minutes": 28979.5,
+            "sessions": 10674,
+            "total_minutes": 28982.8,
             "segment": "gender",
             "selection": "gender = female",
             "avg_minutes_per_user": 8.02,
-            "sessions_per_user": 2.95,
+            "sessions_per_user": 2.96,
             "user_share_pct": 63.14
           },
           {
@@ -78948,11 +79013,11 @@
           {
             "bucket": "Unknown",
             "users": 5324,
-            "sessions": 15098,
-            "total_minutes": 41285.8,
+            "sessions": 15099,
+            "total_minutes": 41289.1,
             "segment": "marital_status",
             "selection": "marital_status = Unknown",
-            "avg_minutes_per_user": 7.75,
+            "avg_minutes_per_user": 7.76,
             "sessions_per_user": 2.84,
             "user_share_pct": 93.06
           },
@@ -78992,11 +79057,11 @@
           {
             "bucket": "Unknown",
             "users": 5324,
-            "sessions": 15098,
-            "total_minutes": 41285.8,
+            "sessions": 15099,
+            "total_minutes": 41289.1,
             "segment": "occupation",
             "selection": "occupation = Unknown",
-            "avg_minutes_per_user": 7.75,
+            "avg_minutes_per_user": 7.76,
             "sessions_per_user": 2.84,
             "user_share_pct": 93.06
           },
@@ -79047,8 +79112,8 @@
           {
             "bucket": "android",
             "users": 4820,
-            "sessions": 13765,
-            "total_minutes": 37761.1,
+            "sessions": 13766,
+            "total_minutes": 37764.4,
             "segment": "platform",
             "selection": "platform = android",
             "avg_minutes_per_user": 7.83,
@@ -79091,8 +79156,8 @@
           {
             "bucket": "New user",
             "users": 2569,
-            "sessions": 7849,
-            "total_minutes": 23794.1,
+            "sessions": 7850,
+            "total_minutes": 23797.4,
             "segment": "user_cohort",
             "selection": "user_cohort = New user",
             "avg_minutes_per_user": 9.26,
@@ -79124,13 +79189,13 @@
           },
           {
             "bucket": "5-15 min",
-            "users": 1852,
-            "sessions": 5344,
-            "total_minutes": 14384.3,
+            "users": 1851,
+            "sessions": 5341,
+            "total_minutes": 14371.3,
             "selection": "total session time = 5-15 min",
-            "avg_minutes_per_user": 7.77,
+            "avg_minutes_per_user": 7.76,
             "sessions_per_user": 2.89,
-            "user_share_pct": 32.37
+            "user_share_pct": 32.35
           },
           {
             "bucket": "0-1 min",
@@ -79144,13 +79209,13 @@
           },
           {
             "bucket": "15-45 min",
-            "users": 348,
-            "sessions": 2372,
-            "total_minutes": 8870.4,
+            "users": 349,
+            "sessions": 2376,
+            "total_minutes": 8886.7,
             "selection": "total session time = 15-45 min",
-            "avg_minutes_per_user": 25.49,
-            "sessions_per_user": 6.82,
-            "user_share_pct": 6.08
+            "avg_minutes_per_user": 25.46,
+            "sessions_per_user": 6.81,
+            "user_share_pct": 6.1
           },
           {
             "bucket": "45+ min",
@@ -79201,7 +79266,7 @@
         "notification_campaigns": [
           {
             "campaign": "Unknown",
-            "opens": 7712,
+            "opens": 7713,
             "users": 3279,
             "opens_per_user": 2.35,
             "open_share_pct": 99.3
@@ -79271,6 +79336,14 @@
             "coverage_pct": 100,
             "missing_detail": "None",
             "next_data_needed": "None"
+          },
+          {
+            "area": "Unit Economics",
+            "metric": "LLM cost, cost per active user, and gross margin after AI inference",
+            "status": "Missing source",
+            "coverage_pct": 0,
+            "missing_detail": "No DB table or column currently exposes model name, prompt tokens, completion tokens, request count, provider, or request-level LLM cost.",
+            "next_data_needed": "Add an llm_usage or ai_request_usage table with user_id, chat_session_id, provider, model, prompt_tokens, completion_tokens, request_cost_usd or request_cost_inr, created_at, and status."
           },
           {
             "area": "Acquisition",
@@ -79348,7 +79421,7 @@
           },
           {
             "status": "Missing source",
-            "metrics": 1
+            "metrics": 2
           },
           {
             "status": "Partial",
@@ -85876,7 +85949,7 @@
     ],
     "subscription_renewal": {
       "kpis": {
-        "active_paid_subscriptions": 706,
+        "active_paid_subscriptions": 705,
         "trial_active_subscriptions": 111,
         "renewal_due_next_7_days": 55,
         "autopay_ready_users": 51,
@@ -85988,12 +86061,12 @@
         {
           "status": "ACTIVE",
           "subscription_case": "PLAN",
-          "users": 654
+          "users": 653
         },
         {
           "status": "CANCELED",
           "subscription_case": "PLAN_ENDED",
-          "users": 498
+          "users": 499
         },
         {
           "status": "TRIAL_ACTIVE",
@@ -87294,56 +87367,56 @@
       {
         "date": "2026-06-05",
         "plan_code": "All",
-        "active_paid_subscribers": 484,
-        "mrr": 183616.0,
+        "active_paid_subscribers": 483,
+        "mrr": 183117.0,
         "trial_active_subscribers": 111,
         "net_mrr_movement": 0.0
       },
       {
         "date": "2026-06-06",
         "plan_code": "All",
-        "active_paid_subscribers": 527,
-        "mrr": 203273.0,
+        "active_paid_subscribers": 526,
+        "mrr": 202774.0,
         "trial_active_subscribers": 111,
         "net_mrr_movement": 19657.0
       },
       {
         "date": "2026-06-07",
         "plan_code": "All",
-        "active_paid_subscribers": 555,
-        "mrr": 214845.0,
+        "active_paid_subscribers": 554,
+        "mrr": 214346.0,
         "trial_active_subscribers": 111,
         "net_mrr_movement": 11572.0
       },
       {
         "date": "2026-06-08",
         "plan_code": "All",
-        "active_paid_subscribers": 602,
-        "mrr": 234698.0,
+        "active_paid_subscribers": 601,
+        "mrr": 234199.0,
         "trial_active_subscribers": 111,
         "net_mrr_movement": 19853.0
       },
       {
         "date": "2026-06-09",
         "plan_code": "All",
-        "active_paid_subscribers": 635,
-        "mrr": 249065.0,
+        "active_paid_subscribers": 634,
+        "mrr": 248566.0,
         "trial_active_subscribers": 111,
         "net_mrr_movement": 14367.0
       },
       {
         "date": "2026-06-10",
         "plan_code": "All",
-        "active_paid_subscribers": 659,
-        "mrr": 259541.0,
+        "active_paid_subscribers": 658,
+        "mrr": 259042.0,
         "trial_active_subscribers": 111,
         "net_mrr_movement": 10476.0
       },
       {
         "date": "2026-06-11",
         "plan_code": "All",
-        "active_paid_subscribers": 695,
-        "mrr": 275405.0,
+        "active_paid_subscribers": 694,
+        "mrr": 274906.0,
         "trial_active_subscribers": 111,
         "net_mrr_movement": 15864.0
       }
@@ -87352,8 +87425,8 @@
       {
         "date": "2026-06-05",
         "plan_code": "ALL_1_RS",
-        "active_paid_subscribers": 80,
-        "mrr": 39920.0,
+        "active_paid_subscribers": 79,
+        "mrr": 39421.0,
         "trial_active_subscribers": 0
       },
       {
@@ -87380,8 +87453,8 @@
       {
         "date": "2026-06-06",
         "plan_code": "ALL_1_RS",
-        "active_paid_subscribers": 102,
-        "mrr": 50898.0,
+        "active_paid_subscribers": 101,
+        "mrr": 50399.0,
         "trial_active_subscribers": 0
       },
       {
@@ -87408,8 +87481,8 @@
       {
         "date": "2026-06-07",
         "plan_code": "ALL_1_RS",
-        "active_paid_subscribers": 119,
-        "mrr": 59381.0,
+        "active_paid_subscribers": 118,
+        "mrr": 58882.0,
         "trial_active_subscribers": 0
       },
       {
@@ -87436,8 +87509,8 @@
       {
         "date": "2026-06-08",
         "plan_code": "ALL_1_RS",
-        "active_paid_subscribers": 144,
-        "mrr": 71856.0,
+        "active_paid_subscribers": 143,
+        "mrr": 71357.0,
         "trial_active_subscribers": 0
       },
       {
@@ -87464,8 +87537,8 @@
       {
         "date": "2026-06-09",
         "plan_code": "ALL_1_RS",
-        "active_paid_subscribers": 163,
-        "mrr": 81337.0,
+        "active_paid_subscribers": 162,
+        "mrr": 80838.0,
         "trial_active_subscribers": 0
       },
       {
@@ -87492,8 +87565,8 @@
       {
         "date": "2026-06-10",
         "plan_code": "ALL_1_RS",
-        "active_paid_subscribers": 174,
-        "mrr": 86826.0,
+        "active_paid_subscribers": 173,
+        "mrr": 86327.0,
         "trial_active_subscribers": 0
       },
       {
@@ -87520,8 +87593,8 @@
       {
         "date": "2026-06-11",
         "plan_code": "ALL_1_RS",
-        "active_paid_subscribers": 192,
-        "mrr": 95808.0,
+        "active_paid_subscribers": 191,
+        "mrr": 95309.0,
         "trial_active_subscribers": 0
       },
       {
@@ -87595,11 +87668,11 @@
         "date": "2026-06-06",
         "user_type": "non_subscriber",
         "platform": "android",
-        "dau": 4406,
-        "sessions": 6954,
-        "chat_minutes": 22370.0,
+        "dau": 4407,
+        "sessions": 6956,
+        "chat_minutes": 22374.0,
         "call_minutes": 559.0,
-        "total_minutes": 22929.0,
+        "total_minutes": 22933.0,
         "minutes_per_user": 5.2
       },
       {
@@ -87617,12 +87690,12 @@
         "date": "2026-06-06",
         "user_type": "subscriber",
         "platform": "android",
-        "dau": 116,
-        "sessions": 617,
-        "chat_minutes": 3883.0,
+        "dau": 115,
+        "sessions": 615,
+        "chat_minutes": 3879.0,
         "call_minutes": 0.0,
-        "total_minutes": 3883.0,
-        "minutes_per_user": 33.47
+        "total_minutes": 3879.0,
+        "minutes_per_user": 33.73
       },
       {
         "date": "2026-06-06",
@@ -87859,21 +87932,21 @@
     "subscriber_engagement_summary": [
       {
         "user_type": "non_subscriber",
-        "active_users": 32592,
-        "sessions": 56888,
-        "chat_minutes": 175461.0,
+        "active_users": 32593,
+        "sessions": 56890,
+        "chat_minutes": 175465.0,
         "call_minutes": 5730.0,
-        "total_minutes": 181191.0,
+        "total_minutes": 181195.0,
         "minutes_per_user": 5.56
       },
       {
         "user_type": "subscriber",
-        "active_users": 311,
-        "sessions": 6063,
-        "chat_minutes": 30910.0,
+        "active_users": 310,
+        "sessions": 6061,
+        "chat_minutes": 30906.0,
         "call_minutes": 685.0,
-        "total_minutes": 31595.0,
-        "minutes_per_user": 101.59
+        "total_minutes": 31591.0,
+        "minutes_per_user": 101.91
       }
     ],
     "config_funnel": [
@@ -87881,7 +87954,7 @@
         "config_id": 18,
         "trial_type": "Rs 1 trial",
         "trial_amount": 1,
-        "assigned_users": 47770,
+        "assigned_users": 47777,
         "followup_users": 9889,
         "paywall_shown_users": 9641,
         "trial_cta_users": 4690,
@@ -87903,7 +87976,7 @@
         "config_id": 20,
         "trial_type": "Rs 49 trial",
         "trial_amount": 49,
-        "assigned_users": 61081,
+        "assigned_users": 61087,
         "followup_users": 11473,
         "paywall_shown_users": 11047,
         "trial_cta_users": 3073,
@@ -90314,7 +90387,7 @@
         "segment": "age_bucket",
         "bucket": "18-24",
         "day_n": 1,
-        "cohort_users": 44112,
+        "cohort_users": 44113,
         "retained_users": 2414,
         "retention_pct": 5.47
       },
@@ -90332,7 +90405,7 @@
         "segment": "age_bucket",
         "bucket": "<18",
         "day_n": 1,
-        "cohort_users": 10390,
+        "cohort_users": 10389,
         "retained_users": 519,
         "retention_pct": 5.0
       },
@@ -90377,7 +90450,7 @@
         "segment": "age_bucket",
         "bucket": "18-24",
         "day_n": 3,
-        "cohort_users": 44112,
+        "cohort_users": 44113,
         "retained_users": 794,
         "retention_pct": 1.8
       },
@@ -90395,7 +90468,7 @@
         "segment": "age_bucket",
         "bucket": "<18",
         "day_n": 3,
-        "cohort_users": 10390,
+        "cohort_users": 10389,
         "retained_users": 144,
         "retention_pct": 1.39
       },
@@ -90440,7 +90513,7 @@
         "segment": "age_bucket",
         "bucket": "18-24",
         "day_n": 7,
-        "cohort_users": 44112,
+        "cohort_users": 44113,
         "retained_users": 340,
         "retention_pct": 0.77
       },
@@ -90458,7 +90531,7 @@
         "segment": "age_bucket",
         "bucket": "<18",
         "day_n": 7,
-        "cohort_users": 10390,
+        "cohort_users": 10389,
         "retained_users": 69,
         "retention_pct": 0.66
       },
@@ -90665,7 +90738,7 @@
         "segment": "gender",
         "bucket": "female",
         "day_n": 1,
-        "cohort_users": 64806,
+        "cohort_users": 64807,
         "retained_users": 4140,
         "retention_pct": 6.39
       },
@@ -90674,7 +90747,7 @@
         "segment": "gender",
         "bucket": "male",
         "day_n": 1,
-        "cohort_users": 28602,
+        "cohort_users": 28601,
         "retained_users": 1839,
         "retention_pct": 6.43
       },
@@ -90701,7 +90774,7 @@
         "segment": "gender",
         "bucket": "female",
         "day_n": 3,
-        "cohort_users": 64806,
+        "cohort_users": 64807,
         "retained_users": 1362,
         "retention_pct": 2.1
       },
@@ -90710,7 +90783,7 @@
         "segment": "gender",
         "bucket": "male",
         "day_n": 3,
-        "cohort_users": 28602,
+        "cohort_users": 28601,
         "retained_users": 620,
         "retention_pct": 2.17
       },
@@ -90737,7 +90810,7 @@
         "segment": "gender",
         "bucket": "female",
         "day_n": 7,
-        "cohort_users": 64806,
+        "cohort_users": 64807,
         "retained_users": 587,
         "retention_pct": 0.91
       },
@@ -90746,7 +90819,7 @@
         "segment": "gender",
         "bucket": "male",
         "day_n": 7,
-        "cohort_users": 28602,
+        "cohort_users": 28601,
         "retained_users": 275,
         "retention_pct": 0.96
       },
@@ -92019,8 +92092,8 @@
   "engagement": {
     "kpis": {
       "active_users": 34632,
-      "sessions": 154587,
-      "total_minutes": 370036.2,
+      "sessions": 154590,
+      "total_minutes": 370039.8,
       "avg_minutes_per_user": 10.68,
       "avg_minutes_per_session": 2.39,
       "bim_notification_opens": 9822,
@@ -92040,16 +92113,16 @@
         "date": "2026-06-06",
         "sessions": 23307,
         "users": 7291,
-        "total_minutes": 55466.6,
+        "total_minutes": 55466.5,
         "avg_minutes_per_user": 7.61,
         "avg_minutes_per_session": 2.38,
         "sessions_per_user": 3.2
       },
       {
         "date": "2026-06-07",
-        "sessions": 23773,
+        "sessions": 23774,
         "users": 7564,
-        "total_minutes": 57961.4,
+        "total_minutes": 57961.7,
         "avg_minutes_per_user": 7.66,
         "avg_minutes_per_session": 2.44,
         "sessions_per_user": 3.14
@@ -92083,9 +92156,9 @@
       },
       {
         "date": "2026-06-11",
-        "sessions": 19201,
+        "sessions": 19203,
         "users": 5721,
-        "total_minutes": 49552.3,
+        "total_minutes": 49555.7,
         "avg_minutes_per_user": 8.66,
         "avg_minutes_per_session": 2.58,
         "sessions_per_user": 3.36
@@ -92094,9 +92167,9 @@
     "session_by_platform": [
       {
         "platform": "android",
-        "sessions": 140560,
+        "sessions": 140563,
         "users": 32239,
-        "total_minutes": 336651.9,
+        "total_minutes": 336655.6,
         "avg_minutes_per_user": 10.44,
         "avg_minutes_per_session": 2.4,
         "sessions_per_user": 4.36
@@ -92187,9 +92260,9 @@
       {
         "date": "2026-06-07",
         "user_cohort": "Old user",
-        "sessions": 8298,
+        "sessions": 8299,
         "users": 3636,
-        "total_minutes": 16711.9,
+        "total_minutes": 16712.2,
         "avg_minutes_per_user": 4.6,
         "sessions_per_user": 2.28
       },
@@ -92286,9 +92359,9 @@
       {
         "date": "2026-06-11",
         "user_cohort": "New user",
-        "sessions": 10141,
+        "sessions": 10142,
         "users": 3166,
-        "total_minutes": 30051.5,
+        "total_minutes": 30054.8,
         "avg_minutes_per_user": 9.49,
         "sessions_per_user": 3.2
       },
@@ -92326,8 +92399,8 @@
       {
         "bucket": "25-34",
         "users": 10604,
-        "sessions": 47674,
-        "total_minutes": 119831.9,
+        "sessions": 47675,
+        "total_minutes": 119835.1,
         "segment": "age_bucket",
         "selection": "age_bucket = 25-34",
         "avg_minutes_per_user": 11.3,
@@ -92359,8 +92432,8 @@
       {
         "bucket": "35-44",
         "users": 2598,
-        "sessions": 14053,
-        "total_minutes": 33951.6,
+        "sessions": 14054,
+        "total_minutes": 33951.8,
         "segment": "age_bucket",
         "selection": "age_bucket = 35-44",
         "avg_minutes_per_user": 13.07,
@@ -92403,8 +92476,8 @@
       {
         "bucket": "18.0",
         "users": 9837,
-        "sessions": 43321,
-        "total_minutes": 127575.3,
+        "sessions": 43322,
+        "total_minutes": 127578.5,
         "segment": "config_id",
         "selection": "config_id = 18.0",
         "avg_minutes_per_user": 12.97,
@@ -92436,8 +92509,8 @@
       {
         "bucket": "7.0",
         "users": 1519,
-        "sessions": 5888,
-        "total_minutes": 9656.6,
+        "sessions": 5889,
+        "total_minutes": 9656.9,
         "segment": "config_id",
         "selection": "config_id = 7.0",
         "avg_minutes_per_user": 6.36,
@@ -92513,8 +92586,8 @@
       {
         "bucket": "female",
         "users": 21164,
-        "sessions": 82875,
-        "total_minutes": 209026.6,
+        "sessions": 82876,
+        "total_minutes": 209029.8,
         "segment": "gender",
         "selection": "gender = female",
         "avg_minutes_per_user": 9.88,
@@ -92524,8 +92597,8 @@
       {
         "bucket": "male",
         "users": 9203,
-        "sessions": 38096,
-        "total_minutes": 98117.5,
+        "sessions": 38097,
+        "total_minutes": 98117.8,
         "segment": "gender",
         "selection": "gender = male",
         "avg_minutes_per_user": 10.66,
@@ -92568,8 +92641,8 @@
       {
         "bucket": "Unknown",
         "users": 32693,
-        "sessions": 118855,
-        "total_minutes": 302498.3,
+        "sessions": 118857,
+        "total_minutes": 302501.9,
         "segment": "marital_status",
         "selection": "marital_status = Unknown",
         "avg_minutes_per_user": 9.25,
@@ -92612,8 +92685,8 @@
       {
         "bucket": "Unknown",
         "users": 32693,
-        "sessions": 118855,
-        "total_minutes": 302498.3,
+        "sessions": 118857,
+        "total_minutes": 302501.9,
         "segment": "occupation",
         "selection": "occupation = Unknown",
         "avg_minutes_per_user": 9.25,
@@ -92667,8 +92740,8 @@
       {
         "bucket": "android",
         "users": 28984,
-        "sessions": 109956,
-        "total_minutes": 278655.8,
+        "sessions": 109958,
+        "total_minutes": 278659.3,
         "segment": "platform",
         "selection": "platform = android",
         "avg_minutes_per_user": 9.61,
@@ -92700,8 +92773,8 @@
       {
         "bucket": "New user",
         "users": 18995,
-        "sessions": 69244,
-        "total_minutes": 203346.7,
+        "sessions": 69245,
+        "total_minutes": 203350.0,
         "segment": "user_cohort",
         "selection": "user_cohort = New user",
         "avg_minutes_per_user": 10.71,
@@ -92711,8 +92784,8 @@
       {
         "bucket": "Old user",
         "users": 12270,
-        "sessions": 53788,
-        "total_minutes": 106386.3,
+        "sessions": 53789,
+        "total_minutes": 106386.5,
         "segment": "user_cohort",
         "selection": "user_cohort = Old user",
         "avg_minutes_per_user": 8.67,
@@ -92735,8 +92808,8 @@
       {
         "bucket": "1-5 min",
         "users": 13119,
-        "sessions": 27318,
-        "total_minutes": 41042.9,
+        "sessions": 27319,
+        "total_minutes": 41043.2,
         "selection": "total session time = 1-5 min",
         "avg_minutes_per_user": 3.13,
         "sessions_per_user": 2.08,
@@ -92744,13 +92817,13 @@
       },
       {
         "bucket": "5-15 min",
-        "users": 12636,
-        "sessions": 41501,
-        "total_minutes": 97875.2,
+        "users": 12635,
+        "sessions": 41498,
+        "total_minutes": 97862.1,
         "selection": "total session time = 5-15 min",
         "avg_minutes_per_user": 7.75,
         "sessions_per_user": 3.28,
-        "user_share_pct": 36.49
+        "user_share_pct": 36.48
       },
       {
         "bucket": "0-1 min",
@@ -92764,13 +92837,13 @@
       },
       {
         "bucket": "15-45 min",
-        "users": 2339,
-        "sessions": 21352,
-        "total_minutes": 57307.4,
+        "users": 2340,
+        "sessions": 21356,
+        "total_minutes": 57323.7,
         "selection": "total session time = 15-45 min",
         "avg_minutes_per_user": 24.5,
         "sessions_per_user": 9.13,
-        "user_share_pct": 6.75
+        "user_share_pct": 6.76
       },
       {
         "bucket": "45+ min",
@@ -93001,7 +93074,7 @@
     "notification_campaigns": [
       {
         "campaign": "Unknown",
-        "opens": 60788,
+        "opens": 60789,
         "users": 19368,
         "opens_per_user": 3.14,
         "open_share_pct": 85.72
@@ -93071,6 +93144,14 @@
         "coverage_pct": 100,
         "missing_detail": "None",
         "next_data_needed": "None"
+      },
+      {
+        "area": "Unit Economics",
+        "metric": "LLM cost, cost per active user, and gross margin after AI inference",
+        "status": "Missing source",
+        "coverage_pct": 0,
+        "missing_detail": "No DB table or column currently exposes model name, prompt tokens, completion tokens, request count, provider, or request-level LLM cost.",
+        "next_data_needed": "Add an llm_usage or ai_request_usage table with user_id, chat_session_id, provider, model, prompt_tokens, completion_tokens, request_cost_usd or request_cost_inr, created_at, and status."
       },
       {
         "area": "Acquisition",
@@ -93148,7 +93229,7 @@
       },
       {
         "status": "Missing source",
-        "metrics": 1
+        "metrics": 2
       },
       {
         "status": "Partial",

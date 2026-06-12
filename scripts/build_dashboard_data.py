@@ -55,6 +55,7 @@ def dashboard_source_notes() -> list[str]:
         "Acquisition new users come from MySQL users.created_at; login success comes from Mixpanel.",
         "Config funnel paywall shown and trial CTA clicks come from Mixpanel; config, gender, and DOB-derived age buckets come from MySQL users/profiles; subscription purchases come from lifecycle revenue events.",
         "Subscription sheet-style daily funnel, trial cohort conversion, active paid subscriber stock, MRR, and subscriber engagement are rebuilt from MySQL users, subscription_lifecycle_events, customer_subscriptions, and chat_session.",
+        "LLM cost is not calculated yet because the current MySQL schema does not expose model, prompt token, completion token, provider cost, or request-level usage fields.",
         "Subscription renewal readiness comes from customer_subscriptions current period dates and cancel-at-period-end state; true autopay success needs recurring charge result events.",
         "Follow-up entity values are resolved to bot names using chat_session bot_id and normalized bot-name slugs.",
         "Retention uses completed MySQL chat_session activity for new-user cohorts.",
@@ -2736,6 +2737,14 @@ def build_metric_coverage(period_dashboard: dict[str, Any]) -> dict[str, Any]:
             "coverage_pct": 100 if has_subscription_sheet_metrics else 80,
             "missing_detail": "None" if has_subscription_sheet_metrics else "One or more DB-backed subscription workbook sections returned no rows for the selected window.",
             "next_data_needed": "None",
+        },
+        {
+            "area": "Unit Economics",
+            "metric": "LLM cost, cost per active user, and gross margin after AI inference",
+            "status": "Missing source",
+            "coverage_pct": 0,
+            "missing_detail": "No DB table or column currently exposes model name, prompt tokens, completion tokens, request count, provider, or request-level LLM cost.",
+            "next_data_needed": "Add an llm_usage or ai_request_usage table with user_id, chat_session_id, provider, model, prompt_tokens, completion_tokens, request_cost_usd or request_cost_inr, created_at, and status.",
         },
         {
             "area": "Acquisition",
