@@ -569,6 +569,10 @@ function buildMarketingFromRows(rows, data) {
   };
 }
 
+function effectiveMarketingData(data) {
+  return MARKETING_UPLOAD_STATE ? buildMarketingFromRows(MARKETING_UPLOAD_STATE.rows, data) : (data.marketing || {});
+}
+
 function familyLabel(value) {
   return ({
     subscription: "Subscription",
@@ -1395,6 +1399,13 @@ function renderDashboardGuide(data) {
   const selectedWindow = meta.current_window || rootMeta.current_window;
   const sub = familyMetric(data.monetization, "subscription");
   const payg = familyMetric(data.monetization, "pay_as_you_go");
+  const marketing = effectiveMarketingData(data);
+  const marketingKpis = marketing.kpis || {};
+  const marketingFreshness = MARKETING_UPLOAD_STATE ? marketingUploadFreshness(data) : null;
+  const marketingReady = marketing.source_status === "available" || marketing.source_status === "uploaded";
+  const marketingSubtext = marketingFreshness?.stale
+    ? `Upload new CSV for ${shortDate(marketingFreshness.selectedMax)}`
+    : (marketingReady ? `CAC ${formatNullableMoney(marketingKpis.subscriber_cac)}` : "Spend source pending");
   const viewLabel = SELECTED_PERIOD === "daily" ? "Daily view" : "7-day view";
   const executivePeriod = document.getElementById("executivePeriod");
   if (executivePeriod) {
@@ -1411,7 +1422,7 @@ function renderDashboardGuide(data) {
   document.getElementById("businessFlow").innerHTML = [
     flowCard("#monetization", "Monetization", money(m.revenue), `Subscription ${pct(sub.revenue_share_pct)} | PayG ${pct(payg.revenue_share_pct)}`, "good"),
     flowCard("#acquisition", "Acquisition", number(a.new_users), `${pct(a.new_user_to_payment_pct)} new-user payment`),
-    flowCard("#marketing", "Marketing", money((data.marketing?.kpis || {}).spend || 0), (data.marketing?.source_status || "") === "available" ? `CAC ${money((data.marketing?.kpis || {}).subscriber_cac || 0)}` : "Spend source pending"),
+    flowCard("#marketing", "Marketing", money(marketingKpis.spend || 0), marketingSubtext, marketingFreshness?.stale ? "risk" : (marketingReady ? "good" : "neutral")),
     flowCard("#retention", "Retention", pct(r.retention_pct || 0), "Day-1 returning users", Number(r.retention_pct || 0) >= 8 ? "good" : "risk"),
     flowCard("#engagement", "Engagement", `${e.avg_minutes_per_user || 0}m`, `${number(e.sessions)} sessions`),
     flowCard("#coverage", "Data Quality", `${number(availableMetrics)}/${number(coverageRows.length)}`, "metric families ready"),
@@ -2888,7 +2899,7 @@ function marketingCoverageRows(mk) {
 }
 
 function renderMarketing(data) {
-  const mk = MARKETING_UPLOAD_STATE ? buildMarketingFromRows(MARKETING_UPLOAD_STATE.rows, data) : (data.marketing || {});
+  const mk = effectiveMarketingData(data);
   const k = mk.kpis || {};
   const sourceOk = mk.source_status === "available" || mk.source_status === "uploaded";
   const isOverview = mk.marketing_format === "subscription_overview";
@@ -3912,7 +3923,7 @@ function engagementDetail(data) {
 }
 
 function marketingDetail(data) {
-  const mk = MARKETING_UPLOAD_STATE ? buildMarketingFromRows(MARKETING_UPLOAD_STATE.rows, data) : (data.marketing || {});
+  const mk = effectiveMarketingData(data);
   const k = mk.kpis || {};
   const isOverview = mk.marketing_format === "subscription_overview";
   const mappingRows = isOverview ? marketingCoverageRows(mk) : Object.entries(MARKETING_COLUMN_CANDIDATES).map(([metric]) => ({
