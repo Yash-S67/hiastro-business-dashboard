@@ -491,7 +491,9 @@ main {
 }
 
 .band.is-hidden,
-.source-note.is-hidden {
+.source-note.is-hidden,
+.dashboard-guide.is-hidden,
+.insight-strip.is-hidden {
   display: none !important;
 }
 

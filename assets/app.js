@@ -2834,6 +2834,9 @@ function showSectionPage(sectionId, options = {}) {
   document.querySelectorAll(".source-note").forEach((section) => {
     section.classList.toggle("is-hidden", id !== "coverage");
   });
+  document.querySelectorAll(".dashboard-guide, .insight-strip").forEach((section) => {
+    section.classList.toggle("is-hidden", id !== "monetization");
+  });
   document.querySelectorAll(".section-nav a").forEach((link) => {
     link.classList.toggle("active", link.getAttribute("href") === `#${id}`);
   });
