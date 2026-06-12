@@ -484,18 +484,26 @@ function setupDayDownloadControls() {
   }
   const defaultDay = days[days.length - 1];
   if (!SELECTED_DAY || !days.includes(SELECTED_DAY)) SELECTED_DAY = defaultDay;
-  controls.innerHTML = `
-    <select id="downloadDaySelect" aria-label="Day to download">
-      ${days.map((day) => `<option value="${escapeHtml(day)}"${day === SELECTED_DAY ? " selected" : ""}>${escapeHtml(shortDate(day))}</option>`).join("")}
-    </select>
-    <button type="button" id="downloadDayCsv">Download CSV</button>
-  `;
-  document.getElementById("downloadDaySelect").addEventListener("change", (event) => {
-    SELECTED_DAY = event.target.value;
+  const applySelectedDay = (day) => {
+    if (!days.includes(day)) return;
+    SELECTED_DAY = day;
     SELECTED_PERIOD = "daily";
     setupPeriodControls();
     setupDayDownloadControls();
     renderDashboard();
+  };
+  controls.innerHTML = `
+    <select id="downloadDaySelect" aria-label="Day to download">
+      ${days.map((day) => `<option value="${escapeHtml(day)}"${day === SELECTED_DAY ? " selected" : ""}>${escapeHtml(shortDate(day))}</option>`).join("")}
+    </select>
+    <input id="customDayInput" type="date" min="${escapeHtml(days[0])}" max="${escapeHtml(days[days.length - 1])}" value="${escapeHtml(SELECTED_DAY)}" aria-label="Custom daily date" />
+    <button type="button" id="downloadDayCsv">Download CSV</button>
+  `;
+  document.getElementById("downloadDaySelect").addEventListener("change", (event) => {
+    applySelectedDay(event.target.value);
+  });
+  document.getElementById("customDayInput").addEventListener("change", (event) => {
+    applySelectedDay(event.target.value);
   });
   document.getElementById("downloadDayCsv").addEventListener("click", () => {
     const day = document.getElementById("downloadDaySelect").value;
@@ -869,9 +877,9 @@ function renderMonetization(data) {
   const main499RevenueShare = safePercent(main499.revenue, mainRevenue);
   const main199RevenueShare = safePercent(main199.revenue, mainRevenue);
   const trialToMainPct = safePercent(mainBuyers, trialBuyers);
-  const bestConversionPlan = [...subscriptionPlans]
-    .filter((row) => Number(row.trial_buyers || 0) >= 10)
-    .sort((a, b) => Number(b.main_to_trial_buyer_pct || 0) - Number(a.main_to_trial_buyer_pct || 0))[0] || {};
+  const bestFollowupTrialPlan = [...subscriptionPlans]
+    .filter((row) => Number(row.followup_users || 0) > 0)
+    .sort((a, b) => Number(b.followup_to_trial_pct || 0) - Number(a.followup_to_trial_pct || 0))[0] || {};
   const bestFollowupMainPlan = [...subscriptionPlans]
     .filter((row) => Number(row.followup_users || 0) > 0)
     .sort((a, b) => Number(b.followup_to_main_pct || 0) - Number(a.followup_to_main_pct || 0))[0] || {};
@@ -891,18 +899,18 @@ function renderMonetization(data) {
     card("Main Buyers", number(mainBuyers), `${pct(trialToMainPct)} of trial buyers | ${money(mainRevenue)}`),
   ].join("");
   document.getElementById("subscriptionConversionCards").innerHTML = [
-    actionCard("Trial to Main", pct(trialToMainPct), `${number(mainBuyers)} main buyers from ${number(trialBuyers)} trial buyers`, trialToMainPct >= 20 ? "good" : "risk"),
+    actionCard("Same-Period Main / Trial", pct(trialToMainPct), `${number(mainBuyers)} main buyers and ${number(trialBuyers)} trial buyers in this window`, "neutral"),
     actionCard("Rs 499 Main Share", pct(main499BuyerShare), `${number(main499.payers)} users | ${pct(main499RevenueShare)} of main revenue`, main499BuyerShare >= main199BuyerShare ? "good" : "neutral"),
-    actionCard("Best Plan Conversion", bestConversionPlan.plan_code || "-", `${pct(bestConversionPlan.main_to_trial_buyer_pct)} main/trial | ${number(bestConversionPlan.main_buyers)} main buyers`, "good"),
-    actionCard("Best Follow-up to Main", bestFollowupMainPlan.plan_code || "-", `${pct(bestFollowupMainPlan.followup_to_main_pct)} follow-up/main | ${pct(bestFollowupMainPlan.followup_to_trial_pct)} follow-up/trial`, "neutral"),
+    actionCard("Best Follow-up to Trial", bestFollowupTrialPlan.plan_code || "-", `${pct(bestFollowupTrialPlan.followup_to_trial_pct)} follow-up to trial | ${number(bestFollowupTrialPlan.trial_buyers)} trial buyers`, "good"),
+    actionCard("Best Follow-up to Main", bestFollowupMainPlan.plan_code || "-", `${pct(bestFollowupMainPlan.followup_to_main_pct)} follow-up to main | ${number(bestFollowupMainPlan.main_buyers)} main buyers`, "good"),
   ].join("");
 
   document.getElementById("packPerformanceCards").innerHTML = [
     card("Rs 499 Main Users", number(main499.payers), `${money(main499.revenue)} | ${number(main499.transactions)} txns`),
     card("Rs 199 Main Users", number(main199.payers), `${money(main199.revenue)} | ${number(main199.transactions)} txns`),
     card("Rs 499 vs 199", `${number(main499.payers)} / ${number(main199.payers)}`, `${pct(main499BuyerShare)} / ${pct(main199BuyerShare)} of main buyers`),
-    card("Best Sub Plan", topPlan.plan_code || "No plan", `${money(topPlan.revenue)} | ${pct(topPlan.main_to_trial_buyer_pct)} main/trial`),
-    card("Sub Main Buyers", number(mainBuyers), `${pct(trialToMainPct)} converted from trial`),
+    card("Top Revenue Plan", topPlan.plan_code || "No plan", `${money(topPlan.revenue)} | ${pct(topPlan.followup_to_main_pct)} follow-up to main`),
+    card("Sub Main Buyers", number(mainBuyers), `${pct(trialToMainPct)} same-period main/trial`),
     card("Sub Trial Buyers", number(trialBuyers), `${money(trialRevenue)} trial revenue`),
     card("Merged PayG", money(paygMerged.revenue), `${number(paygMerged.payers)} payers | ${trend(paygMerged.revenue_growth_vs_prior_7_pct)} vs prev`),
     card("Top Wallet Amount", optionalMoney(topWalletAmount.amount), `${money(topWalletAmount.revenue)} | ${number(topWalletAmount.transactions)} txns`),
@@ -1064,7 +1072,7 @@ function renderMonetization(data) {
     { key: "followup_users", label: "Follow-up Users", format: number },
     { key: "followup_to_trial_pct", label: "Follow-up to Trial", format: pct },
     { key: "followup_to_main_pct", label: "Follow-up to Main", format: pct },
-    { key: "main_to_trial_buyer_pct", label: "Main / Trial", format: pct },
+    { key: "main_to_trial_buyer_pct", label: "Same-Period Main / Trial", format: pct },
   ], 20);
 
   table("subscriptionStageTable", subscriptionStages, [
@@ -1214,6 +1222,16 @@ function renderMonetization(data) {
   }, {});
   const bestTrialConfig = [...configRows].sort((a, b) => Number(b.followup_to_trial_pct || 0) - Number(a.followup_to_trial_pct || 0))[0] || {};
   const bestMainConfig = [...configRows].sort((a, b) => Number(b.trial_to_main_pct || 0) - Number(a.trial_to_main_pct || 0))[0] || {};
+  const mainPackFollowupRows = configRows.map((row) => ({
+    trial_type: row.trial_type,
+    followup_users: row.followup_users,
+    main_199_buyers: row.main_199_buyers,
+    main_499_buyers: row.main_499_buyers,
+    followup_to_199_main_pct: safePercent(row.main_199_buyers, row.followup_users),
+    followup_to_499_main_pct: safePercent(row.main_499_buyers, row.followup_users),
+    main_199_share_pct: safePercent(row.main_199_buyers, Number(row.main_199_buyers || 0) + Number(row.main_499_buyers || 0)),
+    main_499_share_pct: safePercent(row.main_499_buyers, Number(row.main_199_buyers || 0) + Number(row.main_499_buyers || 0)),
+  }));
   const rs1Flow = configRows.find((row) => Number(row.trial_amount) === 1) || {};
   const rs49Flow = configRows.find((row) => Number(row.trial_amount) === 49) || {};
   const renderTrialFlow = (row) => [
@@ -1235,6 +1253,11 @@ function renderMonetization(data) {
     actionCard("Best Trial Flow", bestTrialConfig.trial_type || "-", `${pct(bestTrialConfig.followup_to_trial_pct)} follow-up to trial`, "good"),
     actionCard("Best Main Conversion", bestMainConfig.trial_type || "-", `${pct(bestMainConfig.trial_to_main_pct)} trial to main`, "good"),
     actionCard("Main Pack Split", `${number(funnelTotals.main_499_buyers)} / ${number(funnelTotals.main_199_buyers)}`, "Rs 499 buyers / Rs 199 buyers", "neutral"),
+  ].join("");
+  document.getElementById("mainPackFollowupCards").innerHTML = [
+    actionCard("Rs 499 Follow-up to Main", pct(safePercent(funnelTotals.main_499_buyers, funnelTotals.followup_users)), `${number(funnelTotals.main_499_buyers)} buyers from ${number(funnelTotals.followup_users)} follow-up users`, "good"),
+    actionCard("Rs 199 Follow-up to Main", pct(safePercent(funnelTotals.main_199_buyers, funnelTotals.followup_users)), `${number(funnelTotals.main_199_buyers)} buyers from ${number(funnelTotals.followup_users)} follow-up users`, "neutral"),
+    actionCard("499 vs 199 Main Buyers", `${number(funnelTotals.main_499_buyers)} / ${number(funnelTotals.main_199_buyers)}`, `${pct(safePercent(funnelTotals.main_499_buyers, Number(funnelTotals.main_199_buyers || 0) + Number(funnelTotals.main_499_buyers || 0)))} of main buyers are Rs 499`, "neutral"),
   ].join("");
   document.getElementById("rs1TrialFlowCards").innerHTML = renderTrialFlow(rs1Flow);
   document.getElementById("rs49TrialFlowCards").innerHTML = renderTrialFlow(rs49Flow);
@@ -1275,6 +1298,28 @@ function renderMonetization(data) {
     plugins: { title: { display: true, text: "Rs 1 vs Rs 49 Conversion Comparison" }, legend: { position: "bottom" } },
     scales: { x: { grid: { display: false } }, y: { beginAtZero: true, max: 100, grid: { color: "#eef2f6" } } },
   });
+
+  chart("mainPackFollowupChart", "bar", {
+    labels: mainPackFollowupRows.map((row) => row.trial_type),
+    datasets: [
+      { label: "Rs 499 follow-up to main %", data: mainPackFollowupRows.map((row) => row.followup_to_499_main_pct), backgroundColor: COLORS.blue },
+      { label: "Rs 199 follow-up to main %", data: mainPackFollowupRows.map((row) => row.followup_to_199_main_pct), backgroundColor: COLORS.gold },
+    ],
+  }, {
+    plugins: { title: { display: true, text: "Rs 199 vs Rs 499 Follow-up to Main Conversion" }, legend: { position: "bottom" } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Follow-up to main %" } } },
+  });
+
+  table("mainPackFollowupTable", mainPackFollowupRows, [
+    { key: "trial_type", label: "Trial Pack", text: true },
+    { key: "followup_users", label: "Follow-up", format: number },
+    { key: "main_499_buyers", label: "Rs 499 Buyers", format: number },
+    { key: "followup_to_499_main_pct", label: "Follow-up to Rs 499", format: pct },
+    { key: "main_499_share_pct", label: "Rs 499 Main Share", format: pct },
+    { key: "main_199_buyers", label: "Rs 199 Buyers", format: number },
+    { key: "followup_to_199_main_pct", label: "Follow-up to Rs 199", format: pct },
+    { key: "main_199_share_pct", label: "Rs 199 Main Share", format: pct },
+  ], 10);
 
   table("configFunnelTable", m.config_funnel, [
     { key: "config_id", label: "Config ID", text: true },
@@ -1385,10 +1430,10 @@ function renderMonetization(data) {
     datasets: [
       { label: "Follow-up to trial %", data: planFunnelRows.map((row) => row.followup_to_trial_pct), backgroundColor: COLORS.teal },
       { label: "Follow-up to main %", data: planFunnelRows.map((row) => row.followup_to_main_pct), backgroundColor: COLORS.green },
-      { label: "Main / trial %", data: planFunnelRows.map((row) => row.main_to_trial_buyer_pct), backgroundColor: COLORS.gold },
+      { label: "Same-period main / trial %", data: planFunnelRows.map((row) => row.main_to_trial_buyer_pct), backgroundColor: COLORS.gold },
     ],
   }, {
-    plugins: { title: { display: true, text: "Plan-Level Subscription Conversion" }, legend: { position: "bottom" } },
+    plugins: { title: { display: true, text: "Plan-Level Follow-up Conversion" }, legend: { position: "bottom" } },
     scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#eef2f6" }, title: { display: true, text: "Conversion %" } } },
   });
 
@@ -1401,7 +1446,7 @@ function renderMonetization(data) {
     { key: "main_buyers", label: "Main Buyers", format: number },
     { key: "followup_to_trial_pct", label: "Follow-up to Trial", format: pct },
     { key: "followup_to_main_pct", label: "Follow-up to Main", format: pct },
-    { key: "main_to_trial_buyer_pct", label: "Main / Trial", format: pct },
+    { key: "main_to_trial_buyer_pct", label: "Same-Period Main / Trial", format: pct },
   ], 20);
 
   table("dailyFunnelTrendTable", dailyFunnelDetail, [

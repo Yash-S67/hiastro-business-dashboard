@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HiAstro Business Dashboard</title>
-    <link rel="stylesheet" href="assets/styles.css?v=20260611-funnel-graphs" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260611-custom-date-main-pack" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -226,6 +226,7 @@
           </div>
           <div class="funnel-strip funnel-strip-wide" id="monetizationFunnelSummary"></div>
           <div class="action-grid" id="monetizationFunnelCards"></div>
+          <div class="action-grid" id="mainPackFollowupCards"></div>
           <div class="grid two">
             <div class="panel">
               <h3>Rs 1 Trial Flow</h3>
@@ -263,6 +264,13 @@
           <div class="grid two">
             <div class="panel"><canvas id="funnelDropoffChart"></canvas></div>
             <div class="panel"><canvas id="planFollowupConversionBar"></canvas></div>
+          </div>
+          <div class="grid two">
+            <div class="panel"><canvas id="mainPackFollowupChart"></canvas></div>
+            <div class="panel">
+              <h3>Rs 199 vs Rs 499 Follow-up to Main</h3>
+              <div id="mainPackFollowupTable"></div>
+            </div>
           </div>
           <div class="grid two">
             <div class="panel">
@@ -542,6 +550,6 @@
       </section>
     </main>
 
-    <script src="assets/app.js?v=20260611-funnel-graphs"></script>
+    <script src="assets/app.js?v=20260611-custom-date-main-pack"></script>
   </body>
 </html>

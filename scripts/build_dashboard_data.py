@@ -2472,15 +2472,17 @@ def main() -> None:
     latest_complete_day = today_ist - timedelta(days=1)
     current_end = latest_complete_day
     weekly_start = current_end - timedelta(days=6)
+    daily_history_days = max(7, min(31, int(env.get("DASHBOARD_DAILY_HISTORY_DAYS", "7"))))
+    daily_start = current_end - timedelta(days=daily_history_days - 1)
     period_ranges = {
         "daily": make_ranges("daily", current_end, current_end),
         "weekly": make_ranges("weekly", weekly_start, current_end),
     }
-    for day in day_range(weekly_start, current_end):
+    for day in day_range(daily_start, current_end):
         day_value = date.fromisoformat(day)
         period_ranges[f"daily_{day}"] = make_ranges("daily", day_value, day_value)
-    mixpanel_start = period_ranges["weekly"]["current_start"]
-    sql_lookup_start = period_ranges["weekly"]["prior_30_start"]
+    mixpanel_start = daily_start
+    sql_lookup_start = min(ranges["prior_30_start"] for ranges in period_ranges.values())
 
     mixpanel_events = fetch_mixpanel_events(
         env,
@@ -2517,7 +2519,7 @@ def main() -> None:
             "label": datetime.fromisoformat(day).strftime("%d %b"),
             **periods[f"daily_{day}"]["metadata"],
         }
-        for day in day_range(weekly_start, current_end)
+        for day in day_range(daily_start, current_end)
     ]
 
     dashboard = {
@@ -2532,6 +2534,7 @@ def main() -> None:
                 {"id": "weekly", "label": "Weekly", **periods["weekly"]["metadata"]},
             ],
             "daily_periods": daily_periods,
+            "daily_history_days": daily_history_days,
             "timezone": "Asia/Kolkata",
             "data_retention_policy": {
                 "storage": "Latest aggregate dashboard JSON only",
@@ -2540,6 +2543,8 @@ def main() -> None:
             },
             "source_notes": [
                 "Subscription revenue comes from MySQL subscription_lifecycle_events where revenue_recorded = 1 and charge_amount > 0, joined to subscription_plans.",
+                "Plan-level Main / Trial is a same-period movement ratio, not a user-level cohort conversion; use Follow-up to Main for pack funnel comparison.",
+                "Custom daily date selection uses preloaded daily dashboard periods from the latest refresh; increase DASHBOARD_DAILY_HISTORY_DAYS before refresh to preload more past dates.",
                 "Pay as you go means successful ADD_MONEY wallet payment orders.",
                 "Customized day pass revenue comes from MySQL customer_day_pass joined to day_pass_config.",
                 "Acquisition new users come from MySQL users.created_at; login success comes from Mixpanel.",
