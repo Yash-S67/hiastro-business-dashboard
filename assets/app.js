@@ -106,6 +106,17 @@ const MARKETING_COLUMN_CANDIDATES = {
   sub_revenue: ["sub_revenue", "subscription_revenue"],
   dau: ["dau"],
   subscriber_dau: ["subscriber_dau"],
+  all_d1_retention: ["all_d1_retention", "d1_retention", "all_d1"],
+  all_d3_retention: ["all_d3_retention", "d3_retention", "all_d3"],
+  all_d7_retention: ["all_d7_retention", "d7_retention", "all_d7"],
+  sub_d1_retention: ["sub_d1_retention", "subscriber_d1_retention", "sub_d1"],
+  sub_d3_retention: ["sub_d3_retention", "subscriber_d3_retention", "sub_d3"],
+  sub_d7_retention: ["sub_d7_retention", "subscriber_d7_retention", "sub_d7"],
+  arpu_subs: ["arpu_per_subs", "arpu_subs", "arpu"],
+  arpu_subs_excl_trials: ["arpu_per_subs_excl_trials", "arpu_subs_excl_trials", "arpu_excl_trials"],
+  mix_499: ["499_mix", "rs_499_mix", "paid_499_mix"],
+  reported_trial_cac: ["trial_cac"],
+  reported_subscriber_cac: ["subscriber_cac", "sub_cac"],
 };
 const TABLE_FILTERS = {
   payerSegment: { segment: "all", limit: 25 },
@@ -376,6 +387,17 @@ function buildMarketingFromRows(rows, data) {
         sub_revenue: mapping.sub_revenue ? numericValue(row[mapping.sub_revenue]) : 0,
         dau: mapping.dau ? numericValue(row[mapping.dau]) : 0,
         subscriber_dau: mapping.subscriber_dau ? numericValue(row[mapping.subscriber_dau]) : 0,
+        all_d1_retention: mapping.all_d1_retention ? numericValue(row[mapping.all_d1_retention]) : 0,
+        all_d3_retention: mapping.all_d3_retention ? numericValue(row[mapping.all_d3_retention]) : 0,
+        all_d7_retention: mapping.all_d7_retention ? numericValue(row[mapping.all_d7_retention]) : 0,
+        sub_d1_retention: mapping.sub_d1_retention ? numericValue(row[mapping.sub_d1_retention]) : 0,
+        sub_d3_retention: mapping.sub_d3_retention ? numericValue(row[mapping.sub_d3_retention]) : 0,
+        sub_d7_retention: mapping.sub_d7_retention ? numericValue(row[mapping.sub_d7_retention]) : 0,
+        arpu_subs: mapping.arpu_subs ? numericValue(row[mapping.arpu_subs]) : 0,
+        arpu_subs_excl_trials: mapping.arpu_subs_excl_trials ? numericValue(row[mapping.arpu_subs_excl_trials]) : 0,
+        mix_499: mapping.mix_499 ? numericValue(row[mapping.mix_499]) : 0,
+        reported_trial_cac: mapping.reported_trial_cac ? numericValue(row[mapping.reported_trial_cac]) : 0,
+        reported_subscriber_cac: mapping.reported_subscriber_cac ? numericValue(row[mapping.reported_subscriber_cac]) : 0,
       };
     })
     .filter((row) => dateSet.has(row.date));
@@ -393,7 +415,8 @@ function buildMarketingFromRows(rows, data) {
     };
   }
 
-  const daily = addMarketingRates(sumRows(parsedRows, ["date"], ["spend", "subscription_spend", "installs", "impressions", "clicks", "monetization_config_sub_pct", "subscription_new_logins", "new_logins", "trials", "trials_1", "trials_49", "subscribers", "paid_subs_199", "paid_subs_499", "paid_upgrades_300", "revenue", "trial_revenue", "sub_revenue", "dau", "subscriber_dau"])
+  const overviewValueKeys = ["spend", "subscription_spend", "installs", "impressions", "clicks", "monetization_config_sub_pct", "subscription_new_logins", "new_logins", "trials", "trials_1", "trials_49", "subscribers", "paid_subs_199", "paid_subs_499", "paid_upgrades_300", "revenue", "trial_revenue", "sub_revenue", "dau", "subscriber_dau", "all_d1_retention", "all_d3_retention", "all_d7_retention", "sub_d1_retention", "sub_d3_retention", "sub_d7_retention", "arpu_subs", "arpu_subs_excl_trials", "mix_499", "reported_trial_cac", "reported_subscriber_cac"];
+  const daily = addMarketingRates(sumRows(parsedRows, ["date"], overviewValueKeys)
     .map((row) => {
       const dashboardRow = dashboardTotals[row.date] || {};
       return {
@@ -405,21 +428,32 @@ function buildMarketingFromRows(rows, data) {
       };
     }))
     .sort((a, b) => String(a.date).localeCompare(String(b.date)));
-  const campaignRows = addMarketingRates(sumRows(parsedRows, ["campaign", "campaign_type", "campaign_id"], ["spend", "subscription_spend", "installs", "impressions", "clicks", "new_logins", "trials", "trials_1", "trials_49", "subscribers", "paid_subs_199", "paid_subs_499", "paid_upgrades_300", "revenue", "trial_revenue", "sub_revenue"]))
-    .sort((a, b) => Number(b.spend || 0) - Number(a.spend || 0));
-  const platformRows = addMarketingRates(sumRows(parsedRows, ["platform"], ["spend", "subscription_spend", "installs", "impressions", "clicks", "new_logins", "trials", "trials_1", "trials_49", "subscribers", "paid_subs_199", "paid_subs_499", "paid_upgrades_300", "revenue", "trial_revenue", "sub_revenue"]))
-    .sort((a, b) => Number(b.spend || 0) - Number(a.spend || 0));
+  const hasCampaignDimension = Boolean(mapping.campaign || mapping.campaign_type || mapping.campaign_id);
+  const hasPlatformDimension = Boolean(mapping.platform);
+  const isOverviewFormat = !hasCampaignDimension && !hasPlatformDimension && Boolean(mapping.subscription_spend || mapping.trials_1 || mapping.paid_subs_499 || mapping.arpu_subs);
+  const campaignRows = hasCampaignDimension
+    ? addMarketingRates(sumRows(parsedRows, ["campaign", "campaign_type", "campaign_id"], overviewValueKeys))
+      .sort((a, b) => Number(b.spend || 0) - Number(a.spend || 0))
+    : [];
+  const platformRows = hasPlatformDimension
+    ? addMarketingRates(sumRows(parsedRows, ["platform"], overviewValueKeys))
+      .sort((a, b) => Number(b.spend || 0) - Number(a.spend || 0))
+    : [];
   const total = daily.reduce((acc, row) => {
-    ["spend", "subscription_spend", "installs", "impressions", "clicks", "subscription_new_logins", "new_logins", "trials", "trials_1", "trials_49", "subscribers", "paid_subs_199", "paid_subs_499", "paid_upgrades_300", "revenue", "trial_revenue", "sub_revenue", "dau", "subscriber_dau"].forEach((key) => {
+    overviewValueKeys.forEach((key) => {
       acc[key] = Number(acc[key] || 0) + Number(row[key] || 0);
     });
     return acc;
   }, {});
   const spendBase = Number(total.subscription_spend || 0) > 0 ? Number(total.subscription_spend || 0) : Number(total.spend || 0);
+  const latestDaily = daily[daily.length - 1] || {};
+  const mappedCount = Object.values(mapping).filter(Boolean).length;
+  const requiredOverviewCount = ["date", "spend", "subscription_spend", "new_logins", "trials", "subscribers", "revenue"].filter((key) => mapping[key]).length;
   return {
     source_status: "uploaded",
+    marketing_format: isOverviewFormat ? "subscription_overview" : "campaign",
     source_message: mapping.revenue
-      ? "Uploaded CSV is powering marketing spend and attributed revenue metrics for this browser session."
+      ? (isOverviewFormat ? "Uploaded Subscription Overview CSV is powering marketing spend, subscription funnel, retention, ARPU, CAC, and revenue metrics for this browser session." : "Uploaded CSV is powering marketing spend and attributed revenue metrics for this browser session.")
       : "Uploaded CSV is powering spend/click/install metrics. CAC and ROAS use total dashboard conversions and revenue for the same selected dates because campaign-level conversion columns were not present.",
     kpis: {
       spend: total.spend || 0,
@@ -432,6 +466,25 @@ function buildMarketingFromRows(rows, data) {
       cpi: safeRatioValue(total.spend, total.installs),
       trial_cac: safeRatioValue(spendBase, total.trials),
       subscriber_cac: safeRatioValue(spendBase, total.subscribers),
+      trials: total.trials || 0,
+      trials_1: total.trials_1 || 0,
+      trials_49: total.trials_49 || 0,
+      subscribers: total.subscribers || 0,
+      paid_subs_199: total.paid_subs_199 || 0,
+      paid_subs_499: total.paid_subs_499 || 0,
+      paid_upgrades_300: total.paid_upgrades_300 || 0,
+      trial_revenue: total.trial_revenue || 0,
+      sub_revenue: total.sub_revenue || 0,
+      mix_499_pct: safePercent(total.paid_subs_499, total.subscribers),
+      latest_499_mix_pct: latestDaily.mix_499 || safePercent(latestDaily.paid_subs_499, latestDaily.subscribers),
+      avg_arpu_subs: safeRatioValue(total.revenue, total.subscribers),
+      avg_arpu_subs_excl_trials: safeRatioValue(total.sub_revenue, total.subscribers),
+      latest_arpu_subs: latestDaily.arpu_subs || null,
+      latest_arpu_subs_excl_trials: latestDaily.arpu_subs_excl_trials || null,
+      latest_all_d1_retention: latestDaily.all_d1_retention || null,
+      latest_sub_d1_retention: latestDaily.sub_d1_retention || null,
+      mapped_fields: mappedCount,
+      overview_required_fields: requiredOverviewCount,
       roas_pct: safePercent(total.revenue, total.spend),
       payback_days: total.revenue ? Number(((total.spend / total.revenue) * daily.length).toFixed(1)) : null,
     },
@@ -2726,25 +2779,62 @@ function renderAcquisition(data) {
   });
 }
 
+function marketingPlanRows(k) {
+  return [
+    { metric: "Trials @ Re 1", users: k.trials_1 || 0, share_pct: safePercent(k.trials_1, k.trials), note: "Share of trial starts" },
+    { metric: "Trials @ Rs 49", users: k.trials_49 || 0, share_pct: safePercent(k.trials_49, k.trials), note: "Share of trial starts" },
+    { metric: "Paid Subs @ 199", users: k.paid_subs_199 || 0, share_pct: safePercent(k.paid_subs_199, k.subscribers), note: "Share of paid subs" },
+    { metric: "Paid Subs @ 499", users: k.paid_subs_499 || 0, share_pct: safePercent(k.paid_subs_499, k.subscribers), note: "Share of paid subs" },
+    { metric: "Paid upgrades @ 300", users: k.paid_upgrades_300 || 0, share_pct: safePercent(k.paid_upgrades_300, k.subscribers), note: "Upgrade count" },
+  ];
+}
+
+function marketingCoverageRows(mk) {
+  const groups = [
+    ["Core", ["date", "installs", "spend", "subscription_spend", "new_logins", "subscription_new_logins"]],
+    ["Subscription Funnel", ["trials", "trials_1", "trials_49", "subscribers", "paid_subs_199", "paid_subs_499", "paid_upgrades_300"]],
+    ["Revenue", ["revenue", "trial_revenue", "sub_revenue", "arpu_subs", "arpu_subs_excl_trials", "mix_499"]],
+    ["Engagement / Retention", ["dau", "subscriber_dau", "all_d1_retention", "all_d3_retention", "all_d7_retention", "sub_d1_retention", "sub_d3_retention", "sub_d7_retention"]],
+  ];
+  return groups.flatMap(([group, keys]) => keys.map((key) => ({
+    metric: `${group}: ${key.replaceAll("_", " ")}`,
+    csv_column: mk.mapping?.[key] || "Not present",
+    status: mk.mapping?.[key] ? "Mapped" : "Missing",
+  })));
+}
+
 function renderMarketing(data) {
   const mk = MARKETING_UPLOAD_STATE ? buildMarketingFromRows(MARKETING_UPLOAD_STATE.rows, data) : (data.marketing || {});
   const k = mk.kpis || {};
   const sourceOk = mk.source_status === "available" || mk.source_status === "uploaded";
+  const isOverview = mk.marketing_format === "subscription_overview";
   setupMarketingUploadControls(data);
   document.getElementById("marketingNote").textContent = sourceOk
-    ? (mk.source_status === "uploaded" ? "Campaign spend is loaded from your uploaded CSV for this browser session." : "Campaign spend is loaded from the configured daily Campaign Data feed.")
+    ? (isOverview ? "Subscription Overview CSV is powering spend, subscription funnel, CAC, ARPU, and retention metrics." : (mk.source_status === "uploaded" ? "Campaign spend is loaded from your uploaded CSV for this browser session." : "Campaign spend is loaded from the configured daily Campaign Data feed."))
     : (mk.source_message || "Marketing spend feed is not connected yet.");
-  document.getElementById("marketingCards").innerHTML = [
-    card("Spend", money(k.spend), sourceOk ? (mk.source_status === "uploaded" ? "Uploaded CSV" : "Campaign Data feed") : "Source pending"),
-    card("Sub Spend", formatNullableMoney(k.subscription_spend), "Used for subscription CAC when present"),
-    card("Installs", number(k.installs), "From marketing CSV"),
-    card("Clicks", number(k.clicks), `${pct(k.ctr_pct)} CTR`),
-    card("CPI", formatNullableMoney(k.cpi), "Spend / installs"),
-    card("Trial CAC", formatNullableMoney(k.trial_cac), "Spend / trials"),
-    card("Subscriber CAC", formatNullableMoney(k.subscriber_cac), "Spend / subscribers"),
-    card("ROAS", k.roas_pct === null || k.roas_pct === undefined ? "Pending" : pct(k.roas_pct), "Revenue / spend"),
-    card("Payback", k.payback_days === null || k.payback_days === undefined ? "Pending" : `${k.payback_days} days`, "Spend recovery pace"),
-  ].join("");
+  document.getElementById("marketingCards").innerHTML = isOverview
+    ? [
+      card("Spend", money(k.spend), "Total marketing spends"),
+      card("Sub Spend", formatNullableMoney(k.subscription_spend), "CAC base for subscription funnel"),
+      card("Trial Starts", number(k.trials), `${number(k.trials_1)} Rs 1 | ${number(k.trials_49)} Rs 49`),
+      card("Paid Subs", number(k.subscribers), `${number(k.paid_subs_199)} Rs 199 | ${number(k.paid_subs_499)} Rs 499`),
+      card("Trial CAC", formatNullableMoney(k.trial_cac), "Sub spend / trial starts"),
+      card("Subscriber CAC", formatNullableMoney(k.subscriber_cac), "Sub spend / paid subs"),
+      card("499 Mix", pct(k.mix_499_pct), "Paid subscriber mix"),
+      card("Sub Revenue", money(k.sub_revenue), `${money(k.trial_revenue)} trial revenue`),
+      card("Metric Coverage", `${number(k.mapped_fields || 0)}`, `${number(k.overview_required_fields || 0)}/7 core fields mapped`),
+    ].join("")
+    : [
+      card("Spend", money(k.spend), sourceOk ? (mk.source_status === "uploaded" ? "Uploaded CSV" : "Campaign Data feed") : "Source pending"),
+      card("Sub Spend", formatNullableMoney(k.subscription_spend), "Used for subscription CAC when present"),
+      card("Installs", number(k.installs), "From marketing CSV"),
+      card("Clicks", number(k.clicks), `${pct(k.ctr_pct)} CTR`),
+      card("CPI", formatNullableMoney(k.cpi), "Spend / installs"),
+      card("Trial CAC", formatNullableMoney(k.trial_cac), "Spend / trials"),
+      card("Subscriber CAC", formatNullableMoney(k.subscriber_cac), "Spend / subscribers"),
+      card("ROAS", k.roas_pct === null || k.roas_pct === undefined ? "Pending" : pct(k.roas_pct), "Revenue / spend"),
+      card("Payback", k.payback_days === null || k.payback_days === undefined ? "Pending" : `${k.payback_days} days`, "Spend recovery pace"),
+    ].join("");
 
   const daily = mk.daily || [];
   chart("marketingSpendRevenueChart", "line", {
@@ -2765,38 +2855,67 @@ function renderMarketing(data) {
   });
 
   const campaigns = mk.campaigns || [];
-  chart("marketingCampaignChart", "bar", {
-    labels: campaigns.slice(0, 10).map((row) => row.campaign),
-    datasets: [
-      { label: "Spend", data: campaigns.slice(0, 10).map((row) => row.spend), backgroundColor: COLORS.blue },
-      { label: "CPI", data: campaigns.slice(0, 10).map((row) => row.cpi), backgroundColor: COLORS.gold, yAxisID: "y1" },
-    ],
-  }, {
-    indexAxis: "y",
-    plugins: { title: { display: true, text: "Campaign Spend and Install Efficiency" }, legend: { position: "bottom" } },
-    scales: {
-      x: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" } },
-      y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false } },
-    },
-  });
+  const planRows = marketingPlanRows(k);
+  if (isOverview) {
+    chart("marketingCampaignChart", "bar", {
+      labels: planRows.map((row) => row.metric),
+      datasets: [{ label: "Users", data: planRows.map((row) => row.users), backgroundColor: [COLORS.teal, COLORS.gold, COLORS.blue, COLORS.green, COLORS.rose] }],
+    }, {
+      plugins: { title: { display: true, text: "Trial and Paid Subscription Mix" }, legend: { display: false } },
+      scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" } } },
+    });
+    chart("marketingClickInstallChart", "line", {
+      labels: daily.map((row) => shortDate(row.date)),
+      datasets: [
+        { label: "All D1 retention", data: daily.map((row) => row.all_d1_retention), borderColor: COLORS.blue, tension: 0.25 },
+        { label: "Sub D1 retention", data: daily.map((row) => row.sub_d1_retention), borderColor: COLORS.teal, tension: 0.25 },
+        { label: "ARPU excl trials", data: daily.map((row) => row.arpu_subs_excl_trials), borderColor: COLORS.gold, yAxisID: "y1", tension: 0.25 },
+      ],
+    }, {
+      plugins: { title: { display: true, text: "Retention and ARPU Movement" }, legend: { position: "bottom" } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Retention %" } },
+        y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "ARPU" } },
+      },
+    });
+  } else {
+    chart("marketingCampaignChart", "bar", {
+      labels: campaigns.slice(0, 10).map((row) => row.campaign),
+      datasets: [
+        { label: "Spend", data: campaigns.slice(0, 10).map((row) => row.spend), backgroundColor: COLORS.blue },
+        { label: "CPI", data: campaigns.slice(0, 10).map((row) => row.cpi), backgroundColor: COLORS.gold, yAxisID: "y1" },
+      ],
+    }, {
+      indexAxis: "y",
+      plugins: { title: { display: true, text: "Campaign Spend and Install Efficiency" }, legend: { position: "bottom" } },
+      scales: {
+        x: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" } },
+        y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false } },
+      },
+    });
+    chart("marketingClickInstallChart", "line", {
+      labels: daily.map((row) => shortDate(row.date)),
+      datasets: [
+        { label: "Installs", data: daily.map((row) => row.installs), borderColor: COLORS.blue, tension: 0.25 },
+        { label: "Clicks", data: daily.map((row) => row.clicks), borderColor: COLORS.teal, tension: 0.25 },
+        { label: "CTR %", data: daily.map((row) => row.ctr_pct), borderColor: COLORS.gold, yAxisID: "y1", tension: 0.25 },
+      ],
+    }, {
+      plugins: { title: { display: true, text: "Daily Click, Install and CTR Movement" }, legend: { position: "bottom" } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Clicks / installs" } },
+        y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "CTR %" } },
+      },
+    });
+  }
 
-  chart("marketingClickInstallChart", "line", {
-    labels: daily.map((row) => shortDate(row.date)),
-    datasets: [
-      { label: "Installs", data: daily.map((row) => row.installs), borderColor: COLORS.blue, tension: 0.25 },
-      { label: "Clicks", data: daily.map((row) => row.clicks), borderColor: COLORS.teal, tension: 0.25 },
-      { label: "CTR %", data: daily.map((row) => row.ctr_pct), borderColor: COLORS.gold, yAxisID: "y1", tension: 0.25 },
-    ],
-  }, {
-    plugins: { title: { display: true, text: "Daily Click, Install and CTR Movement" }, legend: { position: "bottom" } },
-    scales: {
-      x: { grid: { display: false } },
-      y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Clicks / installs" } },
-      y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "CTR %" } },
-    },
-  });
-
-  const mappingRows = Object.entries(MARKETING_COLUMN_CANDIDATES).map(([metric]) => ({
+  document.getElementById("marketingMappingTitle").textContent = isOverview ? "Metric Coverage" : "CSV Field Mapping";
+  document.getElementById("marketingDailyTitle").textContent = isOverview ? "Daily Subscription Overview" : "Daily Spend and Return";
+  document.getElementById("marketingCampaignTitle").textContent = isOverview ? "Trial and Paid Plan Mix" : "Campaign CAC and ROAS";
+  document.getElementById("marketingPlatformTitle").textContent = isOverview ? "Retention and ARPU Detail" : "Platform Efficiency";
+  const mappingRows = isOverview ? marketingCoverageRows(mk) : Object.entries(MARKETING_COLUMN_CANDIDATES).map(([metric]) => ({
     metric: metric.replaceAll("_", " "),
     csv_column: mk.mapping?.[metric] || "Not present",
     status: mk.mapping?.[metric] ? "Mapped" : (["date", "spend"].includes(metric) ? "Needed" : "Optional"),
@@ -2825,12 +2944,21 @@ function renderMarketing(data) {
     { key: "subscribers", label: "Subscribers", format: number },
     { key: "paid_subs_199", label: "Subs Rs 199", format: number },
     { key: "paid_subs_499", label: "Subs Rs 499", format: number },
+    { key: "mix_499", label: "499 Mix", format: pct },
     { key: "revenue", label: "Revenue", format: money },
+    { key: "trial_revenue", label: "Trial Rev", format: money },
+    { key: "sub_revenue", label: "Sub Rev", format: money },
     { key: "cost_per_trial", label: "Trial CAC", format: formatNullableMoney },
     { key: "subscriber_cac", label: "Sub CAC", format: formatNullableMoney },
+    { key: "arpu_subs_excl_trials", label: "ARPU excl Trial", format: formatNullableMoney },
     { key: "roas_pct", label: "ROAS", format: pct },
   ], 14);
-  table("marketingCampaignTable", campaigns, [
+  table("marketingCampaignTable", isOverview ? planRows : campaigns, isOverview ? [
+    { key: "metric", label: "Metric", text: true },
+    { key: "users", label: "Users", format: number },
+    { key: "share_pct", label: "Share", format: pct },
+    { key: "note", label: "Note", text: true },
+  ] : [
     { key: "campaign", label: "Campaign", text: true },
     { key: "campaign_type", label: "Type", text: true },
     { key: "campaign_id", label: "Campaign ID", text: true },
@@ -2853,7 +2981,19 @@ function renderMarketing(data) {
     { key: "subscriber_cac", label: "Sub CAC", format: formatNullableMoney },
     { key: "roas_pct", label: "ROAS", format: pct },
   ], 20);
-  table("marketingPlatformTable", mk.platforms || [], [
+  table("marketingPlatformTable", isOverview ? daily : (mk.platforms || []), isOverview ? [
+    { key: "date", label: "Date", text: true, format: shortDate },
+    { key: "dau", label: "DAU", format: number },
+    { key: "subscriber_dau", label: "Sub DAU", format: number },
+    { key: "all_d1_retention", label: "All D1", format: pct },
+    { key: "all_d3_retention", label: "All D3", format: pct },
+    { key: "all_d7_retention", label: "All D7", format: pct },
+    { key: "sub_d1_retention", label: "Sub D1", format: pct },
+    { key: "sub_d3_retention", label: "Sub D3", format: pct },
+    { key: "sub_d7_retention", label: "Sub D7", format: pct },
+    { key: "arpu_subs", label: "ARPU", format: formatNullableMoney },
+    { key: "arpu_subs_excl_trials", label: "ARPU excl Trial", format: formatNullableMoney },
+  ] : [
     { key: "platform", label: "Platform", text: true },
     { key: "spend", label: "Spend", format: money },
     { key: "subscription_spend", label: "Sub Spend", format: formatNullableMoney },
@@ -3686,28 +3826,35 @@ function engagementDetail(data) {
 function marketingDetail(data) {
   const mk = MARKETING_UPLOAD_STATE ? buildMarketingFromRows(MARKETING_UPLOAD_STATE.rows, data) : (data.marketing || {});
   const k = mk.kpis || {};
-  const mappingRows = Object.entries(MARKETING_COLUMN_CANDIDATES).map(([metric]) => ({
+  const isOverview = mk.marketing_format === "subscription_overview";
+  const mappingRows = isOverview ? marketingCoverageRows(mk) : Object.entries(MARKETING_COLUMN_CANDIDATES).map(([metric]) => ({
     metric: metric.replaceAll("_", " "),
     csv_column: mk.mapping?.[metric] || "Not present",
     status: mk.mapping?.[metric] ? "Mapped" : (["date", "spend"].includes(metric) ? "Needed" : "Optional"),
   }));
+  const planRows = marketingPlanRows(k);
   return `
     ${detailMetrics([
       detailMetric("Spend", money(k.spend), mk.source_status === "uploaded" ? "Uploaded CSV" : (mk.source_status === "available" ? "Campaign Data feed" : "Source pending")),
       detailMetric("Sub Spend", formatNullableMoney(k.subscription_spend), "CAC base when present"),
-      detailMetric("Installs", number(k.installs), `${formatNullableMoney(k.cpi)} CPI`),
-      detailMetric("Clicks", number(k.clicks), `${pct(k.ctr_pct)} CTR`),
+      detailMetric(isOverview ? "Trial Starts" : "Installs", isOverview ? number(k.trials) : number(k.installs), isOverview ? `${number(k.trials_1)} Rs 1 | ${number(k.trials_49)} Rs 49` : `${formatNullableMoney(k.cpi)} CPI`),
+      detailMetric(isOverview ? "Paid Subs" : "Clicks", isOverview ? number(k.subscribers) : number(k.clicks), isOverview ? `${number(k.paid_subs_199)} Rs 199 | ${number(k.paid_subs_499)} Rs 499` : `${pct(k.ctr_pct)} CTR`),
       detailMetric("Trial CAC", formatNullableMoney(k.trial_cac), "Spend / trial"),
       detailMetric("Subscriber CAC", formatNullableMoney(k.subscriber_cac), "Spend / subscriber"),
-      detailMetric("ROAS", k.roas_pct === null || k.roas_pct === undefined ? "Pending" : pct(k.roas_pct), "Revenue / spend"),
+      detailMetric(isOverview ? "499 Mix" : "ROAS", isOverview ? pct(k.mix_499_pct) : (k.roas_pct === null || k.roas_pct === undefined ? "Pending" : pct(k.roas_pct)), isOverview ? "Paid subscriber mix" : "Revenue / spend"),
     ])}
     ${detailNote("Source Status", mk.source_message || "Marketing feed status is not available.")}
-    ${detailTable("CSV Field Mapping", mappingRows, [
+    ${detailTable(isOverview ? "Metric Coverage" : "CSV Field Mapping", mappingRows, [
       { key: "metric", label: "Metric", text: true },
       { key: "csv_column", label: "CSV Column", text: true },
       { key: "status", label: "Status", text: true },
     ], 20)}
-    ${detailTable("Top Campaigns", mk.campaigns, [
+    ${detailTable(isOverview ? "Trial and Paid Plan Mix" : "Top Campaigns", isOverview ? planRows : mk.campaigns, isOverview ? [
+      { key: "metric", label: "Metric", text: true },
+      { key: "users", label: "Users", format: number },
+      { key: "share_pct", label: "Share", format: pct },
+      { key: "note", label: "Note", text: true },
+    ] : [
       { key: "campaign", label: "Campaign", text: true },
       { key: "campaign_type", label: "Type", text: true },
       { key: "spend", label: "Spend", format: money },
@@ -3725,6 +3872,13 @@ function marketingDetail(data) {
       { key: "subscriber_cac", label: "Sub CAC", format: formatNullableMoney },
       { key: "roas_pct", label: "ROAS", format: pct },
     ], 8)}
+    ${isOverview ? detailTable("Daily Retention and ARPU", mk.daily || [], [
+      { key: "date", label: "Date", text: true, format: shortDate },
+      { key: "all_d1_retention", label: "All D1", format: pct },
+      { key: "sub_d1_retention", label: "Sub D1", format: pct },
+      { key: "arpu_subs_excl_trials", label: "ARPU excl Trial", format: formatNullableMoney },
+      { key: "mix_499", label: "499 Mix", format: pct },
+    ], 8) : ""}
   `;
 }
 
