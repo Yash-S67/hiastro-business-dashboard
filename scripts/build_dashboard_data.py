@@ -1498,7 +1498,9 @@ def build_subscription_sheet_metrics(engine, ranges: dict[str, Any], profiles: p
         config_daily = pd.DataFrame(columns=["signup_date", "config_id", "platform", "new_users", "new_user_share_pct"])
     else:
         current_signups["config_id"] = current_signups["config_id"].fillna("Unassigned").astype(str)
+        current_signups.loc[current_signups["config_id"].str.lower().isin(["", "nan", "none", "unknown"]), "config_id"] = "Unassigned"
         current_signups["platform"] = current_signups["platform"].fillna("unattributed").astype(str).str.lower()
+        current_signups.loc[current_signups["platform"].isin(["", "nan", "none", "unknown"]), "platform"] = "unattributed"
         current_signups["d1_date"] = current_signups["signup_date"].apply(lambda value: value + timedelta(days=1))
 
         base = (
