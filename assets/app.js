@@ -2927,6 +2927,75 @@ function detailNote(title, text) {
   `;
 }
 
+function newOldRevenueSplitRows(m, family = null) {
+  const rows = family
+    ? (m.daily_family_user_cohort || []).filter((row) => row.family === family)
+    : (m.daily_family_user_cohort || []);
+  const grouped = rows.reduce((acc, row) => {
+    const key = `${family ? row.family : row.family_label || familyLabel(row.family)}|${row.user_cohort}`;
+    if (!acc[key]) {
+      acc[key] = {
+        family_label: row.family_label || familyLabel(row.family),
+        user_cohort: row.user_cohort,
+        revenue: 0,
+        transactions: 0,
+        payers: 0,
+      };
+    }
+    acc[key].revenue += Number(row.revenue || 0);
+    acc[key].transactions += Number(row.transactions || 0);
+    acc[key].payers += Number(row.payers || 0);
+    return acc;
+  }, {});
+  const out = Object.values(grouped);
+  const totalRevenue = out.reduce((sum, row) => sum + Number(row.revenue || 0), 0);
+  out.forEach((row) => {
+    row.avg_transaction = row.transactions ? Number(row.revenue || 0) / Number(row.transactions || 0) : 0;
+    row.revenue_share_pct = safePercent(row.revenue, totalRevenue);
+  });
+  return out.sort((a, b) => String(a.family_label).localeCompare(String(b.family_label)) || Number(b.revenue || 0) - Number(a.revenue || 0));
+}
+
+function newOldRevenueSplitTable(m, family = null, title = "New vs Old Revenue Split") {
+  return detailTable(title, newOldRevenueSplitRows(m, family), [
+    ...(family ? [] : [{ key: "family_label", label: "Revenue Stream", text: true }]),
+    { key: "user_cohort", label: "User Type", text: true },
+    { key: "revenue", label: "Revenue", format: money },
+    { key: "revenue_share_pct", label: "Share", format: pct },
+    { key: "payers", label: "Payers", format: number },
+    { key: "transactions", label: "Txns", format: number },
+    { key: "avg_transaction", label: "Avg Txn", format: money },
+  ], family ? 6 : 12);
+}
+
+function subscriptionNewOldTables(m) {
+  return `
+    ${detailTable("New vs Old Subscription Pack Buyers", m.subscription_stage_by_user_cohort, [
+      { key: "user_cohort", label: "User Type", text: true },
+      { key: "stage", label: "Stage", text: true },
+      { key: "amount", label: "Amount", format: money },
+      { key: "payers", label: "Buyers", format: number },
+      { key: "revenue", label: "Revenue", format: money },
+      { key: "transactions", label: "Txns", format: number },
+      { key: "revenue_share_pct", label: "Sub Share", format: pct },
+    ], 12)}
+    ${detailTable("New vs Old Subscriber Funnel", m.config_funnel_by_user_cohort, [
+      { key: "user_cohort", label: "User Type", text: true },
+      { key: "trial_type", label: "Trial Pack", text: true },
+      { key: "followup_users", label: "Follow-up", format: number },
+      { key: "paywall_shown_users", label: "Paywall", format: number },
+      { key: "trial_cta_users", label: "Trial CTA", format: number },
+      { key: "trial_buyers", label: "Trial Buyers", format: number },
+      { key: "main_plan_buyers", label: "Main Buyers", format: number },
+      { key: "main_499_buyers", label: "Rs 499", format: number },
+      { key: "main_199_buyers", label: "Rs 199", format: number },
+      { key: "followup_to_trial_pct", label: "F to Trial", format: pct },
+      { key: "trial_to_main_pct", label: "Trial to Main", format: pct },
+      { key: "followup_to_main_pct", label: "F to Main", format: pct },
+    ], 8)}
+  `;
+}
+
 function monetizationDetail(data) {
   const m = data.monetization || {};
   const k = m.kpis?.current || {};
@@ -2938,6 +3007,7 @@ function monetizationDetail(data) {
       detailMetric("Transactions", number(k.transactions), `${trend(g7.transactions)} vs prior period`),
       detailMetric("Avg Transaction", money(k.avg_transaction), `${trend(g7.avg_transaction)} vs prior period`),
     ])}
+    ${newOldRevenueSplitTable(m)}
     ${detailTable("Revenue Stream Mix", m.family, [
       { key: "family_label", label: "Stream", text: true },
       { key: "revenue", label: "Revenue", format: money },
@@ -2971,6 +3041,7 @@ function subscriptionDetail(data) {
       detailMetric("Active Paid EOD", number(latestActiveSub.active_paid_subscribers), `${money(latestActiveSub.mrr)} MRR stock`),
       detailMetric("Trial Active EOD", number(latestActiveSub.trial_active_subscribers), "Current trial stock from customer subscriptions"),
     ])}
+    ${subscriptionNewOldTables(m)}
     ${detailTable("Plan Performance", topRows(m.subscription_plan_performance, "revenue", 8), [
       { key: "selection", label: "Plan", text: true },
       { key: "revenue", label: "Revenue", format: money },
@@ -3021,6 +3092,7 @@ function paygDetail(data) {
       detailMetric("Transactions", number(payg.transactions), `${money(payg.avg_transaction)} avg transaction`),
       detailMetric("ARPP", money(payg.avg_revenue_per_payer), "Average revenue per PayG payer"),
     ])}
+    ${newOldRevenueSplitTable(m, "pay_as_you_go", "New vs Old PayG Split")}
     ${detailTable("Amount Distribution", topRows(m.payg_amount_breakdown, "revenue", 8), [
       { key: "amount", label: "Amount", format: money },
       { key: "revenue", label: "Revenue", format: money },
@@ -3047,6 +3119,7 @@ function dayPassDetail(data) {
       detailMetric("Transactions", number(dayPass.transactions), `${money(dayPass.avg_transaction)} avg transaction`),
       detailMetric("ARPP", money(dayPass.avg_revenue_per_payer), "Average revenue per day-pass payer"),
     ])}
+    ${newOldRevenueSplitTable(m, "day_pass", "New vs Old Day Pass Split")}
     ${detailTable("Day Pass Packs", topRows((m.pack_merged || []).filter((row) => row.family === "day_pass"), "revenue", 8), [
       { key: "selection", label: "Pack", text: true },
       { key: "revenue", label: "Revenue", format: money },
