@@ -1074,6 +1074,7 @@ function renderMonetization(data) {
 
   const subscriptionPlans = m.subscription_plan_performance || [];
   const subscriptionStages = m.subscription_stage_performance || [];
+  const subscriptionStageByUserCohort = m.subscription_stage_by_user_cohort || [];
   const subscriptionPacks = m.subscription_pack || [];
   const renewal = m.subscription_renewal || { kpis: {}, due_daily: [], due_by_plan: [], status_breakdown: [], notes: [] };
   const dailyConfigFunnel = m.daily_config_platform_funnel || [];
@@ -1096,6 +1097,7 @@ function renderMonetization(data) {
   const paygMergedRows = m.payg_merged || [];
   const paygMerged = paygMergedRows[0] || familyMetric(m, "pay_as_you_go");
   const paygAmounts = m.payg_amount_breakdown || [];
+  const configCohortRows = m.config_funnel_by_user_cohort || [];
   const topPlan = subscriptionPlans[0] || {};
   const topWalletAmount = paygAmounts[0] || {};
   const mainPackRows = subscriptionStages
@@ -1504,6 +1506,39 @@ function renderMonetization(data) {
     { key: "avg_transaction", label: "Avg Txn", format: money },
   ], 20);
 
+  const cohortStageRows = subscriptionStageByUserCohort.map((row) => ({
+    ...row,
+    stage_amount: `${row.stage} Rs ${Number(row.amount || 0)}`,
+  }));
+  const cohortStageLabels = uniqueSorted(cohortStageRows, "stage_amount");
+  const cohortStageGroups = uniqueSorted(cohortStageRows, "user_cohort");
+  const cohortStagePalette = [COLORS.blue, COLORS.teal, COLORS.gold];
+  chart("subscriptionCohortStageChart", "bar", {
+    labels: cohortStageLabels,
+    datasets: cohortStageGroups.map((group, index) => ({
+      label: group,
+      data: cohortStageLabels.map((label) => {
+        const row = cohortStageRows.find((item) => item.stage_amount === label && item.user_cohort === group);
+        return row ? Number(row.payers || 0) : 0;
+      }),
+      backgroundColor: cohortStagePalette[index % cohortStagePalette.length],
+    })),
+  }, {
+    plugins: { title: { display: true, text: "New vs Old Subscription Buyers by Pack" }, legend: { position: "bottom" } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" } } },
+  });
+  table("subscriptionCohortStageTable", subscriptionStageByUserCohort, [
+    { key: "selection", label: "Selection", text: true },
+    { key: "user_cohort", label: "User Type", text: true },
+    { key: "stage", label: "Stage", text: true },
+    { key: "amount", label: "Amount", format: money },
+    { key: "payers", label: "Buyers", format: number },
+    { key: "revenue", label: "Revenue", format: money },
+    { key: "transactions", label: "Txns", format: number },
+    { key: "revenue_share_pct", label: "Total Sub Share", format: pct },
+    { key: "avg_transaction", label: "Avg Txn", format: money },
+  ], 20);
+
   table("subscriptionDailyFunnelTable", dailyConfigFunnel, [
     { key: "signup_date", label: "Date", text: true, format: shortDate },
     { key: "config_id", label: "Config", text: true },
@@ -1852,6 +1887,40 @@ function renderMonetization(data) {
     { key: "trial_to_main_pct", label: "Trial to Main", format: pct },
     { key: "followup_to_main_pct", label: "Follow-up to Main", format: pct },
   ]);
+
+  chart("newOldSubscriberFunnelChart", "bar", {
+    labels: configCohortRows.map((row) => `${row.trial_type} | ${row.user_cohort}`),
+    datasets: [
+      { label: "Follow-up", data: configCohortRows.map((row) => row.followup_users), backgroundColor: COLORS.teal },
+      { label: "Trial buyers", data: configCohortRows.map((row) => row.trial_buyers), backgroundColor: COLORS.rose },
+      { label: "Main buyers", data: configCohortRows.map((row) => row.main_plan_buyers), backgroundColor: COLORS.green },
+      { label: "Follow-up to main %", data: configCohortRows.map((row) => row.followup_to_main_pct), backgroundColor: COLORS.gold, yAxisID: "y1" },
+    ],
+  }, {
+    indexAxis: "y",
+    plugins: { title: { display: true, text: "New vs Old Subscriber Funnel by Trial Pack" }, legend: { position: "bottom" } },
+    scales: {
+      x: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Users" } },
+      y1: { beginAtZero: true, max: 100, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Conversion %" } },
+    },
+  });
+  table("newOldSubscriberFunnelTable", configCohortRows, [
+    { key: "selection", label: "Selection", text: true },
+    { key: "user_cohort", label: "User Type", text: true },
+    { key: "trial_type", label: "Trial Pack", text: true },
+    { key: "assigned_users", label: "Assigned", format: number },
+    { key: "followup_users", label: "Follow-up", format: number },
+    { key: "paywall_shown_users", label: "Paywall", format: number },
+    { key: "trial_cta_users", label: "Trial CTA", format: number },
+    { key: "trial_buyers", label: "Trial Buyers", format: number },
+    { key: "main_plan_buyers", label: "Main Buyers", format: number },
+    { key: "main_499_buyers", label: "Main Rs 499", format: number },
+    { key: "main_199_buyers", label: "Main Rs 199", format: number },
+    { key: "followup_to_trial_pct", label: "Follow-up to Trial", format: pct },
+    { key: "trial_to_main_pct", label: "Trial to Main", format: pct },
+    { key: "followup_to_main_pct", label: "Follow-up to Main", format: pct },
+    { key: "main_499_share_pct", label: "Rs 499 Main Share", format: pct },
+  ], 12);
 
   const dailyFunnelRows = dailyConfigFunnelRows();
   const dailyFunnelTotals = dashboardDateOptions().map((date) => {

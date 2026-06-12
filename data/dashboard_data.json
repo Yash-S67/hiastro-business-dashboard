@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generated_at_ist": "2026-06-12T16:24:18+05:30",
+    "generated_at_ist": "2026-06-12T16:34:34+05:30",
     "default_period": "weekly",
     "current_window": {
       "start": "2026-06-05",
@@ -1957,6 +1957,74 @@
             "avg_transaction": 1.0
           }
         ],
+        "subscription_stage_by_user_cohort": [
+          {
+            "user_cohort": "New user",
+            "stage": "Trial",
+            "amount": 49.0,
+            "revenue": 2107.0,
+            "transactions": 43,
+            "payers": 43,
+            "selection": "user type = New user; subscription stage = Trial; amount = Rs 49",
+            "revenue_share_pct": 8.35,
+            "avg_transaction": 49.0
+          },
+          {
+            "user_cohort": "New user",
+            "stage": "Trial",
+            "amount": 1.0,
+            "revenue": 218.0,
+            "transactions": 218,
+            "payers": 218,
+            "selection": "user type = New user; subscription stage = Trial; amount = Rs 1",
+            "revenue_share_pct": 0.86,
+            "avg_transaction": 1.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Main",
+            "amount": 499.0,
+            "revenue": 20459.0,
+            "transactions": 41,
+            "payers": 41,
+            "selection": "user type = Old user; subscription stage = Main; amount = Rs 499",
+            "revenue_share_pct": 81.1,
+            "avg_transaction": 499.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Main",
+            "amount": 199.0,
+            "revenue": 1791.0,
+            "transactions": 9,
+            "payers": 9,
+            "selection": "user type = Old user; subscription stage = Main; amount = Rs 199",
+            "revenue_share_pct": 7.1,
+            "avg_transaction": 199.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Trial",
+            "amount": 49.0,
+            "revenue": 637.0,
+            "transactions": 13,
+            "payers": 13,
+            "selection": "user type = Old user; subscription stage = Trial; amount = Rs 49",
+            "revenue_share_pct": 2.52,
+            "avg_transaction": 49.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Trial",
+            "amount": 1.0,
+            "revenue": 16.0,
+            "transactions": 16,
+            "payers": 16,
+            "selection": "user type = Old user; subscription stage = Trial; amount = Rs 1",
+            "revenue_share_pct": 0.06,
+            "avg_transaction": 1.0
+          }
+        ],
         "payer_frequency": [
           {
             "bucket": "1 txn",
@@ -3806,8 +3874,8 @@
         ],
         "subscription_renewal": {
           "kpis": {
-            "active_paid_subscriptions": 706,
-            "trial_active_subscriptions": 104,
+            "active_paid_subscriptions": 707,
+            "trial_active_subscriptions": 103,
             "renewal_due_next_7_days": 55,
             "autopay_ready_users": 51,
             "cancel_scheduled_users": 52,
@@ -3908,12 +3976,12 @@
             {
               "status": "ACTIVE",
               "subscription_case": "PLAN",
-              "users": 654
+              "users": 655
             },
             {
               "status": "TRIAL_ACTIVE",
               "subscription_case": "TRIAL",
-              "users": 101
+              "users": 100
             },
             {
               "status": "ACTIVE",
@@ -4195,7 +4263,7 @@
             "plan_code": "All",
             "active_paid_subscribers": 695,
             "mrr": 275405.0,
-            "trial_active_subscribers": 104,
+            "trial_active_subscribers": 103,
             "net_mrr_movement": 0.0
           }
         ],
@@ -4605,11 +4673,11 @@
           }
         ],
         "cancel_kpis": {
-          "active_paid_subscriptions": 706,
+          "active_paid_subscriptions": 707,
           "cancel_scheduled_users": 52,
-          "trial_cancel_before_charge": 6407,
+          "trial_cancel_before_charge": 6409,
           "trial_d0_cancel": 332,
-          "canceled_subscriptions": 6906
+          "canceled_subscriptions": 6907
         },
         "cancel_distribution": [
           {
@@ -4695,7 +4763,7 @@
           {
             "bucket": "D15-D30",
             "plan_code": "Chat Only Pack",
-            "subscriptions": 13
+            "subscriptions": 14
           },
           {
             "bucket": "D15-D30",
@@ -4750,7 +4818,7 @@
           {
             "bucket": "D4-D7",
             "plan_code": "All Access Pack",
-            "subscriptions": 109
+            "subscriptions": 110
           },
           {
             "bucket": "D4-D7",
@@ -5576,7 +5644,7 @@
             "config_id": 18,
             "trial_type": "Rs 1 trial",
             "trial_amount": 1,
-            "assigned_users": 47864,
+            "assigned_users": 47869,
             "followup_users": 1154,
             "paywall_shown_users": 1054,
             "trial_cta_users": 376,
@@ -5598,7 +5666,7 @@
             "config_id": 20,
             "trial_type": "Rs 49 trial",
             "trial_amount": 49,
-            "assigned_users": 61180,
+            "assigned_users": 61184,
             "followup_users": 1318,
             "paywall_shown_users": 1146,
             "trial_cta_users": 212,
@@ -5615,6 +5683,112 @@
             "followup_to_trial_pct": 2.43,
             "trial_to_main_pct": 34.38,
             "followup_to_main_pct": 0.83
+          }
+        ],
+        "config_funnel_by_user_cohort": [
+          {
+            "config_id": 18,
+            "trial_type": "Rs 1 trial",
+            "trial_amount": 1,
+            "user_cohort": "New user",
+            "selection": "Rs 1 trial; user type = New user",
+            "assigned_users": 751,
+            "followup_users": 674,
+            "paywall_shown_users": 667,
+            "trial_cta_users": 311,
+            "trial_buyers": 108,
+            "main_plan_buyers": 0,
+            "trial_cta_199_pack_users": 35,
+            "trial_cta_499_pack_users": 288,
+            "main_199_buyers": 0,
+            "main_499_buyers": 0,
+            "assigned_to_followup_pct": 89.75,
+            "followup_to_paywall_pct": 98.96,
+            "paywall_to_trial_cta_pct": 46.63,
+            "trial_cta_to_trial_purchase_pct": 34.73,
+            "followup_to_trial_pct": 16.02,
+            "trial_to_main_pct": 0.0,
+            "followup_to_main_pct": 0.0,
+            "main_499_share_pct": 0.0,
+            "main_199_share_pct": 0.0
+          },
+          {
+            "config_id": 18,
+            "trial_type": "Rs 1 trial",
+            "trial_amount": 1,
+            "user_cohort": "Old user",
+            "selection": "Rs 1 trial; user type = Old user",
+            "assigned_users": 47118,
+            "followup_users": 480,
+            "paywall_shown_users": 387,
+            "trial_cta_users": 65,
+            "trial_buyers": 6,
+            "main_plan_buyers": 10,
+            "trial_cta_199_pack_users": 9,
+            "trial_cta_499_pack_users": 56,
+            "main_199_buyers": 1,
+            "main_499_buyers": 9,
+            "assigned_to_followup_pct": 1.02,
+            "followup_to_paywall_pct": 80.62,
+            "paywall_to_trial_cta_pct": 16.8,
+            "trial_cta_to_trial_purchase_pct": 9.23,
+            "followup_to_trial_pct": 1.25,
+            "trial_to_main_pct": 166.67,
+            "followup_to_main_pct": 2.08,
+            "main_499_share_pct": 90.0,
+            "main_199_share_pct": 10.0
+          },
+          {
+            "config_id": 20,
+            "trial_type": "Rs 49 trial",
+            "trial_amount": 49,
+            "user_cohort": "New user",
+            "selection": "Rs 49 trial; user type = New user",
+            "assigned_users": 712,
+            "followup_users": 627,
+            "paywall_shown_users": 609,
+            "trial_cta_users": 146,
+            "trial_buyers": 19,
+            "main_plan_buyers": 0,
+            "trial_cta_199_pack_users": 11,
+            "trial_cta_499_pack_users": 137,
+            "main_199_buyers": 0,
+            "main_499_buyers": 0,
+            "assigned_to_followup_pct": 88.06,
+            "followup_to_paywall_pct": 97.13,
+            "paywall_to_trial_cta_pct": 23.97,
+            "trial_cta_to_trial_purchase_pct": 13.01,
+            "followup_to_trial_pct": 3.03,
+            "trial_to_main_pct": 0.0,
+            "followup_to_main_pct": 0.0,
+            "main_499_share_pct": 0.0,
+            "main_199_share_pct": 0.0
+          },
+          {
+            "config_id": 20,
+            "trial_type": "Rs 49 trial",
+            "trial_amount": 49,
+            "user_cohort": "Old user",
+            "selection": "Rs 49 trial; user type = Old user",
+            "assigned_users": 60472,
+            "followup_users": 691,
+            "paywall_shown_users": 537,
+            "trial_cta_users": 66,
+            "trial_buyers": 13,
+            "main_plan_buyers": 11,
+            "trial_cta_199_pack_users": 5,
+            "trial_cta_499_pack_users": 62,
+            "main_199_buyers": 4,
+            "main_499_buyers": 7,
+            "assigned_to_followup_pct": 1.14,
+            "followup_to_paywall_pct": 77.71,
+            "paywall_to_trial_cta_pct": 12.29,
+            "trial_cta_to_trial_purchase_pct": 19.7,
+            "followup_to_trial_pct": 1.88,
+            "trial_to_main_pct": 84.62,
+            "followup_to_main_pct": 1.59,
+            "main_499_share_pct": 63.64,
+            "main_199_share_pct": 36.36
           }
         ]
       },
@@ -6429,18 +6603,18 @@
             "followup_events": 60
           },
           {
-            "entity_slug": "6879253dfcf00df3749da50c",
-            "bot_id": "6879253dfcf00df3749da50c",
-            "bot_name": "Priyanka",
-            "entity_label": "Priyanka",
-            "entity_match_type": "bot_id",
-            "followup_events": 36
-          },
-          {
             "entity_slug": "68792542fcf00df3749da526",
             "bot_id": "68792542fcf00df3749da526",
             "bot_name": "Prem",
             "entity_label": "Prem",
+            "entity_match_type": "bot_id",
+            "followup_events": 36
+          },
+          {
+            "entity_slug": "6879253dfcf00df3749da50c",
+            "bot_id": "6879253dfcf00df3749da50c",
+            "bot_name": "Priyanka",
+            "entity_label": "Priyanka",
             "entity_match_type": "bot_id",
             "followup_events": 36
           },
@@ -6658,8 +6832,8 @@
             },
             {
               "bucket": "Telangana",
-              "users": 271,
-              "pct": 3.11
+              "users": 270,
+              "pct": 3.1
             },
             {
               "bucket": "Assam",
@@ -6740,8 +6914,8 @@
             },
             {
               "bucket": "Hyderabad",
-              "users": 266,
-              "pct": 3.06
+              "users": 265,
+              "pct": 3.05
             },
             {
               "bucket": "Indore",
@@ -7104,8 +7278,8 @@
             "segment": "region",
             "bucket": "Telangana",
             "selection": "region = Telangana",
-            "users": 271,
-            "pct": 3.11
+            "users": 270,
+            "pct": 3.1
           },
           {
             "segment": "region",
@@ -7216,8 +7390,8 @@
             "segment": "city",
             "bucket": "Hyderabad",
             "selection": "city = Hyderabad",
-            "users": 266,
-            "pct": 3.06
+            "users": 265,
+            "pct": 3.05
           },
           {
             "segment": "city",
@@ -7483,42 +7657,42 @@
           {
             "platform": "android",
             "day_n": 1,
-            "cohort_users": 61546,
+            "cohort_users": 61545,
             "retained_users": 3936,
             "retention_pct": 6.4
           },
           {
             "platform": "android",
             "day_n": 3,
-            "cohort_users": 61546,
+            "cohort_users": 61545,
             "retained_users": 1343,
             "retention_pct": 2.18
           },
           {
             "platform": "android",
             "day_n": 7,
-            "cohort_users": 61546,
+            "cohort_users": 61545,
             "retained_users": 579,
             "retention_pct": 0.94
           },
           {
             "platform": "unknown",
             "day_n": 1,
-            "cohort_users": 14610,
+            "cohort_users": 14611,
             "retained_users": 591,
-            "retention_pct": 4.05
+            "retention_pct": 4.04
           },
           {
             "platform": "unknown",
             "day_n": 3,
-            "cohort_users": 14610,
+            "cohort_users": 14611,
             "retained_users": 155,
             "retention_pct": 1.06
           },
           {
             "platform": "unknown",
             "day_n": 7,
-            "cohort_users": 14610,
+            "cohort_users": 14611,
             "retained_users": 106,
             "retention_pct": 0.73
           }
@@ -7565,18 +7739,18 @@
             "segment": "age_bucket",
             "bucket": "35-44",
             "day_n": 1,
-            "cohort_users": 4914,
-            "retained_users": 439,
-            "retention_pct": 8.93
+            "cohort_users": 4915,
+            "retained_users": 440,
+            "retention_pct": 8.95
           },
           {
             "selection": "age_bucket = 45-54",
             "segment": "age_bucket",
             "bucket": "45-54",
             "day_n": 1,
-            "cohort_users": 1203,
-            "retained_users": 96,
-            "retention_pct": 7.98
+            "cohort_users": 1202,
+            "retained_users": 95,
+            "retention_pct": 7.9
           },
           {
             "selection": "age_bucket = 55+",
@@ -7628,7 +7802,7 @@
             "segment": "age_bucket",
             "bucket": "35-44",
             "day_n": 3,
-            "cohort_users": 4914,
+            "cohort_users": 4915,
             "retained_users": 154,
             "retention_pct": 3.13
           },
@@ -7637,7 +7811,7 @@
             "segment": "age_bucket",
             "bucket": "45-54",
             "day_n": 3,
-            "cohort_users": 1203,
+            "cohort_users": 1202,
             "retained_users": 35,
             "retention_pct": 2.91
           },
@@ -7691,7 +7865,7 @@
             "segment": "age_bucket",
             "bucket": "35-44",
             "day_n": 7,
-            "cohort_users": 4914,
+            "cohort_users": 4915,
             "retained_users": 88,
             "retention_pct": 1.79
           },
@@ -7700,7 +7874,7 @@
             "segment": "age_bucket",
             "bucket": "45-54",
             "day_n": 7,
-            "cohort_users": 1203,
+            "cohort_users": 1202,
             "retained_users": 8,
             "retention_pct": 0.67
           },
@@ -8231,7 +8405,7 @@
             "segment": "platform",
             "bucket": "android",
             "day_n": 1,
-            "cohort_users": 61546,
+            "cohort_users": 61545,
             "retained_users": 3936,
             "retention_pct": 6.4
           },
@@ -8240,16 +8414,16 @@
             "segment": "platform",
             "bucket": "unknown",
             "day_n": 1,
-            "cohort_users": 14610,
+            "cohort_users": 14611,
             "retained_users": 591,
-            "retention_pct": 4.05
+            "retention_pct": 4.04
           },
           {
             "selection": "platform = android",
             "segment": "platform",
             "bucket": "android",
             "day_n": 3,
-            "cohort_users": 61546,
+            "cohort_users": 61545,
             "retained_users": 1343,
             "retention_pct": 2.18
           },
@@ -8258,7 +8432,7 @@
             "segment": "platform",
             "bucket": "unknown",
             "day_n": 3,
-            "cohort_users": 14610,
+            "cohort_users": 14611,
             "retained_users": 155,
             "retention_pct": 1.06
           },
@@ -8267,7 +8441,7 @@
             "segment": "platform",
             "bucket": "android",
             "day_n": 7,
-            "cohort_users": 61546,
+            "cohort_users": 61545,
             "retained_users": 579,
             "retention_pct": 0.94
           },
@@ -8276,7 +8450,7 @@
             "segment": "platform",
             "bucket": "unknown",
             "day_n": 7,
-            "cohort_users": 14610,
+            "cohort_users": 14611,
             "retained_users": 106,
             "retention_pct": 0.73
           }
@@ -9173,8 +9347,8 @@
       "engagement": {
         "kpis": {
           "active_users": 5722,
-          "sessions": 19213,
-          "total_minutes": 49565.7,
+          "sessions": 19214,
+          "total_minutes": 49565.8,
           "avg_minutes_per_user": 8.66,
           "avg_minutes_per_session": 2.58,
           "bim_notification_opens": 51,
@@ -9183,9 +9357,9 @@
         "session_daily": [
           {
             "date": "2026-06-11",
-            "sessions": 19213,
+            "sessions": 19214,
             "users": 5722,
-            "total_minutes": 49565.7,
+            "total_minutes": 49565.8,
             "avg_minutes_per_user": 8.66,
             "avg_minutes_per_session": 2.58,
             "sessions_per_user": 3.36
@@ -9194,9 +9368,9 @@
         "session_by_platform": [
           {
             "platform": "android",
-            "sessions": 17257,
+            "sessions": 17258,
             "users": 5209,
-            "total_minutes": 44698.2,
+            "total_minutes": 44698.4,
             "avg_minutes_per_user": 8.58,
             "avg_minutes_per_session": 2.59,
             "sessions_per_user": 3.31
@@ -14815,6 +14989,129 @@
             "avg_transaction": 499.0
           }
         ],
+        "subscription_stage_by_user_cohort": [
+          {
+            "user_cohort": "New user",
+            "stage": "Main",
+            "amount": 499.0,
+            "revenue": 111776.0,
+            "transactions": 224,
+            "payers": 224,
+            "selection": "user type = New user; subscription stage = Main; amount = Rs 499",
+            "revenue_share_pct": 54.29,
+            "avg_transaction": 499.0
+          },
+          {
+            "user_cohort": "New user",
+            "stage": "Main",
+            "amount": 199.0,
+            "revenue": 5373.0,
+            "transactions": 27,
+            "payers": 27,
+            "selection": "user type = New user; subscription stage = Main; amount = Rs 199",
+            "revenue_share_pct": 2.61,
+            "avg_transaction": 199.0
+          },
+          {
+            "user_cohort": "New user",
+            "stage": "Trial",
+            "amount": 49.0,
+            "revenue": 17689.0,
+            "transactions": 361,
+            "payers": 361,
+            "selection": "user type = New user; subscription stage = Trial; amount = Rs 49",
+            "revenue_share_pct": 8.59,
+            "avg_transaction": 49.0
+          },
+          {
+            "user_cohort": "New user",
+            "stage": "Trial",
+            "amount": 1.0,
+            "revenue": 1471.0,
+            "transactions": 1471,
+            "payers": 1471,
+            "selection": "user type = New user; subscription stage = Trial; amount = Rs 1",
+            "revenue_share_pct": 0.71,
+            "avg_transaction": 1.0
+          },
+          {
+            "user_cohort": "New user",
+            "stage": "Trial",
+            "amount": 499.0,
+            "revenue": 998.0,
+            "transactions": 2,
+            "payers": 2,
+            "selection": "user type = New user; subscription stage = Trial; amount = Rs 499",
+            "revenue_share_pct": 0.48,
+            "avg_transaction": 499.0
+          },
+          {
+            "user_cohort": "New user",
+            "stage": "Trial",
+            "amount": 199.0,
+            "revenue": 398.0,
+            "transactions": 2,
+            "payers": 2,
+            "selection": "user type = New user; subscription stage = Trial; amount = Rs 199",
+            "revenue_share_pct": 0.19,
+            "avg_transaction": 199.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Main",
+            "amount": 499.0,
+            "revenue": 55389.0,
+            "transactions": 111,
+            "payers": 111,
+            "selection": "user type = Old user; subscription stage = Main; amount = Rs 499",
+            "revenue_share_pct": 26.9,
+            "avg_transaction": 499.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Main",
+            "amount": 199.0,
+            "revenue": 7363.0,
+            "transactions": 37,
+            "payers": 37,
+            "selection": "user type = Old user; subscription stage = Main; amount = Rs 199",
+            "revenue_share_pct": 3.58,
+            "avg_transaction": 199.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Trial",
+            "amount": 49.0,
+            "revenue": 3675.0,
+            "transactions": 75,
+            "payers": 75,
+            "selection": "user type = Old user; subscription stage = Trial; amount = Rs 49",
+            "revenue_share_pct": 1.79,
+            "avg_transaction": 49.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Trial",
+            "amount": 199.0,
+            "revenue": 1592.0,
+            "transactions": 8,
+            "payers": 8,
+            "selection": "user type = Old user; subscription stage = Trial; amount = Rs 199",
+            "revenue_share_pct": 0.77,
+            "avg_transaction": 199.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Trial",
+            "amount": 1.0,
+            "revenue": 146.0,
+            "transactions": 146,
+            "payers": 146,
+            "selection": "user type = Old user; subscription stage = Trial; amount = Rs 1",
+            "revenue_share_pct": 0.07,
+            "avg_transaction": 1.0
+          }
+        ],
         "payer_frequency": [
           {
             "bucket": "2 txn",
@@ -16812,8 +17109,8 @@
         ],
         "subscription_renewal": {
           "kpis": {
-            "active_paid_subscriptions": 706,
-            "trial_active_subscriptions": 104,
+            "active_paid_subscriptions": 707,
+            "trial_active_subscriptions": 103,
             "renewal_due_next_7_days": 55,
             "autopay_ready_users": 51,
             "cancel_scheduled_users": 52,
@@ -16914,12 +17211,12 @@
             {
               "status": "ACTIVE",
               "subscription_case": "PLAN",
-              "users": 654
+              "users": 655
             },
             {
               "status": "TRIAL_ACTIVE",
               "subscription_case": "TRIAL",
-              "users": 101
+              "users": 100
             },
             {
               "status": "ACTIVE",
@@ -18245,7 +18542,7 @@
             "plan_code": "All",
             "active_paid_subscribers": 483,
             "mrr": 183117.0,
-            "trial_active_subscribers": 104,
+            "trial_active_subscribers": 103,
             "net_mrr_movement": 0.0
           },
           {
@@ -18253,7 +18550,7 @@
             "plan_code": "All",
             "active_paid_subscribers": 526,
             "mrr": 202774.0,
-            "trial_active_subscribers": 104,
+            "trial_active_subscribers": 103,
             "net_mrr_movement": 19657.0
           },
           {
@@ -18261,7 +18558,7 @@
             "plan_code": "All",
             "active_paid_subscribers": 554,
             "mrr": 214346.0,
-            "trial_active_subscribers": 104,
+            "trial_active_subscribers": 103,
             "net_mrr_movement": 11572.0
           },
           {
@@ -18269,7 +18566,7 @@
             "plan_code": "All",
             "active_paid_subscribers": 601,
             "mrr": 234199.0,
-            "trial_active_subscribers": 104,
+            "trial_active_subscribers": 103,
             "net_mrr_movement": 19853.0
           },
           {
@@ -18277,7 +18574,7 @@
             "plan_code": "All",
             "active_paid_subscribers": 635,
             "mrr": 249065.0,
-            "trial_active_subscribers": 104,
+            "trial_active_subscribers": 103,
             "net_mrr_movement": 14866.0
           },
           {
@@ -18285,7 +18582,7 @@
             "plan_code": "All",
             "active_paid_subscribers": 659,
             "mrr": 259541.0,
-            "trial_active_subscribers": 104,
+            "trial_active_subscribers": 103,
             "net_mrr_movement": 10476.0
           },
           {
@@ -18293,7 +18590,7 @@
             "plan_code": "All",
             "active_paid_subscribers": 695,
             "mrr": 275405.0,
-            "trial_active_subscribers": 104,
+            "trial_active_subscribers": 103,
             "net_mrr_movement": 15864.0
           }
         ],
@@ -19365,11 +19662,11 @@
           }
         ],
         "cancel_kpis": {
-          "active_paid_subscriptions": 706,
+          "active_paid_subscriptions": 707,
           "cancel_scheduled_users": 52,
-          "trial_cancel_before_charge": 6407,
+          "trial_cancel_before_charge": 6409,
           "trial_d0_cancel": 332,
-          "canceled_subscriptions": 6906
+          "canceled_subscriptions": 6907
         },
         "cancel_distribution": [
           {
@@ -19455,7 +19752,7 @@
           {
             "bucket": "D15-D30",
             "plan_code": "Chat Only Pack",
-            "subscriptions": 13
+            "subscriptions": 14
           },
           {
             "bucket": "D15-D30",
@@ -19510,7 +19807,7 @@
           {
             "bucket": "D4-D7",
             "plan_code": "All Access Pack",
-            "subscriptions": 109
+            "subscriptions": 110
           },
           {
             "bucket": "D4-D7",
@@ -20336,7 +20633,7 @@
             "config_id": 18,
             "trial_type": "Rs 1 trial",
             "trial_amount": 1,
-            "assigned_users": 47864,
+            "assigned_users": 47869,
             "followup_users": 4092,
             "paywall_shown_users": 3919,
             "trial_cta_users": 1672,
@@ -20358,7 +20655,7 @@
             "config_id": 20,
             "trial_type": "Rs 49 trial",
             "trial_amount": 49,
-            "assigned_users": 61180,
+            "assigned_users": 61184,
             "followup_users": 4722,
             "paywall_shown_users": 4439,
             "trial_cta_users": 1093,
@@ -20375,6 +20672,112 @@
             "followup_to_trial_pct": 4.66,
             "trial_to_main_pct": 32.73,
             "followup_to_main_pct": 1.52
+          }
+        ],
+        "config_funnel_by_user_cohort": [
+          {
+            "config_id": 18,
+            "trial_type": "Rs 1 trial",
+            "trial_amount": 1,
+            "user_cohort": "New user",
+            "selection": "Rs 1 trial; user type = New user",
+            "assigned_users": 9717,
+            "followup_users": 3568,
+            "paywall_shown_users": 3466,
+            "trial_cta_users": 1582,
+            "trial_buyers": 588,
+            "main_plan_buyers": 70,
+            "trial_cta_199_pack_users": 186,
+            "trial_cta_499_pack_users": 1469,
+            "main_199_buyers": 7,
+            "main_499_buyers": 63,
+            "assigned_to_followup_pct": 36.72,
+            "followup_to_paywall_pct": 97.14,
+            "paywall_to_trial_cta_pct": 45.64,
+            "trial_cta_to_trial_purchase_pct": 37.17,
+            "followup_to_trial_pct": 16.48,
+            "trial_to_main_pct": 11.9,
+            "followup_to_main_pct": 1.96,
+            "main_499_share_pct": 90.0,
+            "main_199_share_pct": 10.0
+          },
+          {
+            "config_id": 18,
+            "trial_type": "Rs 1 trial",
+            "trial_amount": 1,
+            "user_cohort": "Old user",
+            "selection": "Rs 1 trial; user type = Old user",
+            "assigned_users": 38152,
+            "followup_users": 524,
+            "paywall_shown_users": 453,
+            "trial_cta_users": 90,
+            "trial_buyers": 36,
+            "main_plan_buyers": 19,
+            "trial_cta_199_pack_users": 14,
+            "trial_cta_499_pack_users": 78,
+            "main_199_buyers": 7,
+            "main_499_buyers": 12,
+            "assigned_to_followup_pct": 1.37,
+            "followup_to_paywall_pct": 86.45,
+            "paywall_to_trial_cta_pct": 19.87,
+            "trial_cta_to_trial_purchase_pct": 40.0,
+            "followup_to_trial_pct": 6.87,
+            "trial_to_main_pct": 52.78,
+            "followup_to_main_pct": 3.63,
+            "main_499_share_pct": 63.16,
+            "main_199_share_pct": 36.84
+          },
+          {
+            "config_id": 20,
+            "trial_type": "Rs 49 trial",
+            "trial_amount": 49,
+            "user_cohort": "New user",
+            "selection": "Rs 49 trial; user type = New user",
+            "assigned_users": 9910,
+            "followup_users": 3521,
+            "paywall_shown_users": 3422,
+            "trial_cta_users": 926,
+            "trial_buyers": 176,
+            "main_plan_buyers": 47,
+            "trial_cta_199_pack_users": 82,
+            "trial_cta_499_pack_users": 879,
+            "main_199_buyers": 12,
+            "main_499_buyers": 35,
+            "assigned_to_followup_pct": 35.53,
+            "followup_to_paywall_pct": 97.19,
+            "paywall_to_trial_cta_pct": 27.06,
+            "trial_cta_to_trial_purchase_pct": 19.01,
+            "followup_to_trial_pct": 5.0,
+            "trial_to_main_pct": 26.7,
+            "followup_to_main_pct": 1.33,
+            "main_499_share_pct": 74.47,
+            "main_199_share_pct": 25.53
+          },
+          {
+            "config_id": 20,
+            "trial_type": "Rs 49 trial",
+            "trial_amount": 49,
+            "user_cohort": "Old user",
+            "selection": "Rs 49 trial; user type = Old user",
+            "assigned_users": 51274,
+            "followup_users": 1201,
+            "paywall_shown_users": 1017,
+            "trial_cta_users": 167,
+            "trial_buyers": 44,
+            "main_plan_buyers": 25,
+            "trial_cta_199_pack_users": 15,
+            "trial_cta_499_pack_users": 157,
+            "main_199_buyers": 11,
+            "main_499_buyers": 14,
+            "assigned_to_followup_pct": 2.34,
+            "followup_to_paywall_pct": 84.68,
+            "paywall_to_trial_cta_pct": 16.42,
+            "trial_cta_to_trial_purchase_pct": 26.35,
+            "followup_to_trial_pct": 3.66,
+            "trial_to_main_pct": 56.82,
+            "followup_to_main_pct": 2.08,
+            "main_499_share_pct": 56.0,
+            "main_199_share_pct": 44.0
           }
         ]
       },
@@ -22635,42 +23038,42 @@
           {
             "platform": "android",
             "day_n": 1,
-            "cohort_users": 79787,
+            "cohort_users": 79786,
             "retained_users": 5155,
             "retention_pct": 6.46
           },
           {
             "platform": "android",
             "day_n": 3,
-            "cohort_users": 79787,
+            "cohort_users": 79786,
             "retained_users": 1753,
             "retention_pct": 2.2
           },
           {
             "platform": "android",
             "day_n": 7,
-            "cohort_users": 79787,
+            "cohort_users": 79786,
             "retained_users": 726,
             "retention_pct": 0.91
           },
           {
             "platform": "unknown",
             "day_n": 1,
-            "cohort_users": 20446,
+            "cohort_users": 20447,
             "retained_users": 841,
             "retention_pct": 4.11
           },
           {
             "platform": "unknown",
             "day_n": 3,
-            "cohort_users": 20446,
+            "cohort_users": 20447,
             "retained_users": 234,
             "retention_pct": 1.14
           },
           {
             "platform": "unknown",
             "day_n": 7,
-            "cohort_users": 20446,
+            "cohort_users": 20447,
             "retained_users": 137,
             "retention_pct": 0.67
           }
@@ -22717,18 +23120,18 @@
             "segment": "age_bucket",
             "bucket": "35-44",
             "day_n": 1,
-            "cohort_users": 6506,
-            "retained_users": 587,
-            "retention_pct": 9.02
+            "cohort_users": 6507,
+            "retained_users": 588,
+            "retention_pct": 9.04
           },
           {
             "selection": "age_bucket = 45-54",
             "segment": "age_bucket",
             "bucket": "45-54",
             "day_n": 1,
-            "cohort_users": 1604,
-            "retained_users": 132,
-            "retention_pct": 8.23
+            "cohort_users": 1603,
+            "retained_users": 131,
+            "retention_pct": 8.17
           },
           {
             "selection": "age_bucket = 55+",
@@ -22780,7 +23183,7 @@
             "segment": "age_bucket",
             "bucket": "35-44",
             "day_n": 3,
-            "cohort_users": 6506,
+            "cohort_users": 6507,
             "retained_users": 206,
             "retention_pct": 3.17
           },
@@ -22789,7 +23192,7 @@
             "segment": "age_bucket",
             "bucket": "45-54",
             "day_n": 3,
-            "cohort_users": 1604,
+            "cohort_users": 1603,
             "retained_users": 44,
             "retention_pct": 2.74
           },
@@ -22843,7 +23246,7 @@
             "segment": "age_bucket",
             "bucket": "35-44",
             "day_n": 7,
-            "cohort_users": 6506,
+            "cohort_users": 6507,
             "retained_users": 108,
             "retention_pct": 1.66
           },
@@ -22852,7 +23255,7 @@
             "segment": "age_bucket",
             "bucket": "45-54",
             "day_n": 7,
-            "cohort_users": 1604,
+            "cohort_users": 1603,
             "retained_users": 13,
             "retention_pct": 0.81
           },
@@ -23383,7 +23786,7 @@
             "segment": "platform",
             "bucket": "android",
             "day_n": 1,
-            "cohort_users": 79787,
+            "cohort_users": 79786,
             "retained_users": 5155,
             "retention_pct": 6.46
           },
@@ -23392,7 +23795,7 @@
             "segment": "platform",
             "bucket": "unknown",
             "day_n": 1,
-            "cohort_users": 20446,
+            "cohort_users": 20447,
             "retained_users": 841,
             "retention_pct": 4.11
           },
@@ -23401,7 +23804,7 @@
             "segment": "platform",
             "bucket": "android",
             "day_n": 3,
-            "cohort_users": 79787,
+            "cohort_users": 79786,
             "retained_users": 1753,
             "retention_pct": 2.2
           },
@@ -23410,7 +23813,7 @@
             "segment": "platform",
             "bucket": "unknown",
             "day_n": 3,
-            "cohort_users": 20446,
+            "cohort_users": 20447,
             "retained_users": 234,
             "retention_pct": 1.14
           },
@@ -23419,7 +23822,7 @@
             "segment": "platform",
             "bucket": "android",
             "day_n": 7,
-            "cohort_users": 79787,
+            "cohort_users": 79786,
             "retained_users": 726,
             "retention_pct": 0.91
           },
@@ -23428,7 +23831,7 @@
             "segment": "platform",
             "bucket": "unknown",
             "day_n": 7,
-            "cohort_users": 20446,
+            "cohort_users": 20447,
             "retained_users": 137,
             "retention_pct": 0.67
           }
@@ -24386,8 +24789,8 @@
       "engagement": {
         "kpis": {
           "active_users": 16068,
-          "sessions": 60533,
-          "total_minutes": 150255.1,
+          "sessions": 60535,
+          "total_minutes": 150255.8,
           "avg_minutes_per_user": 9.35,
           "avg_minutes_per_session": 2.48,
           "bim_notification_opens": 2595,
@@ -24405,18 +24808,18 @@
           },
           {
             "date": "2026-06-10",
-            "sessions": 21628,
+            "sessions": 21629,
             "users": 6825,
-            "total_minutes": 56075.2,
+            "total_minutes": 56075.8,
             "avg_minutes_per_user": 8.22,
             "avg_minutes_per_session": 2.59,
             "sessions_per_user": 3.17
           },
           {
             "date": "2026-06-11",
-            "sessions": 19213,
+            "sessions": 19214,
             "users": 5722,
-            "total_minutes": 49565.7,
+            "total_minutes": 49565.8,
             "avg_minutes_per_user": 8.66,
             "avg_minutes_per_session": 2.58,
             "sessions_per_user": 3.36
@@ -24425,9 +24828,9 @@
         "session_by_platform": [
           {
             "platform": "android",
-            "sessions": 54693,
+            "sessions": 54695,
             "users": 14832,
-            "total_minutes": 136038.4,
+            "total_minutes": 136039.2,
             "avg_minutes_per_user": 9.17,
             "avg_minutes_per_session": 2.49,
             "sessions_per_user": 3.69
@@ -24482,9 +24885,9 @@
           {
             "date": "2026-06-10",
             "user_cohort": "Old user",
-            "sessions": 6378,
+            "sessions": 6379,
             "users": 2729,
-            "total_minutes": 13473.2,
+            "total_minutes": 13473.9,
             "avg_minutes_per_user": 4.94,
             "sessions_per_user": 2.34
           },
@@ -24573,8 +24976,8 @@
           {
             "bucket": "<18",
             "users": 1238,
-            "sessions": 3099,
-            "total_minutes": 6891.2,
+            "sessions": 3100,
+            "total_minutes": 6891.8,
             "segment": "age_bucket",
             "selection": "age_bucket = <18",
             "avg_minutes_per_user": 5.57,
@@ -24672,12 +25075,12 @@
           {
             "bucket": "7.0",
             "users": 784,
-            "sessions": 2144,
-            "total_minutes": 3670.7,
+            "sessions": 2145,
+            "total_minutes": 3671.4,
             "segment": "config_id",
             "selection": "config_id = 7.0",
             "avg_minutes_per_user": 4.68,
-            "sessions_per_user": 2.73,
+            "sessions_per_user": 2.74,
             "user_share_pct": 4.88
           },
           {
@@ -24716,8 +25119,8 @@
           {
             "bucket": "female",
             "users": 10198,
-            "sessions": 33534,
-            "total_minutes": 88419.7,
+            "sessions": 33535,
+            "total_minutes": 88420.4,
             "segment": "gender",
             "selection": "gender = female",
             "avg_minutes_per_user": 8.67,
@@ -24782,8 +25185,8 @@
           {
             "bucket": "Single",
             "users": 701,
-            "sessions": 2047,
-            "total_minutes": 4149.0,
+            "sessions": 2048,
+            "total_minutes": 4149.6,
             "segment": "marital_status",
             "selection": "marital_status = Single",
             "avg_minutes_per_user": 5.92,
@@ -24826,11 +25229,11 @@
           {
             "bucket": "Student",
             "users": 392,
-            "sessions": 884,
-            "total_minutes": 1636.3,
+            "sessions": 885,
+            "total_minutes": 1636.9,
             "segment": "occupation",
             "selection": "occupation = Student",
-            "avg_minutes_per_user": 4.17,
+            "avg_minutes_per_user": 4.18,
             "sessions_per_user": 2.26,
             "user_share_pct": 2.44
           },
@@ -24870,8 +25273,8 @@
           {
             "bucket": "android",
             "users": 13578,
-            "sessions": 43214,
-            "total_minutes": 113847.5,
+            "sessions": 43215,
+            "total_minutes": 113848.2,
             "segment": "platform",
             "selection": "platform = android",
             "avg_minutes_per_user": 8.38,
@@ -24914,8 +25317,8 @@
           {
             "bucket": "Old user",
             "users": 6024,
-            "sessions": 18806,
-            "total_minutes": 38908.3,
+            "sessions": 18807,
+            "total_minutes": 38908.9,
             "segment": "user_cohort",
             "selection": "user_cohort = Old user",
             "avg_minutes_per_user": 6.46,
@@ -24938,8 +25341,8 @@
           {
             "bucket": "1-5 min",
             "users": 6058,
-            "sessions": 11954,
-            "total_minutes": 18156.5,
+            "sessions": 11955,
+            "total_minutes": 18157.1,
             "selection": "total session time = 1-5 min",
             "avg_minutes_per_user": 3.0,
             "sessions_per_user": 1.97,
@@ -27147,6 +27550,74 @@
             "payers": 140,
             "selection": "subscription stage = Trial; amount = Rs 1",
             "revenue_share_pct": 0.48,
+            "avg_transaction": 1.0
+          }
+        ],
+        "subscription_stage_by_user_cohort": [
+          {
+            "user_cohort": "New user",
+            "stage": "Trial",
+            "amount": 49.0,
+            "revenue": 2401.0,
+            "transactions": 49,
+            "payers": 49,
+            "selection": "user type = New user; subscription stage = Trial; amount = Rs 49",
+            "revenue_share_pct": 8.15,
+            "avg_transaction": 49.0
+          },
+          {
+            "user_cohort": "New user",
+            "stage": "Trial",
+            "amount": 1.0,
+            "revenue": 121.0,
+            "transactions": 121,
+            "payers": 121,
+            "selection": "user type = New user; subscription stage = Trial; amount = Rs 1",
+            "revenue_share_pct": 0.41,
+            "avg_transaction": 1.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Main",
+            "amount": 499.0,
+            "revenue": 24451.0,
+            "transactions": 49,
+            "payers": 49,
+            "selection": "user type = Old user; subscription stage = Main; amount = Rs 499",
+            "revenue_share_pct": 82.98,
+            "avg_transaction": 499.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Main",
+            "amount": 199.0,
+            "revenue": 1592.0,
+            "transactions": 8,
+            "payers": 8,
+            "selection": "user type = Old user; subscription stage = Main; amount = Rs 199",
+            "revenue_share_pct": 5.4,
+            "avg_transaction": 199.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Trial",
+            "amount": 49.0,
+            "revenue": 882.0,
+            "transactions": 18,
+            "payers": 18,
+            "selection": "user type = Old user; subscription stage = Trial; amount = Rs 49",
+            "revenue_share_pct": 2.99,
+            "avg_transaction": 49.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Trial",
+            "amount": 1.0,
+            "revenue": 19.0,
+            "transactions": 19,
+            "payers": 19,
+            "selection": "user type = Old user; subscription stage = Trial; amount = Rs 1",
+            "revenue_share_pct": 0.06,
             "avg_transaction": 1.0
           }
         ],
@@ -29604,9 +30075,9 @@
         "cancel_kpis": {
           "active_paid_subscriptions": 665,
           "cancel_scheduled_users": 48,
-          "trial_cancel_before_charge": 5870,
+          "trial_cancel_before_charge": 5872,
           "trial_d0_cancel": 306,
-          "canceled_subscriptions": 6258
+          "canceled_subscriptions": 6259
         },
         "cancel_distribution": [
           {
@@ -29657,7 +30128,7 @@
           {
             "bucket": "D15-D30",
             "plan_code": "Chat Only Pack",
-            "subscriptions": 13
+            "subscriptions": 14
           },
           {
             "bucket": "D15-D30",
@@ -29712,7 +30183,7 @@
           {
             "bucket": "D4-D7",
             "plan_code": "All Access Pack",
-            "subscriptions": 109
+            "subscriptions": 110
           },
           {
             "bucket": "D4-D7",
@@ -30554,7 +31025,7 @@
             "config_id": 18,
             "trial_type": "Rs 1 trial",
             "trial_amount": 1,
-            "assigned_users": 47864,
+            "assigned_users": 47869,
             "followup_users": 1670,
             "paywall_shown_users": 1544,
             "trial_cta_users": 611,
@@ -30576,7 +31047,7 @@
             "config_id": 20,
             "trial_type": "Rs 49 trial",
             "trial_amount": 49,
-            "assigned_users": 61180,
+            "assigned_users": 61184,
             "followup_users": 2083,
             "paywall_shown_users": 1908,
             "trial_cta_users": 441,
@@ -30593,6 +31064,112 @@
             "followup_to_trial_pct": 2.88,
             "trial_to_main_pct": 10.0,
             "followup_to_main_pct": 0.29
+          }
+        ],
+        "config_funnel_by_user_cohort": [
+          {
+            "config_id": 18,
+            "trial_type": "Rs 1 trial",
+            "trial_amount": 1,
+            "user_cohort": "New user",
+            "selection": "Rs 1 trial; user type = New user",
+            "assigned_users": 1350,
+            "followup_users": 1124,
+            "paywall_shown_users": 1094,
+            "trial_cta_users": 540,
+            "trial_buyers": 111,
+            "main_plan_buyers": 0,
+            "trial_cta_199_pack_users": 56,
+            "trial_cta_499_pack_users": 512,
+            "main_199_buyers": 0,
+            "main_499_buyers": 0,
+            "assigned_to_followup_pct": 83.26,
+            "followup_to_paywall_pct": 97.33,
+            "paywall_to_trial_cta_pct": 49.36,
+            "trial_cta_to_trial_purchase_pct": 20.56,
+            "followup_to_trial_pct": 9.88,
+            "trial_to_main_pct": 0.0,
+            "followup_to_main_pct": 0.0,
+            "main_499_share_pct": 0.0,
+            "main_199_share_pct": 0.0
+          },
+          {
+            "config_id": 18,
+            "trial_type": "Rs 1 trial",
+            "trial_amount": 1,
+            "user_cohort": "Old user",
+            "selection": "Rs 1 trial; user type = Old user",
+            "assigned_users": 46519,
+            "followup_users": 546,
+            "paywall_shown_users": 450,
+            "trial_cta_users": 71,
+            "trial_buyers": 11,
+            "main_plan_buyers": 12,
+            "trial_cta_199_pack_users": 10,
+            "trial_cta_499_pack_users": 64,
+            "main_199_buyers": 2,
+            "main_499_buyers": 10,
+            "assigned_to_followup_pct": 1.17,
+            "followup_to_paywall_pct": 82.42,
+            "paywall_to_trial_cta_pct": 15.78,
+            "trial_cta_to_trial_purchase_pct": 15.49,
+            "followup_to_trial_pct": 2.01,
+            "trial_to_main_pct": 109.09,
+            "followup_to_main_pct": 2.2,
+            "main_499_share_pct": 83.33,
+            "main_199_share_pct": 16.67
+          },
+          {
+            "config_id": 20,
+            "trial_type": "Rs 49 trial",
+            "trial_amount": 49,
+            "user_cohort": "New user",
+            "selection": "Rs 49 trial; user type = New user",
+            "assigned_users": 1384,
+            "followup_users": 1174,
+            "paywall_shown_users": 1153,
+            "trial_cta_users": 347,
+            "trial_buyers": 42,
+            "main_plan_buyers": 0,
+            "trial_cta_199_pack_users": 31,
+            "trial_cta_499_pack_users": 330,
+            "main_199_buyers": 0,
+            "main_499_buyers": 0,
+            "assigned_to_followup_pct": 84.83,
+            "followup_to_paywall_pct": 98.21,
+            "paywall_to_trial_cta_pct": 30.1,
+            "trial_cta_to_trial_purchase_pct": 12.1,
+            "followup_to_trial_pct": 3.58,
+            "trial_to_main_pct": 0.0,
+            "followup_to_main_pct": 0.0,
+            "main_499_share_pct": 0.0,
+            "main_199_share_pct": 0.0
+          },
+          {
+            "config_id": 20,
+            "trial_type": "Rs 49 trial",
+            "trial_amount": 49,
+            "user_cohort": "Old user",
+            "selection": "Rs 49 trial; user type = Old user",
+            "assigned_users": 59800,
+            "followup_users": 909,
+            "paywall_shown_users": 755,
+            "trial_cta_users": 94,
+            "trial_buyers": 18,
+            "main_plan_buyers": 6,
+            "trial_cta_199_pack_users": 13,
+            "trial_cta_499_pack_users": 85,
+            "main_199_buyers": 2,
+            "main_499_buyers": 4,
+            "assigned_to_followup_pct": 1.52,
+            "followup_to_paywall_pct": 83.06,
+            "paywall_to_trial_cta_pct": 12.45,
+            "trial_cta_to_trial_purchase_pct": 19.15,
+            "followup_to_trial_pct": 1.98,
+            "trial_to_main_pct": 33.33,
+            "followup_to_main_pct": 0.66,
+            "main_499_share_pct": 66.67,
+            "main_199_share_pct": 33.33
           }
         ]
       },
@@ -31414,11 +31991,11 @@
             "followup_events": 7
           },
           {
-            "entity_slug": "68792540fcf00df3749da51e",
-            "bot_id": "68792540fcf00df3749da51e",
-            "bot_name": "Moniika",
-            "entity_label": "Moniika",
-            "entity_match_type": "bot_id",
+            "entity_slug": "pooja",
+            "bot_id": "68792542fcf00df3749da520",
+            "bot_name": "Pooja",
+            "entity_label": "Pooja",
+            "entity_match_type": "slug",
             "followup_events": 6
           }
         ],
@@ -31690,12 +32267,12 @@
               "pct": 2.0
             },
             {
-              "bucket": "Chandigarh",
+              "bucket": "Guwahati",
               "users": 175,
               "pct": 1.94
             },
             {
-              "bucket": "Guwahati",
+              "bucket": "Chandigarh",
               "users": 175,
               "pct": 1.94
             },
@@ -32172,15 +32749,15 @@
           },
           {
             "segment": "city",
-            "bucket": "Chandigarh",
-            "selection": "city = Chandigarh",
+            "bucket": "Guwahati",
+            "selection": "city = Guwahati",
             "users": 175,
             "pct": 1.94
           },
           {
             "segment": "city",
-            "bucket": "Guwahati",
-            "selection": "city = Guwahati",
+            "bucket": "Chandigarh",
+            "selection": "city = Chandigarh",
             "users": 175,
             "pct": 1.94
           },
@@ -32392,42 +32969,42 @@
           {
             "platform": "android",
             "day_n": 1,
-            "cohort_users": 61845,
+            "cohort_users": 61844,
             "retained_users": 3891,
             "retention_pct": 6.29
           },
           {
             "platform": "android",
             "day_n": 3,
-            "cohort_users": 61845,
+            "cohort_users": 61844,
             "retained_users": 1345,
             "retention_pct": 2.17
           },
           {
             "platform": "android",
             "day_n": 7,
-            "cohort_users": 61845,
+            "cohort_users": 61844,
             "retained_users": 568,
             "retention_pct": 0.92
           },
           {
             "platform": "unknown",
             "day_n": 1,
-            "cohort_users": 15686,
+            "cohort_users": 15687,
             "retained_users": 637,
             "retention_pct": 4.06
           },
           {
             "platform": "unknown",
             "day_n": 3,
-            "cohort_users": 15686,
+            "cohort_users": 15687,
             "retained_users": 171,
             "retention_pct": 1.09
           },
           {
             "platform": "unknown",
             "day_n": 7,
-            "cohort_users": 15686,
+            "cohort_users": 15687,
             "retained_users": 109,
             "retention_pct": 0.69
           }
@@ -32474,18 +33051,18 @@
             "segment": "age_bucket",
             "bucket": "35-44",
             "day_n": 1,
-            "cohort_users": 5130,
-            "retained_users": 453,
-            "retention_pct": 8.83
+            "cohort_users": 5131,
+            "retained_users": 454,
+            "retention_pct": 8.85
           },
           {
             "selection": "age_bucket = 45-54",
             "segment": "age_bucket",
             "bucket": "45-54",
             "day_n": 1,
-            "cohort_users": 1259,
-            "retained_users": 105,
-            "retention_pct": 8.34
+            "cohort_users": 1258,
+            "retained_users": 104,
+            "retention_pct": 8.27
           },
           {
             "selection": "age_bucket = 55+",
@@ -32537,7 +33114,7 @@
             "segment": "age_bucket",
             "bucket": "35-44",
             "day_n": 3,
-            "cohort_users": 5130,
+            "cohort_users": 5131,
             "retained_users": 161,
             "retention_pct": 3.14
           },
@@ -32546,7 +33123,7 @@
             "segment": "age_bucket",
             "bucket": "45-54",
             "day_n": 3,
-            "cohort_users": 1259,
+            "cohort_users": 1258,
             "retained_users": 36,
             "retention_pct": 2.86
           },
@@ -32600,7 +33177,7 @@
             "segment": "age_bucket",
             "bucket": "35-44",
             "day_n": 7,
-            "cohort_users": 5130,
+            "cohort_users": 5131,
             "retained_users": 85,
             "retention_pct": 1.66
           },
@@ -32609,7 +33186,7 @@
             "segment": "age_bucket",
             "bucket": "45-54",
             "day_n": 7,
-            "cohort_users": 1259,
+            "cohort_users": 1258,
             "retained_users": 8,
             "retention_pct": 0.64
           },
@@ -33140,7 +33717,7 @@
             "segment": "platform",
             "bucket": "android",
             "day_n": 1,
-            "cohort_users": 61845,
+            "cohort_users": 61844,
             "retained_users": 3891,
             "retention_pct": 6.29
           },
@@ -33149,7 +33726,7 @@
             "segment": "platform",
             "bucket": "unknown",
             "day_n": 1,
-            "cohort_users": 15686,
+            "cohort_users": 15687,
             "retained_users": 637,
             "retention_pct": 4.06
           },
@@ -33158,7 +33735,7 @@
             "segment": "platform",
             "bucket": "android",
             "day_n": 3,
-            "cohort_users": 61845,
+            "cohort_users": 61844,
             "retained_users": 1345,
             "retention_pct": 2.17
           },
@@ -33167,7 +33744,7 @@
             "segment": "platform",
             "bucket": "unknown",
             "day_n": 3,
-            "cohort_users": 15686,
+            "cohort_users": 15687,
             "retained_users": 171,
             "retention_pct": 1.09
           },
@@ -33176,7 +33753,7 @@
             "segment": "platform",
             "bucket": "android",
             "day_n": 7,
-            "cohort_users": 61845,
+            "cohort_users": 61844,
             "retained_users": 568,
             "retention_pct": 0.92
           },
@@ -33185,7 +33762,7 @@
             "segment": "platform",
             "bucket": "unknown",
             "day_n": 7,
-            "cohort_users": 15686,
+            "cohort_users": 15687,
             "retained_users": 109,
             "retention_pct": 0.69
           }
@@ -36883,6 +37460,85 @@
             "avg_transaction": 1.0
           }
         ],
+        "subscription_stage_by_user_cohort": [
+          {
+            "user_cohort": "New user",
+            "stage": "Trial",
+            "amount": 49.0,
+            "revenue": 2548.0,
+            "transactions": 52,
+            "payers": 52,
+            "selection": "user type = New user; subscription stage = Trial; amount = Rs 49",
+            "revenue_share_pct": 9.64,
+            "avg_transaction": 49.0
+          },
+          {
+            "user_cohort": "New user",
+            "stage": "Trial",
+            "amount": 1.0,
+            "revenue": 216.0,
+            "transactions": 216,
+            "payers": 216,
+            "selection": "user type = New user; subscription stage = Trial; amount = Rs 1",
+            "revenue_share_pct": 0.82,
+            "avg_transaction": 1.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Main",
+            "amount": 499.0,
+            "revenue": 20958.0,
+            "transactions": 42,
+            "payers": 42,
+            "selection": "user type = Old user; subscription stage = Main; amount = Rs 499",
+            "revenue_share_pct": 79.3,
+            "avg_transaction": 499.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Main",
+            "amount": 199.0,
+            "revenue": 1592.0,
+            "transactions": 8,
+            "payers": 8,
+            "selection": "user type = Old user; subscription stage = Main; amount = Rs 199",
+            "revenue_share_pct": 6.02,
+            "avg_transaction": 199.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Trial",
+            "amount": 49.0,
+            "revenue": 588.0,
+            "transactions": 12,
+            "payers": 12,
+            "selection": "user type = Old user; subscription stage = Trial; amount = Rs 49",
+            "revenue_share_pct": 2.22,
+            "avg_transaction": 49.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Trial",
+            "amount": 499.0,
+            "revenue": 499.0,
+            "transactions": 1,
+            "payers": 1,
+            "selection": "user type = Old user; subscription stage = Trial; amount = Rs 499",
+            "revenue_share_pct": 1.89,
+            "avg_transaction": 499.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Trial",
+            "amount": 1.0,
+            "revenue": 29.0,
+            "transactions": 29,
+            "payers": 29,
+            "selection": "user type = Old user; subscription stage = Trial; amount = Rs 1",
+            "revenue_share_pct": 0.11,
+            "avg_transaction": 1.0
+          }
+        ],
         "payer_frequency": [
           {
             "bucket": "1 txn",
@@ -39470,9 +40126,9 @@
         "cancel_kpis": {
           "active_paid_subscriptions": 700,
           "cancel_scheduled_users": 52,
-          "trial_cancel_before_charge": 6205,
+          "trial_cancel_before_charge": 6207,
           "trial_d0_cancel": 323,
-          "canceled_subscriptions": 6623
+          "canceled_subscriptions": 6624
         },
         "cancel_distribution": [
           {
@@ -39553,7 +40209,7 @@
           {
             "bucket": "D15-D30",
             "plan_code": "Chat Only Pack",
-            "subscriptions": 13
+            "subscriptions": 14
           },
           {
             "bucket": "D15-D30",
@@ -39608,7 +40264,7 @@
           {
             "bucket": "D4-D7",
             "plan_code": "All Access Pack",
-            "subscriptions": 109
+            "subscriptions": 110
           },
           {
             "bucket": "D4-D7",
@@ -40442,7 +41098,7 @@
             "config_id": 18,
             "trial_type": "Rs 1 trial",
             "trial_amount": 1,
-            "assigned_users": 47864,
+            "assigned_users": 47869,
             "followup_users": 1871,
             "paywall_shown_users": 1742,
             "trial_cta_users": 712,
@@ -40464,7 +41120,7 @@
             "config_id": 20,
             "trial_type": "Rs 49 trial",
             "trial_amount": 49,
-            "assigned_users": 61180,
+            "assigned_users": 61185,
             "followup_users": 2123,
             "paywall_shown_users": 1919,
             "trial_cta_users": 465,
@@ -40481,6 +41137,112 @@
             "followup_to_trial_pct": 2.68,
             "trial_to_main_pct": 14.04,
             "followup_to_main_pct": 0.38
+          }
+        ],
+        "config_funnel_by_user_cohort": [
+          {
+            "config_id": 18,
+            "trial_type": "Rs 1 trial",
+            "trial_amount": 1,
+            "user_cohort": "New user",
+            "selection": "Rs 1 trial; user type = New user",
+            "assigned_users": 1437,
+            "followup_users": 1310,
+            "paywall_shown_users": 1291,
+            "trial_cta_users": 632,
+            "trial_buyers": 182,
+            "main_plan_buyers": 0,
+            "trial_cta_199_pack_users": 83,
+            "trial_cta_499_pack_users": 576,
+            "main_199_buyers": 0,
+            "main_499_buyers": 0,
+            "assigned_to_followup_pct": 91.16,
+            "followup_to_paywall_pct": 98.55,
+            "paywall_to_trial_cta_pct": 48.95,
+            "trial_cta_to_trial_purchase_pct": 28.8,
+            "followup_to_trial_pct": 13.89,
+            "trial_to_main_pct": 0.0,
+            "followup_to_main_pct": 0.0,
+            "main_499_share_pct": 0.0,
+            "main_199_share_pct": 0.0
+          },
+          {
+            "config_id": 18,
+            "trial_type": "Rs 1 trial",
+            "trial_amount": 1,
+            "user_cohort": "Old user",
+            "selection": "Rs 1 trial; user type = Old user",
+            "assigned_users": 46432,
+            "followup_users": 561,
+            "paywall_shown_users": 451,
+            "trial_cta_users": 80,
+            "trial_buyers": 16,
+            "main_plan_buyers": 9,
+            "trial_cta_199_pack_users": 10,
+            "trial_cta_499_pack_users": 73,
+            "main_199_buyers": 0,
+            "main_499_buyers": 9,
+            "assigned_to_followup_pct": 1.21,
+            "followup_to_paywall_pct": 80.39,
+            "paywall_to_trial_cta_pct": 17.74,
+            "trial_cta_to_trial_purchase_pct": 20.0,
+            "followup_to_trial_pct": 2.85,
+            "trial_to_main_pct": 56.25,
+            "followup_to_main_pct": 1.6,
+            "main_499_share_pct": 100.0,
+            "main_199_share_pct": 0.0
+          },
+          {
+            "config_id": 20,
+            "trial_type": "Rs 49 trial",
+            "trial_amount": 49,
+            "user_cohort": "New user",
+            "selection": "Rs 49 trial; user type = New user",
+            "assigned_users": 1389,
+            "followup_users": 1261,
+            "paywall_shown_users": 1234,
+            "trial_cta_users": 353,
+            "trial_buyers": 45,
+            "main_plan_buyers": 0,
+            "trial_cta_199_pack_users": 29,
+            "trial_cta_499_pack_users": 338,
+            "main_199_buyers": 0,
+            "main_499_buyers": 0,
+            "assigned_to_followup_pct": 90.78,
+            "followup_to_paywall_pct": 97.86,
+            "paywall_to_trial_cta_pct": 28.61,
+            "trial_cta_to_trial_purchase_pct": 12.75,
+            "followup_to_trial_pct": 3.57,
+            "trial_to_main_pct": 0.0,
+            "followup_to_main_pct": 0.0,
+            "main_499_share_pct": 0.0,
+            "main_199_share_pct": 0.0
+          },
+          {
+            "config_id": 20,
+            "trial_type": "Rs 49 trial",
+            "trial_amount": 49,
+            "user_cohort": "Old user",
+            "selection": "Rs 49 trial; user type = Old user",
+            "assigned_users": 59796,
+            "followup_users": 862,
+            "paywall_shown_users": 685,
+            "trial_cta_users": 112,
+            "trial_buyers": 12,
+            "main_plan_buyers": 8,
+            "trial_cta_199_pack_users": 11,
+            "trial_cta_499_pack_users": 105,
+            "main_199_buyers": 3,
+            "main_499_buyers": 5,
+            "assigned_to_followup_pct": 1.44,
+            "followup_to_paywall_pct": 79.47,
+            "paywall_to_trial_cta_pct": 16.35,
+            "trial_cta_to_trial_purchase_pct": 10.71,
+            "followup_to_trial_pct": 1.39,
+            "trial_to_main_pct": 66.67,
+            "followup_to_main_pct": 0.93,
+            "main_499_share_pct": 62.5,
+            "main_199_share_pct": 37.5
           }
         ]
       },
@@ -42361,42 +43123,42 @@
           {
             "platform": "android",
             "day_n": 1,
-            "cohort_users": 63046,
+            "cohort_users": 63045,
             "retained_users": 3969,
             "retention_pct": 6.3
           },
           {
             "platform": "android",
             "day_n": 3,
-            "cohort_users": 63046,
+            "cohort_users": 63045,
             "retained_users": 1369,
             "retention_pct": 2.17
           },
           {
             "platform": "android",
             "day_n": 7,
-            "cohort_users": 63046,
+            "cohort_users": 63045,
             "retained_users": 581,
             "retention_pct": 0.92
           },
           {
             "platform": "unknown",
             "day_n": 1,
-            "cohort_users": 15167,
+            "cohort_users": 15168,
             "retained_users": 612,
-            "retention_pct": 4.04
+            "retention_pct": 4.03
           },
           {
             "platform": "unknown",
             "day_n": 3,
-            "cohort_users": 15167,
+            "cohort_users": 15168,
             "retained_users": 161,
             "retention_pct": 1.06
           },
           {
             "platform": "unknown",
             "day_n": 7,
-            "cohort_users": 15167,
+            "cohort_users": 15168,
             "retained_users": 109,
             "retention_pct": 0.72
           }
@@ -42443,18 +43205,18 @@
             "segment": "age_bucket",
             "bucket": "35-44",
             "day_n": 1,
-            "cohort_users": 5105,
-            "retained_users": 454,
-            "retention_pct": 8.89
+            "cohort_users": 5106,
+            "retained_users": 455,
+            "retention_pct": 8.91
           },
           {
             "selection": "age_bucket = 45-54",
             "segment": "age_bucket",
             "bucket": "45-54",
             "day_n": 1,
-            "cohort_users": 1235,
-            "retained_users": 100,
-            "retention_pct": 8.1
+            "cohort_users": 1234,
+            "retained_users": 99,
+            "retention_pct": 8.02
           },
           {
             "selection": "age_bucket = 55+",
@@ -42506,7 +43268,7 @@
             "segment": "age_bucket",
             "bucket": "35-44",
             "day_n": 3,
-            "cohort_users": 5105,
+            "cohort_users": 5106,
             "retained_users": 161,
             "retention_pct": 3.15
           },
@@ -42515,7 +43277,7 @@
             "segment": "age_bucket",
             "bucket": "45-54",
             "day_n": 3,
-            "cohort_users": 1235,
+            "cohort_users": 1234,
             "retained_users": 37,
             "retention_pct": 3.0
           },
@@ -42569,7 +43331,7 @@
             "segment": "age_bucket",
             "bucket": "35-44",
             "day_n": 7,
-            "cohort_users": 5105,
+            "cohort_users": 5106,
             "retained_users": 84,
             "retention_pct": 1.65
           },
@@ -42578,7 +43340,7 @@
             "segment": "age_bucket",
             "bucket": "45-54",
             "day_n": 7,
-            "cohort_users": 1235,
+            "cohort_users": 1234,
             "retained_users": 8,
             "retention_pct": 0.65
           },
@@ -43109,7 +43871,7 @@
             "segment": "platform",
             "bucket": "android",
             "day_n": 1,
-            "cohort_users": 63046,
+            "cohort_users": 63045,
             "retained_users": 3969,
             "retention_pct": 6.3
           },
@@ -43118,16 +43880,16 @@
             "segment": "platform",
             "bucket": "unknown",
             "day_n": 1,
-            "cohort_users": 15167,
+            "cohort_users": 15168,
             "retained_users": 612,
-            "retention_pct": 4.04
+            "retention_pct": 4.03
           },
           {
             "selection": "platform = android",
             "segment": "platform",
             "bucket": "android",
             "day_n": 3,
-            "cohort_users": 63046,
+            "cohort_users": 63045,
             "retained_users": 1369,
             "retention_pct": 2.17
           },
@@ -43136,7 +43898,7 @@
             "segment": "platform",
             "bucket": "unknown",
             "day_n": 3,
-            "cohort_users": 15167,
+            "cohort_users": 15168,
             "retained_users": 161,
             "retention_pct": 1.06
           },
@@ -43145,7 +43907,7 @@
             "segment": "platform",
             "bucket": "android",
             "day_n": 7,
-            "cohort_users": 63046,
+            "cohort_users": 63045,
             "retained_users": 581,
             "retention_pct": 0.92
           },
@@ -43154,7 +43916,7 @@
             "segment": "platform",
             "bucket": "unknown",
             "day_n": 7,
-            "cohort_users": 15167,
+            "cohort_users": 15168,
             "retained_users": 109,
             "retention_pct": 0.72
           }
@@ -44112,8 +44874,8 @@
       "engagement": {
         "kpis": {
           "active_users": 6825,
-          "sessions": 21628,
-          "total_minutes": 56075.2,
+          "sessions": 21629,
+          "total_minutes": 56075.8,
           "avg_minutes_per_user": 8.22,
           "avg_minutes_per_session": 2.59,
           "bim_notification_opens": 865,
@@ -44122,9 +44884,9 @@
         "session_daily": [
           {
             "date": "2026-06-10",
-            "sessions": 21628,
+            "sessions": 21629,
             "users": 6825,
-            "total_minutes": 56075.2,
+            "total_minutes": 56075.8,
             "avg_minutes_per_user": 8.22,
             "avg_minutes_per_session": 2.59,
             "sessions_per_user": 3.17
@@ -44133,9 +44895,9 @@
         "session_by_platform": [
           {
             "platform": "android",
-            "sessions": 19811,
+            "sessions": 19812,
             "users": 6383,
-            "total_minutes": 51682.7,
+            "total_minutes": 51683.4,
             "avg_minutes_per_user": 8.1,
             "avg_minutes_per_session": 2.61,
             "sessions_per_user": 3.1
@@ -44163,9 +44925,9 @@
           {
             "date": "2026-06-10",
             "user_cohort": "Old user",
-            "sessions": 8717,
+            "sessions": 8718,
             "users": 3376,
-            "total_minutes": 20048.7,
+            "total_minutes": 20049.4,
             "avg_minutes_per_user": 5.94,
             "sessions_per_user": 2.58
           },
@@ -44227,11 +44989,11 @@
           {
             "bucket": "<18",
             "users": 501,
-            "sessions": 1193,
-            "total_minutes": 2627.3,
+            "sessions": 1194,
+            "total_minutes": 2628.0,
             "segment": "age_bucket",
             "selection": "age_bucket = <18",
-            "avg_minutes_per_user": 5.24,
+            "avg_minutes_per_user": 5.25,
             "sessions_per_user": 2.38,
             "user_share_pct": 7.34
           },
@@ -44304,8 +45066,8 @@
           {
             "bucket": "7.0",
             "users": 341,
-            "sessions": 691,
-            "total_minutes": 1155.1,
+            "sessions": 692,
+            "total_minutes": 1155.8,
             "segment": "config_id",
             "selection": "config_id = 7.0",
             "avg_minutes_per_user": 3.39,
@@ -44370,8 +45132,8 @@
           {
             "bucket": "female",
             "users": 4370,
-            "sessions": 12224,
-            "total_minutes": 33338.0,
+            "sessions": 12225,
+            "total_minutes": 33338.7,
             "segment": "gender",
             "selection": "gender = female",
             "avg_minutes_per_user": 7.63,
@@ -44436,8 +45198,8 @@
           {
             "bucket": "Single",
             "users": 310,
-            "sessions": 665,
-            "total_minutes": 1478.8,
+            "sessions": 666,
+            "total_minutes": 1479.5,
             "segment": "marital_status",
             "selection": "marital_status = Single",
             "avg_minutes_per_user": 4.77,
@@ -44480,8 +45242,8 @@
           {
             "bucket": "Student",
             "users": 159,
-            "sessions": 287,
-            "total_minutes": 499.1,
+            "sessions": 288,
+            "total_minutes": 499.8,
             "segment": "occupation",
             "selection": "occupation = Student",
             "avg_minutes_per_user": 3.14,
@@ -44524,8 +45286,8 @@
           {
             "bucket": "android",
             "users": 5895,
-            "sessions": 15875,
-            "total_minutes": 43685.0,
+            "sessions": 15876,
+            "total_minutes": 43685.7,
             "segment": "platform",
             "selection": "platform = android",
             "avg_minutes_per_user": 7.41,
@@ -44557,8 +45319,8 @@
           {
             "bucket": "Old user",
             "users": 3376,
-            "sessions": 8717,
-            "total_minutes": 20048.7,
+            "sessions": 8718,
+            "total_minutes": 20049.4,
             "segment": "user_cohort",
             "selection": "user_cohort = Old user",
             "avg_minutes_per_user": 5.94,
@@ -44592,8 +45354,8 @@
           {
             "bucket": "1-5 min",
             "users": 2512,
-            "sessions": 4543,
-            "total_minutes": 7348.9,
+            "sessions": 4544,
+            "total_minutes": 7349.6,
             "selection": "total session time = 1-5 min",
             "avg_minutes_per_user": 2.93,
             "sessions_per_user": 1.81,
@@ -47036,6 +47798,74 @@
             "avg_transaction": 1.0
           }
         ],
+        "subscription_stage_by_user_cohort": [
+          {
+            "user_cohort": "New user",
+            "stage": "Trial",
+            "amount": 49.0,
+            "revenue": 2107.0,
+            "transactions": 43,
+            "payers": 43,
+            "selection": "user type = New user; subscription stage = Trial; amount = Rs 49",
+            "revenue_share_pct": 8.35,
+            "avg_transaction": 49.0
+          },
+          {
+            "user_cohort": "New user",
+            "stage": "Trial",
+            "amount": 1.0,
+            "revenue": 218.0,
+            "transactions": 218,
+            "payers": 218,
+            "selection": "user type = New user; subscription stage = Trial; amount = Rs 1",
+            "revenue_share_pct": 0.86,
+            "avg_transaction": 1.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Main",
+            "amount": 499.0,
+            "revenue": 20459.0,
+            "transactions": 41,
+            "payers": 41,
+            "selection": "user type = Old user; subscription stage = Main; amount = Rs 499",
+            "revenue_share_pct": 81.1,
+            "avg_transaction": 499.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Main",
+            "amount": 199.0,
+            "revenue": 1791.0,
+            "transactions": 9,
+            "payers": 9,
+            "selection": "user type = Old user; subscription stage = Main; amount = Rs 199",
+            "revenue_share_pct": 7.1,
+            "avg_transaction": 199.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Trial",
+            "amount": 49.0,
+            "revenue": 637.0,
+            "transactions": 13,
+            "payers": 13,
+            "selection": "user type = Old user; subscription stage = Trial; amount = Rs 49",
+            "revenue_share_pct": 2.52,
+            "avg_transaction": 49.0
+          },
+          {
+            "user_cohort": "Old user",
+            "stage": "Trial",
+            "amount": 1.0,
+            "revenue": 16.0,
+            "transactions": 16,
+            "payers": 16,
+            "selection": "user type = Old user; subscription stage = Trial; amount = Rs 1",
+            "revenue_share_pct": 0.06,
+            "avg_transaction": 1.0
+          }
+        ],
         "payer_frequency": [
           {
             "bucket": "1 txn",
@@ -48885,8 +49715,8 @@
         ],
         "subscription_renewal": {
           "kpis": {
-            "active_paid_subscriptions": 706,
-            "trial_active_subscriptions": 104,
+            "active_paid_subscriptions": 707,
+            "trial_active_subscriptions": 103,
             "renewal_due_next_7_days": 55,
             "autopay_ready_users": 51,
             "cancel_scheduled_users": 52,
@@ -48987,12 +49817,12 @@
             {
               "status": "ACTIVE",
               "subscription_case": "PLAN",
-              "users": 654
+              "users": 655
             },
             {
               "status": "TRIAL_ACTIVE",
               "subscription_case": "TRIAL",
-              "users": 101
+              "users": 100
             },
             {
               "status": "ACTIVE",
@@ -49274,7 +50104,7 @@
             "plan_code": "All",
             "active_paid_subscribers": 695,
             "mrr": 275405.0,
-            "trial_active_subscribers": 104,
+            "trial_active_subscribers": 103,
             "net_mrr_movement": 0.0
           }
         ],
@@ -49684,11 +50514,11 @@
           }
         ],
         "cancel_kpis": {
-          "active_paid_subscriptions": 706,
+          "active_paid_subscriptions": 707,
           "cancel_scheduled_users": 52,
-          "trial_cancel_before_charge": 6407,
+          "trial_cancel_before_charge": 6409,
           "trial_d0_cancel": 332,
-          "canceled_subscriptions": 6906
+          "canceled_subscriptions": 6907
         },
         "cancel_distribution": [
           {
@@ -49774,7 +50604,7 @@
           {
             "bucket": "D15-D30",
             "plan_code": "Chat Only Pack",
-            "subscriptions": 13
+            "subscriptions": 14
           },
           {
             "bucket": "D15-D30",
@@ -49829,7 +50659,7 @@
           {
             "bucket": "D4-D7",
             "plan_code": "All Access Pack",
-            "subscriptions": 109
+            "subscriptions": 110
           },
           {
             "bucket": "D4-D7",
@@ -50655,7 +51485,7 @@
             "config_id": 18,
             "trial_type": "Rs 1 trial",
             "trial_amount": 1,
-            "assigned_users": 47864,
+            "assigned_users": 47870,
             "followup_users": 1154,
             "paywall_shown_users": 1054,
             "trial_cta_users": 376,
@@ -50677,7 +51507,7 @@
             "config_id": 20,
             "trial_type": "Rs 49 trial",
             "trial_amount": 49,
-            "assigned_users": 61180,
+            "assigned_users": 61185,
             "followup_users": 1318,
             "paywall_shown_users": 1146,
             "trial_cta_users": 212,
@@ -50694,6 +51524,112 @@
             "followup_to_trial_pct": 2.43,
             "trial_to_main_pct": 34.38,
             "followup_to_main_pct": 0.83
+          }
+        ],
+        "config_funnel_by_user_cohort": [
+          {
+            "config_id": 18,
+            "trial_type": "Rs 1 trial",
+            "trial_amount": 1,
+            "user_cohort": "New user",
+            "selection": "Rs 1 trial; user type = New user",
+            "assigned_users": 751,
+            "followup_users": 674,
+            "paywall_shown_users": 667,
+            "trial_cta_users": 311,
+            "trial_buyers": 108,
+            "main_plan_buyers": 0,
+            "trial_cta_199_pack_users": 35,
+            "trial_cta_499_pack_users": 288,
+            "main_199_buyers": 0,
+            "main_499_buyers": 0,
+            "assigned_to_followup_pct": 89.75,
+            "followup_to_paywall_pct": 98.96,
+            "paywall_to_trial_cta_pct": 46.63,
+            "trial_cta_to_trial_purchase_pct": 34.73,
+            "followup_to_trial_pct": 16.02,
+            "trial_to_main_pct": 0.0,
+            "followup_to_main_pct": 0.0,
+            "main_499_share_pct": 0.0,
+            "main_199_share_pct": 0.0
+          },
+          {
+            "config_id": 18,
+            "trial_type": "Rs 1 trial",
+            "trial_amount": 1,
+            "user_cohort": "Old user",
+            "selection": "Rs 1 trial; user type = Old user",
+            "assigned_users": 47119,
+            "followup_users": 480,
+            "paywall_shown_users": 387,
+            "trial_cta_users": 65,
+            "trial_buyers": 6,
+            "main_plan_buyers": 10,
+            "trial_cta_199_pack_users": 9,
+            "trial_cta_499_pack_users": 56,
+            "main_199_buyers": 1,
+            "main_499_buyers": 9,
+            "assigned_to_followup_pct": 1.02,
+            "followup_to_paywall_pct": 80.62,
+            "paywall_to_trial_cta_pct": 16.8,
+            "trial_cta_to_trial_purchase_pct": 9.23,
+            "followup_to_trial_pct": 1.25,
+            "trial_to_main_pct": 166.67,
+            "followup_to_main_pct": 2.08,
+            "main_499_share_pct": 90.0,
+            "main_199_share_pct": 10.0
+          },
+          {
+            "config_id": 20,
+            "trial_type": "Rs 49 trial",
+            "trial_amount": 49,
+            "user_cohort": "New user",
+            "selection": "Rs 49 trial; user type = New user",
+            "assigned_users": 712,
+            "followup_users": 627,
+            "paywall_shown_users": 609,
+            "trial_cta_users": 146,
+            "trial_buyers": 19,
+            "main_plan_buyers": 0,
+            "trial_cta_199_pack_users": 11,
+            "trial_cta_499_pack_users": 137,
+            "main_199_buyers": 0,
+            "main_499_buyers": 0,
+            "assigned_to_followup_pct": 88.06,
+            "followup_to_paywall_pct": 97.13,
+            "paywall_to_trial_cta_pct": 23.97,
+            "trial_cta_to_trial_purchase_pct": 13.01,
+            "followup_to_trial_pct": 3.03,
+            "trial_to_main_pct": 0.0,
+            "followup_to_main_pct": 0.0,
+            "main_499_share_pct": 0.0,
+            "main_199_share_pct": 0.0
+          },
+          {
+            "config_id": 20,
+            "trial_type": "Rs 49 trial",
+            "trial_amount": 49,
+            "user_cohort": "Old user",
+            "selection": "Rs 49 trial; user type = Old user",
+            "assigned_users": 60473,
+            "followup_users": 691,
+            "paywall_shown_users": 537,
+            "trial_cta_users": 66,
+            "trial_buyers": 13,
+            "main_plan_buyers": 11,
+            "trial_cta_199_pack_users": 5,
+            "trial_cta_499_pack_users": 62,
+            "main_199_buyers": 4,
+            "main_499_buyers": 7,
+            "assigned_to_followup_pct": 1.14,
+            "followup_to_paywall_pct": 77.71,
+            "paywall_to_trial_cta_pct": 12.29,
+            "trial_cta_to_trial_purchase_pct": 19.7,
+            "followup_to_trial_pct": 1.88,
+            "trial_to_main_pct": 84.62,
+            "followup_to_main_pct": 1.59,
+            "main_499_share_pct": 63.64,
+            "main_199_share_pct": 36.36
           }
         ]
       },
@@ -51508,18 +52444,18 @@
             "followup_events": 60
           },
           {
-            "entity_slug": "6879253dfcf00df3749da50c",
-            "bot_id": "6879253dfcf00df3749da50c",
-            "bot_name": "Priyanka",
-            "entity_label": "Priyanka",
-            "entity_match_type": "bot_id",
-            "followup_events": 36
-          },
-          {
             "entity_slug": "68792542fcf00df3749da526",
             "bot_id": "68792542fcf00df3749da526",
             "bot_name": "Prem",
             "entity_label": "Prem",
+            "entity_match_type": "bot_id",
+            "followup_events": 36
+          },
+          {
+            "entity_slug": "6879253dfcf00df3749da50c",
+            "bot_id": "6879253dfcf00df3749da50c",
+            "bot_name": "Priyanka",
+            "entity_label": "Priyanka",
             "entity_match_type": "bot_id",
             "followup_events": 36
           },
@@ -51737,8 +52673,8 @@
             },
             {
               "bucket": "Telangana",
-              "users": 271,
-              "pct": 3.11
+              "users": 270,
+              "pct": 3.1
             },
             {
               "bucket": "Assam",
@@ -51819,8 +52755,8 @@
             },
             {
               "bucket": "Hyderabad",
-              "users": 266,
-              "pct": 3.06
+              "users": 265,
+              "pct": 3.05
             },
             {
               "bucket": "Indore",
@@ -52183,8 +53119,8 @@
             "segment": "region",
             "bucket": "Telangana",
             "selection": "region = Telangana",
-            "users": 271,
-            "pct": 3.11
+            "users": 270,
+            "pct": 3.1
           },
           {
             "segment": "region",
@@ -52295,8 +53231,8 @@
             "segment": "city",
             "bucket": "Hyderabad",
             "selection": "city = Hyderabad",
-            "users": 266,
-            "pct": 3.06
+            "users": 265,
+            "pct": 3.05
           },
           {
             "segment": "city",
@@ -52562,42 +53498,42 @@
           {
             "platform": "android",
             "day_n": 1,
-            "cohort_users": 61546,
+            "cohort_users": 61545,
             "retained_users": 3936,
             "retention_pct": 6.4
           },
           {
             "platform": "android",
             "day_n": 3,
-            "cohort_users": 61546,
+            "cohort_users": 61545,
             "retained_users": 1343,
             "retention_pct": 2.18
           },
           {
             "platform": "android",
             "day_n": 7,
-            "cohort_users": 61546,
+            "cohort_users": 61545,
             "retained_users": 579,
             "retention_pct": 0.94
           },
           {
             "platform": "unknown",
             "day_n": 1,
-            "cohort_users": 14610,
+            "cohort_users": 14611,
             "retained_users": 591,
-            "retention_pct": 4.05
+            "retention_pct": 4.04
           },
           {
             "platform": "unknown",
             "day_n": 3,
-            "cohort_users": 14610,
+            "cohort_users": 14611,
             "retained_users": 155,
             "retention_pct": 1.06
           },
           {
             "platform": "unknown",
             "day_n": 7,
-            "cohort_users": 14610,
+            "cohort_users": 14611,
             "retained_users": 106,
             "retention_pct": 0.73
           }
@@ -52644,18 +53580,18 @@
             "segment": "age_bucket",
             "bucket": "35-44",
             "day_n": 1,
-            "cohort_users": 4914,
-            "retained_users": 439,
-            "retention_pct": 8.93
+            "cohort_users": 4915,
+            "retained_users": 440,
+            "retention_pct": 8.95
           },
           {
             "selection": "age_bucket = 45-54",
             "segment": "age_bucket",
             "bucket": "45-54",
             "day_n": 1,
-            "cohort_users": 1203,
-            "retained_users": 96,
-            "retention_pct": 7.98
+            "cohort_users": 1202,
+            "retained_users": 95,
+            "retention_pct": 7.9
           },
           {
             "selection": "age_bucket = 55+",
@@ -52707,7 +53643,7 @@
             "segment": "age_bucket",
             "bucket": "35-44",
             "day_n": 3,
-            "cohort_users": 4914,
+            "cohort_users": 4915,
             "retained_users": 154,
             "retention_pct": 3.13
           },
@@ -52716,7 +53652,7 @@
             "segment": "age_bucket",
             "bucket": "45-54",
             "day_n": 3,
-            "cohort_users": 1203,
+            "cohort_users": 1202,
             "retained_users": 35,
             "retention_pct": 2.91
           },
@@ -52770,7 +53706,7 @@
             "segment": "age_bucket",
             "bucket": "35-44",
             "day_n": 7,
-            "cohort_users": 4914,
+            "cohort_users": 4915,
             "retained_users": 88,
             "retention_pct": 1.79
           },
@@ -52779,7 +53715,7 @@
             "segment": "age_bucket",
             "bucket": "45-54",
             "day_n": 7,
-            "cohort_users": 1203,
+            "cohort_users": 1202,
             "retained_users": 8,
             "retention_pct": 0.67
           },
@@ -53310,7 +54246,7 @@
             "segment": "platform",
             "bucket": "android",
             "day_n": 1,
-            "cohort_users": 61546,
+            "cohort_users": 61545,
             "retained_users": 3936,
             "retention_pct": 6.4
           },
@@ -53319,16 +54255,16 @@
             "segment": "platform",
             "bucket": "unknown",
             "day_n": 1,
-            "cohort_users": 14610,
+            "cohort_users": 14611,
             "retained_users": 591,
-            "retention_pct": 4.05
+            "retention_pct": 4.04
           },
           {
             "selection": "platform = android",
             "segment": "platform",
             "bucket": "android",
             "day_n": 3,
-            "cohort_users": 61546,
+            "cohort_users": 61545,
             "retained_users": 1343,
             "retention_pct": 2.18
           },
@@ -53337,7 +54273,7 @@
             "segment": "platform",
             "bucket": "unknown",
             "day_n": 3,
-            "cohort_users": 14610,
+            "cohort_users": 14611,
             "retained_users": 155,
             "retention_pct": 1.06
           },
@@ -53346,7 +54282,7 @@
             "segment": "platform",
             "bucket": "android",
             "day_n": 7,
-            "cohort_users": 61546,
+            "cohort_users": 61545,
             "retained_users": 579,
             "retention_pct": 0.94
           },
@@ -53355,7 +54291,7 @@
             "segment": "platform",
             "bucket": "unknown",
             "day_n": 7,
-            "cohort_users": 14610,
+            "cohort_users": 14611,
             "retained_users": 106,
             "retention_pct": 0.73
           }
@@ -54252,8 +55188,8 @@
       "engagement": {
         "kpis": {
           "active_users": 5722,
-          "sessions": 19213,
-          "total_minutes": 49565.7,
+          "sessions": 19214,
+          "total_minutes": 49565.8,
           "avg_minutes_per_user": 8.66,
           "avg_minutes_per_session": 2.58,
           "bim_notification_opens": 51,
@@ -54262,9 +55198,9 @@
         "session_daily": [
           {
             "date": "2026-06-11",
-            "sessions": 19213,
+            "sessions": 19214,
             "users": 5722,
-            "total_minutes": 49565.7,
+            "total_minutes": 49565.8,
             "avg_minutes_per_user": 8.66,
             "avg_minutes_per_session": 2.58,
             "sessions_per_user": 3.36
@@ -54273,9 +55209,9 @@
         "session_by_platform": [
           {
             "platform": "android",
-            "sessions": 17257,
+            "sessions": 17258,
             "users": 5209,
-            "total_minutes": 44698.2,
+            "total_minutes": 44698.4,
             "avg_minutes_per_user": 8.58,
             "avg_minutes_per_session": 2.59,
             "sessions_per_user": 3.31
@@ -59877,6 +60813,129 @@
         "avg_transaction": 499.0
       }
     ],
+    "subscription_stage_by_user_cohort": [
+      {
+        "user_cohort": "New user",
+        "stage": "Main",
+        "amount": 499.0,
+        "revenue": 111776.0,
+        "transactions": 224,
+        "payers": 224,
+        "selection": "user type = New user; subscription stage = Main; amount = Rs 499",
+        "revenue_share_pct": 54.29,
+        "avg_transaction": 499.0
+      },
+      {
+        "user_cohort": "New user",
+        "stage": "Main",
+        "amount": 199.0,
+        "revenue": 5373.0,
+        "transactions": 27,
+        "payers": 27,
+        "selection": "user type = New user; subscription stage = Main; amount = Rs 199",
+        "revenue_share_pct": 2.61,
+        "avg_transaction": 199.0
+      },
+      {
+        "user_cohort": "New user",
+        "stage": "Trial",
+        "amount": 49.0,
+        "revenue": 17689.0,
+        "transactions": 361,
+        "payers": 361,
+        "selection": "user type = New user; subscription stage = Trial; amount = Rs 49",
+        "revenue_share_pct": 8.59,
+        "avg_transaction": 49.0
+      },
+      {
+        "user_cohort": "New user",
+        "stage": "Trial",
+        "amount": 1.0,
+        "revenue": 1471.0,
+        "transactions": 1471,
+        "payers": 1471,
+        "selection": "user type = New user; subscription stage = Trial; amount = Rs 1",
+        "revenue_share_pct": 0.71,
+        "avg_transaction": 1.0
+      },
+      {
+        "user_cohort": "New user",
+        "stage": "Trial",
+        "amount": 499.0,
+        "revenue": 998.0,
+        "transactions": 2,
+        "payers": 2,
+        "selection": "user type = New user; subscription stage = Trial; amount = Rs 499",
+        "revenue_share_pct": 0.48,
+        "avg_transaction": 499.0
+      },
+      {
+        "user_cohort": "New user",
+        "stage": "Trial",
+        "amount": 199.0,
+        "revenue": 398.0,
+        "transactions": 2,
+        "payers": 2,
+        "selection": "user type = New user; subscription stage = Trial; amount = Rs 199",
+        "revenue_share_pct": 0.19,
+        "avg_transaction": 199.0
+      },
+      {
+        "user_cohort": "Old user",
+        "stage": "Main",
+        "amount": 499.0,
+        "revenue": 55389.0,
+        "transactions": 111,
+        "payers": 111,
+        "selection": "user type = Old user; subscription stage = Main; amount = Rs 499",
+        "revenue_share_pct": 26.9,
+        "avg_transaction": 499.0
+      },
+      {
+        "user_cohort": "Old user",
+        "stage": "Main",
+        "amount": 199.0,
+        "revenue": 7363.0,
+        "transactions": 37,
+        "payers": 37,
+        "selection": "user type = Old user; subscription stage = Main; amount = Rs 199",
+        "revenue_share_pct": 3.58,
+        "avg_transaction": 199.0
+      },
+      {
+        "user_cohort": "Old user",
+        "stage": "Trial",
+        "amount": 49.0,
+        "revenue": 3675.0,
+        "transactions": 75,
+        "payers": 75,
+        "selection": "user type = Old user; subscription stage = Trial; amount = Rs 49",
+        "revenue_share_pct": 1.79,
+        "avg_transaction": 49.0
+      },
+      {
+        "user_cohort": "Old user",
+        "stage": "Trial",
+        "amount": 199.0,
+        "revenue": 1592.0,
+        "transactions": 8,
+        "payers": 8,
+        "selection": "user type = Old user; subscription stage = Trial; amount = Rs 199",
+        "revenue_share_pct": 0.77,
+        "avg_transaction": 199.0
+      },
+      {
+        "user_cohort": "Old user",
+        "stage": "Trial",
+        "amount": 1.0,
+        "revenue": 146.0,
+        "transactions": 146,
+        "payers": 146,
+        "selection": "user type = Old user; subscription stage = Trial; amount = Rs 1",
+        "revenue_share_pct": 0.07,
+        "avg_transaction": 1.0
+      }
+    ],
     "payer_frequency": [
       {
         "bucket": "2 txn",
@@ -61874,8 +62933,8 @@
     ],
     "subscription_renewal": {
       "kpis": {
-        "active_paid_subscriptions": 706,
-        "trial_active_subscriptions": 104,
+        "active_paid_subscriptions": 707,
+        "trial_active_subscriptions": 103,
         "renewal_due_next_7_days": 55,
         "autopay_ready_users": 51,
         "cancel_scheduled_users": 52,
@@ -61976,12 +63035,12 @@
         {
           "status": "ACTIVE",
           "subscription_case": "PLAN",
-          "users": 654
+          "users": 655
         },
         {
           "status": "TRIAL_ACTIVE",
           "subscription_case": "TRIAL",
-          "users": 101
+          "users": 100
         },
         {
           "status": "ACTIVE",
@@ -63307,7 +64366,7 @@
         "plan_code": "All",
         "active_paid_subscribers": 483,
         "mrr": 183117.0,
-        "trial_active_subscribers": 104,
+        "trial_active_subscribers": 103,
         "net_mrr_movement": 0.0
       },
       {
@@ -63315,7 +64374,7 @@
         "plan_code": "All",
         "active_paid_subscribers": 526,
         "mrr": 202774.0,
-        "trial_active_subscribers": 104,
+        "trial_active_subscribers": 103,
         "net_mrr_movement": 19657.0
       },
       {
@@ -63323,7 +64382,7 @@
         "plan_code": "All",
         "active_paid_subscribers": 554,
         "mrr": 214346.0,
-        "trial_active_subscribers": 104,
+        "trial_active_subscribers": 103,
         "net_mrr_movement": 11572.0
       },
       {
@@ -63331,7 +64390,7 @@
         "plan_code": "All",
         "active_paid_subscribers": 601,
         "mrr": 234199.0,
-        "trial_active_subscribers": 104,
+        "trial_active_subscribers": 103,
         "net_mrr_movement": 19853.0
       },
       {
@@ -63339,7 +64398,7 @@
         "plan_code": "All",
         "active_paid_subscribers": 635,
         "mrr": 249065.0,
-        "trial_active_subscribers": 104,
+        "trial_active_subscribers": 103,
         "net_mrr_movement": 14866.0
       },
       {
@@ -63347,7 +64406,7 @@
         "plan_code": "All",
         "active_paid_subscribers": 659,
         "mrr": 259541.0,
-        "trial_active_subscribers": 104,
+        "trial_active_subscribers": 103,
         "net_mrr_movement": 10476.0
       },
       {
@@ -63355,7 +64414,7 @@
         "plan_code": "All",
         "active_paid_subscribers": 695,
         "mrr": 275405.0,
-        "trial_active_subscribers": 104,
+        "trial_active_subscribers": 103,
         "net_mrr_movement": 15864.0
       }
     ],
@@ -64427,11 +65486,11 @@
       }
     ],
     "cancel_kpis": {
-      "active_paid_subscriptions": 706,
+      "active_paid_subscriptions": 707,
       "cancel_scheduled_users": 52,
-      "trial_cancel_before_charge": 6407,
+      "trial_cancel_before_charge": 6409,
       "trial_d0_cancel": 332,
-      "canceled_subscriptions": 6906
+      "canceled_subscriptions": 6907
     },
     "cancel_distribution": [
       {
@@ -64517,7 +65576,7 @@
       {
         "bucket": "D15-D30",
         "plan_code": "Chat Only Pack",
-        "subscriptions": 13
+        "subscriptions": 14
       },
       {
         "bucket": "D15-D30",
@@ -64572,7 +65631,7 @@
       {
         "bucket": "D4-D7",
         "plan_code": "All Access Pack",
-        "subscriptions": 109
+        "subscriptions": 110
       },
       {
         "bucket": "D4-D7",
@@ -65398,7 +66457,7 @@
         "config_id": 18,
         "trial_type": "Rs 1 trial",
         "trial_amount": 1,
-        "assigned_users": 47864,
+        "assigned_users": 47869,
         "followup_users": 4092,
         "paywall_shown_users": 3919,
         "trial_cta_users": 1672,
@@ -65420,7 +66479,7 @@
         "config_id": 20,
         "trial_type": "Rs 49 trial",
         "trial_amount": 49,
-        "assigned_users": 61180,
+        "assigned_users": 61184,
         "followup_users": 4722,
         "paywall_shown_users": 4439,
         "trial_cta_users": 1093,
@@ -65437,6 +66496,112 @@
         "followup_to_trial_pct": 4.66,
         "trial_to_main_pct": 32.73,
         "followup_to_main_pct": 1.52
+      }
+    ],
+    "config_funnel_by_user_cohort": [
+      {
+        "config_id": 18,
+        "trial_type": "Rs 1 trial",
+        "trial_amount": 1,
+        "user_cohort": "New user",
+        "selection": "Rs 1 trial; user type = New user",
+        "assigned_users": 9717,
+        "followup_users": 3568,
+        "paywall_shown_users": 3466,
+        "trial_cta_users": 1582,
+        "trial_buyers": 588,
+        "main_plan_buyers": 70,
+        "trial_cta_199_pack_users": 186,
+        "trial_cta_499_pack_users": 1469,
+        "main_199_buyers": 7,
+        "main_499_buyers": 63,
+        "assigned_to_followup_pct": 36.72,
+        "followup_to_paywall_pct": 97.14,
+        "paywall_to_trial_cta_pct": 45.64,
+        "trial_cta_to_trial_purchase_pct": 37.17,
+        "followup_to_trial_pct": 16.48,
+        "trial_to_main_pct": 11.9,
+        "followup_to_main_pct": 1.96,
+        "main_499_share_pct": 90.0,
+        "main_199_share_pct": 10.0
+      },
+      {
+        "config_id": 18,
+        "trial_type": "Rs 1 trial",
+        "trial_amount": 1,
+        "user_cohort": "Old user",
+        "selection": "Rs 1 trial; user type = Old user",
+        "assigned_users": 38152,
+        "followup_users": 524,
+        "paywall_shown_users": 453,
+        "trial_cta_users": 90,
+        "trial_buyers": 36,
+        "main_plan_buyers": 19,
+        "trial_cta_199_pack_users": 14,
+        "trial_cta_499_pack_users": 78,
+        "main_199_buyers": 7,
+        "main_499_buyers": 12,
+        "assigned_to_followup_pct": 1.37,
+        "followup_to_paywall_pct": 86.45,
+        "paywall_to_trial_cta_pct": 19.87,
+        "trial_cta_to_trial_purchase_pct": 40.0,
+        "followup_to_trial_pct": 6.87,
+        "trial_to_main_pct": 52.78,
+        "followup_to_main_pct": 3.63,
+        "main_499_share_pct": 63.16,
+        "main_199_share_pct": 36.84
+      },
+      {
+        "config_id": 20,
+        "trial_type": "Rs 49 trial",
+        "trial_amount": 49,
+        "user_cohort": "New user",
+        "selection": "Rs 49 trial; user type = New user",
+        "assigned_users": 9910,
+        "followup_users": 3521,
+        "paywall_shown_users": 3422,
+        "trial_cta_users": 926,
+        "trial_buyers": 176,
+        "main_plan_buyers": 47,
+        "trial_cta_199_pack_users": 82,
+        "trial_cta_499_pack_users": 879,
+        "main_199_buyers": 12,
+        "main_499_buyers": 35,
+        "assigned_to_followup_pct": 35.53,
+        "followup_to_paywall_pct": 97.19,
+        "paywall_to_trial_cta_pct": 27.06,
+        "trial_cta_to_trial_purchase_pct": 19.01,
+        "followup_to_trial_pct": 5.0,
+        "trial_to_main_pct": 26.7,
+        "followup_to_main_pct": 1.33,
+        "main_499_share_pct": 74.47,
+        "main_199_share_pct": 25.53
+      },
+      {
+        "config_id": 20,
+        "trial_type": "Rs 49 trial",
+        "trial_amount": 49,
+        "user_cohort": "Old user",
+        "selection": "Rs 49 trial; user type = Old user",
+        "assigned_users": 51274,
+        "followup_users": 1201,
+        "paywall_shown_users": 1017,
+        "trial_cta_users": 167,
+        "trial_buyers": 44,
+        "main_plan_buyers": 25,
+        "trial_cta_199_pack_users": 15,
+        "trial_cta_499_pack_users": 157,
+        "main_199_buyers": 11,
+        "main_499_buyers": 14,
+        "assigned_to_followup_pct": 2.34,
+        "followup_to_paywall_pct": 84.68,
+        "paywall_to_trial_cta_pct": 16.42,
+        "trial_cta_to_trial_purchase_pct": 26.35,
+        "followup_to_trial_pct": 3.66,
+        "trial_to_main_pct": 56.82,
+        "followup_to_main_pct": 2.08,
+        "main_499_share_pct": 56.0,
+        "main_199_share_pct": 44.0
       }
     ]
   },
@@ -67697,42 +68862,42 @@
       {
         "platform": "android",
         "day_n": 1,
-        "cohort_users": 79787,
+        "cohort_users": 79786,
         "retained_users": 5155,
         "retention_pct": 6.46
       },
       {
         "platform": "android",
         "day_n": 3,
-        "cohort_users": 79787,
+        "cohort_users": 79786,
         "retained_users": 1753,
         "retention_pct": 2.2
       },
       {
         "platform": "android",
         "day_n": 7,
-        "cohort_users": 79787,
+        "cohort_users": 79786,
         "retained_users": 726,
         "retention_pct": 0.91
       },
       {
         "platform": "unknown",
         "day_n": 1,
-        "cohort_users": 20446,
+        "cohort_users": 20447,
         "retained_users": 841,
         "retention_pct": 4.11
       },
       {
         "platform": "unknown",
         "day_n": 3,
-        "cohort_users": 20446,
+        "cohort_users": 20447,
         "retained_users": 234,
         "retention_pct": 1.14
       },
       {
         "platform": "unknown",
         "day_n": 7,
-        "cohort_users": 20446,
+        "cohort_users": 20447,
         "retained_users": 137,
         "retention_pct": 0.67
       }
@@ -67779,18 +68944,18 @@
         "segment": "age_bucket",
         "bucket": "35-44",
         "day_n": 1,
-        "cohort_users": 6506,
-        "retained_users": 587,
-        "retention_pct": 9.02
+        "cohort_users": 6507,
+        "retained_users": 588,
+        "retention_pct": 9.04
       },
       {
         "selection": "age_bucket = 45-54",
         "segment": "age_bucket",
         "bucket": "45-54",
         "day_n": 1,
-        "cohort_users": 1604,
-        "retained_users": 132,
-        "retention_pct": 8.23
+        "cohort_users": 1603,
+        "retained_users": 131,
+        "retention_pct": 8.17
       },
       {
         "selection": "age_bucket = 55+",
@@ -67842,7 +69007,7 @@
         "segment": "age_bucket",
         "bucket": "35-44",
         "day_n": 3,
-        "cohort_users": 6506,
+        "cohort_users": 6507,
         "retained_users": 206,
         "retention_pct": 3.17
       },
@@ -67851,7 +69016,7 @@
         "segment": "age_bucket",
         "bucket": "45-54",
         "day_n": 3,
-        "cohort_users": 1604,
+        "cohort_users": 1603,
         "retained_users": 44,
         "retention_pct": 2.74
       },
@@ -67905,7 +69070,7 @@
         "segment": "age_bucket",
         "bucket": "35-44",
         "day_n": 7,
-        "cohort_users": 6506,
+        "cohort_users": 6507,
         "retained_users": 108,
         "retention_pct": 1.66
       },
@@ -67914,7 +69079,7 @@
         "segment": "age_bucket",
         "bucket": "45-54",
         "day_n": 7,
-        "cohort_users": 1604,
+        "cohort_users": 1603,
         "retained_users": 13,
         "retention_pct": 0.81
       },
@@ -68445,7 +69610,7 @@
         "segment": "platform",
         "bucket": "android",
         "day_n": 1,
-        "cohort_users": 79787,
+        "cohort_users": 79786,
         "retained_users": 5155,
         "retention_pct": 6.46
       },
@@ -68454,7 +69619,7 @@
         "segment": "platform",
         "bucket": "unknown",
         "day_n": 1,
-        "cohort_users": 20446,
+        "cohort_users": 20447,
         "retained_users": 841,
         "retention_pct": 4.11
       },
@@ -68463,7 +69628,7 @@
         "segment": "platform",
         "bucket": "android",
         "day_n": 3,
-        "cohort_users": 79787,
+        "cohort_users": 79786,
         "retained_users": 1753,
         "retention_pct": 2.2
       },
@@ -68472,7 +69637,7 @@
         "segment": "platform",
         "bucket": "unknown",
         "day_n": 3,
-        "cohort_users": 20446,
+        "cohort_users": 20447,
         "retained_users": 234,
         "retention_pct": 1.14
       },
@@ -68481,7 +69646,7 @@
         "segment": "platform",
         "bucket": "android",
         "day_n": 7,
-        "cohort_users": 79787,
+        "cohort_users": 79786,
         "retained_users": 726,
         "retention_pct": 0.91
       },
@@ -68490,7 +69655,7 @@
         "segment": "platform",
         "bucket": "unknown",
         "day_n": 7,
-        "cohort_users": 20446,
+        "cohort_users": 20447,
         "retained_users": 137,
         "retention_pct": 0.67
       }
@@ -69448,8 +70613,8 @@
   "engagement": {
     "kpis": {
       "active_users": 16068,
-      "sessions": 60533,
-      "total_minutes": 150255.1,
+      "sessions": 60535,
+      "total_minutes": 150255.8,
       "avg_minutes_per_user": 9.35,
       "avg_minutes_per_session": 2.48,
       "bim_notification_opens": 2595,
@@ -69467,18 +70632,18 @@
       },
       {
         "date": "2026-06-10",
-        "sessions": 21628,
+        "sessions": 21629,
         "users": 6825,
-        "total_minutes": 56075.2,
+        "total_minutes": 56075.8,
         "avg_minutes_per_user": 8.22,
         "avg_minutes_per_session": 2.59,
         "sessions_per_user": 3.17
       },
       {
         "date": "2026-06-11",
-        "sessions": 19213,
+        "sessions": 19214,
         "users": 5722,
-        "total_minutes": 49565.7,
+        "total_minutes": 49565.8,
         "avg_minutes_per_user": 8.66,
         "avg_minutes_per_session": 2.58,
         "sessions_per_user": 3.36
@@ -69487,9 +70652,9 @@
     "session_by_platform": [
       {
         "platform": "android",
-        "sessions": 54693,
+        "sessions": 54695,
         "users": 14832,
-        "total_minutes": 136038.4,
+        "total_minutes": 136039.2,
         "avg_minutes_per_user": 9.17,
         "avg_minutes_per_session": 2.49,
         "sessions_per_user": 3.69
@@ -69544,9 +70709,9 @@
       {
         "date": "2026-06-10",
         "user_cohort": "Old user",
-        "sessions": 6378,
+        "sessions": 6379,
         "users": 2729,
-        "total_minutes": 13473.2,
+        "total_minutes": 13473.9,
         "avg_minutes_per_user": 4.94,
         "sessions_per_user": 2.34
       },
@@ -69635,8 +70800,8 @@
       {
         "bucket": "<18",
         "users": 1238,
-        "sessions": 3099,
-        "total_minutes": 6891.2,
+        "sessions": 3100,
+        "total_minutes": 6891.8,
         "segment": "age_bucket",
         "selection": "age_bucket = <18",
         "avg_minutes_per_user": 5.57,
@@ -69734,12 +70899,12 @@
       {
         "bucket": "7.0",
         "users": 784,
-        "sessions": 2144,
-        "total_minutes": 3670.7,
+        "sessions": 2145,
+        "total_minutes": 3671.4,
         "segment": "config_id",
         "selection": "config_id = 7.0",
         "avg_minutes_per_user": 4.68,
-        "sessions_per_user": 2.73,
+        "sessions_per_user": 2.74,
         "user_share_pct": 4.88
       },
       {
@@ -69778,8 +70943,8 @@
       {
         "bucket": "female",
         "users": 10198,
-        "sessions": 33534,
-        "total_minutes": 88419.7,
+        "sessions": 33535,
+        "total_minutes": 88420.4,
         "segment": "gender",
         "selection": "gender = female",
         "avg_minutes_per_user": 8.67,
@@ -69844,8 +71009,8 @@
       {
         "bucket": "Single",
         "users": 701,
-        "sessions": 2047,
-        "total_minutes": 4149.0,
+        "sessions": 2048,
+        "total_minutes": 4149.6,
         "segment": "marital_status",
         "selection": "marital_status = Single",
         "avg_minutes_per_user": 5.92,
@@ -69888,11 +71053,11 @@
       {
         "bucket": "Student",
         "users": 392,
-        "sessions": 884,
-        "total_minutes": 1636.3,
+        "sessions": 885,
+        "total_minutes": 1636.9,
         "segment": "occupation",
         "selection": "occupation = Student",
-        "avg_minutes_per_user": 4.17,
+        "avg_minutes_per_user": 4.18,
         "sessions_per_user": 2.26,
         "user_share_pct": 2.44
       },
@@ -69932,8 +71097,8 @@
       {
         "bucket": "android",
         "users": 13578,
-        "sessions": 43214,
-        "total_minutes": 113847.5,
+        "sessions": 43215,
+        "total_minutes": 113848.2,
         "segment": "platform",
         "selection": "platform = android",
         "avg_minutes_per_user": 8.38,
@@ -69976,8 +71141,8 @@
       {
         "bucket": "Old user",
         "users": 6024,
-        "sessions": 18806,
-        "total_minutes": 38908.3,
+        "sessions": 18807,
+        "total_minutes": 38908.9,
         "segment": "user_cohort",
         "selection": "user_cohort = Old user",
         "avg_minutes_per_user": 6.46,
@@ -70000,8 +71165,8 @@
       {
         "bucket": "1-5 min",
         "users": 6058,
-        "sessions": 11954,
-        "total_minutes": 18156.5,
+        "sessions": 11955,
+        "total_minutes": 18157.1,
         "selection": "total session time = 1-5 min",
         "avg_minutes_per_user": 3.0,
         "sessions_per_user": 1.97,

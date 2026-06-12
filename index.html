@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HiAstro Business Dashboard</title>
-    <link rel="stylesheet" href="assets/styles.css?v=20260612-operating-depth" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260612-new-old-subscriber-funnel" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -134,6 +134,13 @@
           <div class="panel">
             <h3>Trial and Main Pack Split</h3>
             <div id="subscriptionStageTable"></div>
+          </div>
+          <div class="grid two">
+            <div class="panel"><canvas id="subscriptionCohortStageChart"></canvas></div>
+            <div class="panel">
+              <h3>New vs Old Subscription Buyers</h3>
+              <div id="subscriptionCohortStageTable"></div>
+            </div>
           </div>
           <div class="split-heading">
             <div>
@@ -361,6 +368,13 @@
             <div class="panel">
               <h3>Rs 1 vs Rs 49 Funnel Table</h3>
               <div id="configFunnelTable"></div>
+            </div>
+          </div>
+          <div class="grid two">
+            <div class="panel"><canvas id="newOldSubscriberFunnelChart"></canvas></div>
+            <div class="panel">
+              <h3>New vs Old Subscriber Funnel</h3>
+              <div id="newOldSubscriberFunnelTable"></div>
             </div>
           </div>
         </div>
@@ -735,7 +749,7 @@
       <div class="drilldown-body" id="drilldownBody"></div>
     </aside>
 
-    <script src="assets/config.js?v=20260612-operating-depth"></script>
-    <script src="assets/app.js?v=20260612-operating-depth"></script>
+    <script src="assets/config.js?v=20260612-new-old-subscriber-funnel"></script>
+    <script src="assets/app.js?v=20260612-new-old-subscriber-funnel"></script>
   </body>
 </html>

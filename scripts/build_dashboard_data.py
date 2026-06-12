@@ -1029,6 +1029,9 @@ def build_monetization(
         subscription_stage_performance = pd.DataFrame(
             columns=["stage", "amount", "selection", "revenue", "revenue_share_pct", "payers", "transactions", "avg_transaction"]
         )
+        subscription_stage_by_user_cohort = pd.DataFrame(
+            columns=["user_cohort", "stage", "amount", "selection", "revenue", "revenue_share_pct", "payers", "transactions", "avg_transaction"]
+        )
     else:
         def subscription_stage(pack_name: Any) -> str:
             text_value = str(pack_name or "")
@@ -1098,6 +1101,26 @@ def build_monetization(
         subscription_stage_performance["avg_transaction"] = (
             subscription_stage_performance["revenue"] / subscription_stage_performance["transactions"]
         ).round(2)
+        subscription_stage_enriched = enrich_users(subscription_current, profiles, ranges)
+        subscription_stage_by_user_cohort = (
+            subscription_stage_enriched.groupby(["user_cohort", "stage", "amount"], as_index=False)
+            .agg(revenue=("revenue", "sum"), transactions=("transactions", "sum"), payers=("user_id", "nunique"))
+            .sort_values(["user_cohort", "stage", "revenue"], ascending=[True, True, False])
+        )
+        subscription_stage_by_user_cohort["selection"] = (
+            "user type = "
+            + subscription_stage_by_user_cohort["user_cohort"].astype(str)
+            + "; subscription stage = "
+            + subscription_stage_by_user_cohort["stage"].astype(str)
+            + "; amount = Rs "
+            + subscription_stage_by_user_cohort["amount"].round(0).astype(int).astype(str)
+        )
+        subscription_stage_by_user_cohort["revenue_share_pct"] = (
+            subscription_stage_by_user_cohort["revenue"] / subscription_total_revenue * 100
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        subscription_stage_by_user_cohort["avg_transaction"] = (
+            subscription_stage_by_user_cohort["revenue"] / subscription_stage_by_user_cohort["transactions"]
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
 
     user_revenue = (
         current.groupby("user_id", as_index=False)
@@ -1317,6 +1340,7 @@ def build_monetization(
         "subscription_pack": records(subscription_pack.head(30)),
         "subscription_plan_performance": records(subscription_plan_performance.head(20)),
         "subscription_stage_performance": records(subscription_stage_performance.head(20)),
+        "subscription_stage_by_user_cohort": records(subscription_stage_by_user_cohort.head(40)),
         "payer_frequency": records(payer_frequency.sort_values("revenue", ascending=False)),
         "revenue_concentration": revenue_concentration,
         "payer_segments": records(payer_segments.sort_values(["segment", "revenue"], ascending=[True, False]).head(80)),
@@ -3005,6 +3029,137 @@ def build_config_funnel(
     return rows
 
 
+def build_config_funnel_by_user_cohort(
+    engine,
+    ranges: dict[str, Any],
+    followup_user_ids: set[str],
+    mixpanel: dict[str, Any],
+) -> list[dict[str, Any]]:
+    users = read_sql(
+        engine,
+        """
+        SELECT
+            LOWER(BIN_TO_UUID(id)) AS user_id,
+            monetization_config_id AS config_id,
+            DATE(DATE_ADD(created_at, INTERVAL 330 MINUTE)) AS signup_date
+        FROM prod.users
+        WHERE monetization_config_id IN (18, 20)
+        """,
+    )
+    if users.empty:
+        return []
+    users["signup_date"] = pd.to_datetime(users["signup_date"], errors="coerce").dt.date
+    users["user_cohort"] = users["signup_date"].apply(lambda value: user_cohort_from_signup(value, ranges))
+    purchases = read_sql(
+        engine,
+        """
+        SELECT
+            LOWER(BIN_TO_UUID(sle.user_id)) AS user_id,
+            CASE
+                WHEN sle.revenue_type = 'subscription_authenticated'
+                     OR sle.event_type = 'subscription.authenticated'
+                THEN 'subscription.authenticated'
+                WHEN sle.revenue_type = 'subscription_charged'
+                     OR sle.event_type = 'subscription.charged'
+                THEN 'subscription.charged'
+                ELSE sle.event_type
+            END AS event_type,
+            ROUND(sle.charge_amount, 0) AS amount
+        FROM prod.subscription_lifecycle_events sle
+        WHERE COALESCE(sle.event_created_at, sle.created_at, sle.charge_at, sle.current_start) >= :start_utc
+          AND COALESCE(sle.event_created_at, sle.created_at, sle.charge_at, sle.current_start) < :end_utc
+          AND sle.revenue_recorded = 1
+          AND sle.charge_amount IS NOT NULL
+          AND sle.charge_amount > 0
+        """,
+        {
+            "start_utc": utc_naive(local_midnight(ranges["current_start"])),
+            "end_utc": utc_naive(local_midnight(ranges["current_end"] + timedelta(days=1))),
+        },
+    )
+    if purchases.empty:
+        purchases = pd.DataFrame(columns=["user_id", "event_type", "amount"])
+    purchases["amount"] = pd.to_numeric(purchases["amount"], errors="coerce").round(0)
+
+    paywall_events = pd.DataFrame(mixpanel.get("subscription_paywall_user_daily", []))
+    trial_cta_events = pd.DataFrame(mixpanel.get("subscription_trial_cta_user_daily", []))
+    if paywall_events.empty:
+        paywall_events = pd.DataFrame(columns=["user_id", "paywall_shown"])
+    if trial_cta_events.empty:
+        trial_cta_events = pd.DataFrame(columns=["user_id", "trial_amount", "main_pack_amount", "trial_cta_clicks"])
+    for column in ["trial_amount", "main_pack_amount"]:
+        trial_cta_events[column] = pd.to_numeric(trial_cta_events[column], errors="coerce").round(0)
+
+    rows = []
+    for config_id, trial_amount in [(18, 1), (20, 49)]:
+        config_users = users[users["config_id"].eq(config_id)].copy()
+        for user_cohort in ["New user", "Old user", "Unknown user"]:
+            cohort_ids = set(config_users.loc[config_users["user_cohort"].eq(user_cohort), "user_id"])
+            if not cohort_ids and user_cohort == "Unknown user":
+                continue
+            follow_ids = cohort_ids.intersection(followup_user_ids)
+            paywall_ids = follow_ids.intersection(set(paywall_events["user_id"]))
+            config_trial_cta = trial_cta_events[
+                trial_cta_events["user_id"].isin(follow_ids)
+                & trial_cta_events["trial_amount"].eq(trial_amount)
+            ].copy()
+            trial_cta_ids = set(config_trial_cta["user_id"])
+            trial_cta_199_ids = set(config_trial_cta.loc[config_trial_cta["main_pack_amount"].eq(199), "user_id"])
+            trial_cta_499_ids = set(config_trial_cta.loc[config_trial_cta["main_pack_amount"].eq(499), "user_id"])
+            follow_purchases = purchases[purchases["user_id"].isin(follow_ids)]
+            trial_ids = set(
+                follow_purchases.loc[
+                    follow_purchases["event_type"].eq("subscription.authenticated")
+                    & follow_purchases["amount"].eq(trial_amount),
+                    "user_id",
+                ]
+            )
+            main_199_ids = set(
+                follow_purchases.loc[
+                    follow_purchases["event_type"].eq("subscription.charged")
+                    & follow_purchases["amount"].eq(199),
+                    "user_id",
+                ]
+            )
+            main_499_ids = set(
+                follow_purchases.loc[
+                    follow_purchases["event_type"].eq("subscription.charged")
+                    & follow_purchases["amount"].eq(499),
+                    "user_id",
+                ]
+            )
+            main_ids = main_199_ids | main_499_ids
+            rows.append(
+                {
+                    "config_id": config_id,
+                    "trial_type": "Rs 1 trial" if config_id == 18 else "Rs 49 trial",
+                    "trial_amount": trial_amount,
+                    "user_cohort": user_cohort,
+                    "selection": f"{'Rs 1 trial' if config_id == 18 else 'Rs 49 trial'}; user type = {user_cohort}",
+                    "assigned_users": len(cohort_ids),
+                    "followup_users": len(follow_ids),
+                    "paywall_shown_users": len(paywall_ids),
+                    "trial_cta_users": len(trial_cta_ids),
+                    "trial_buyers": len(trial_ids),
+                    "main_plan_buyers": len(main_ids),
+                    "trial_cta_199_pack_users": len(trial_cta_199_ids),
+                    "trial_cta_499_pack_users": len(trial_cta_499_ids),
+                    "main_199_buyers": len(main_199_ids),
+                    "main_499_buyers": len(main_499_ids),
+                    "assigned_to_followup_pct": safe_div(len(follow_ids), len(cohort_ids)),
+                    "followup_to_paywall_pct": safe_div(len(paywall_ids), len(follow_ids)),
+                    "paywall_to_trial_cta_pct": safe_div(len(trial_cta_ids), len(paywall_ids)),
+                    "trial_cta_to_trial_purchase_pct": safe_div(len(trial_ids), len(trial_cta_ids)),
+                    "followup_to_trial_pct": safe_div(len(trial_ids), len(follow_ids)),
+                    "trial_to_main_pct": safe_div(len(main_ids), len(trial_ids)),
+                    "followup_to_main_pct": safe_div(len(main_ids), len(follow_ids)),
+                    "main_499_share_pct": safe_div(len(main_499_ids), len(main_ids)),
+                    "main_199_share_pct": safe_div(len(main_199_ids), len(main_ids)),
+                }
+            )
+    return rows
+
+
 def enrich_subscription_plan_followup(
     monetization: dict[str, Any],
     config_funnel: list[dict[str, Any]],
@@ -3659,6 +3814,12 @@ def build_period_dashboard(
 
     acquisition = build_acquisition(profiles, ranges, mixpanel, user_revenue_current, user_family_revenue_current)
     config_funnel = build_config_funnel(engine, ranges, set(mixpanel["followup_users"].keys()), mixpanel)
+    config_funnel_by_user_cohort = build_config_funnel_by_user_cohort(
+        engine,
+        ranges,
+        set(mixpanel["followup_users"].keys()),
+        mixpanel,
+    )
     enrich_subscription_plan_followup(monetization, config_funnel)
     retention = build_retention(engine, profiles, ranges)
     engagement = build_engagement(mixpanel, profiles, ranges)
@@ -3682,7 +3843,11 @@ def build_period_dashboard(
                 "end": ranges["prior_30_end"].isoformat(),
             },
         },
-        "monetization": {**monetization, "config_funnel": config_funnel},
+        "monetization": {
+            **monetization,
+            "config_funnel": config_funnel,
+            "config_funnel_by_user_cohort": config_funnel_by_user_cohort,
+        },
         "acquisition": acquisition,
         "retention": retention,
         "engagement": engagement,
