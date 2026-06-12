@@ -1075,6 +1075,10 @@ function renderMonetization(data) {
   const subscriptionStages = m.subscription_stage_performance || [];
   const subscriptionPacks = m.subscription_pack || [];
   const renewal = m.subscription_renewal || { kpis: {}, due_daily: [], due_by_plan: [], status_breakdown: [], notes: [] };
+  const dailyConfigFunnel = m.daily_config_platform_funnel || [];
+  const trialCohorts = m.trial_to_paid_cohort_by_price || [];
+  const activeSubDaily = m.active_subscription_daily || [];
+  const subscriberEngagementSummary = m.subscriber_engagement_summary || [];
   const paygMergedRows = m.payg_merged || [];
   const paygMerged = paygMergedRows[0] || familyMetric(m, "pay_as_you_go");
   const paygAmounts = m.payg_amount_breakdown || [];
@@ -1107,6 +1111,41 @@ function renderMonetization(data) {
     .map((row) => ({ ...row, pack_amount: `Rs ${Number(row.amount)}` }));
   const mainPackDaily = groupedLine(mainPackDailyRows, "day", "pack_amount", "payers");
   mainPackDaily.labels = mainPackDaily.labels.map(shortDate);
+  const dailyFunnelAgg = Object.values(dailyConfigFunnel.reduce((acc, row) => {
+    const day = row.signup_date;
+    if (!acc[day]) {
+      acc[day] = {
+        signup_date: day,
+        new_logins: 0,
+        trial_purchased_d0: 0,
+        subscription_199_charged_d1: 0,
+        subscription_499_charged_d1: 0,
+        total_subscription_charged_d1: 0,
+      };
+    }
+    acc[day].new_logins += Number(row.new_logins || 0);
+    acc[day].trial_purchased_d0 += Number(row.trial_purchased_d0 || 0);
+    acc[day].subscription_199_charged_d1 += Number(row.subscription_199_charged_d1 || 0);
+    acc[day].subscription_499_charged_d1 += Number(row.subscription_499_charged_d1 || 0);
+    acc[day].total_subscription_charged_d1 += Number(row.total_subscription_charged_d1 || 0);
+    return acc;
+  }, {})).sort((a, b) => String(a.signup_date).localeCompare(String(b.signup_date)));
+  const maturedDailyFunnel = dailyConfigFunnel.filter((row) => row.d1_matured);
+  const sheetFunnelTotals = dailyConfigFunnel.reduce((acc, row) => {
+    acc.new_logins += Number(row.new_logins || 0);
+    acc.trial_purchased_d0 += Number(row.trial_purchased_d0 || 0);
+    return acc;
+  }, { new_logins: 0, trial_purchased_d0: 0 });
+  const maturedFunnelTotals = maturedDailyFunnel.reduce((acc, row) => {
+    acc.trial_purchased_d0 += Number(row.trial_purchased_d0 || 0);
+    acc.subscription_199_charged_d1 += Number(row.subscription_199_charged_d1 || 0);
+    acc.subscription_499_charged_d1 += Number(row.subscription_499_charged_d1 || 0);
+    acc.total_subscription_charged_d1 += Number(row.total_subscription_charged_d1 || 0);
+    return acc;
+  }, { trial_purchased_d0: 0, subscription_199_charged_d1: 0, subscription_499_charged_d1: 0, total_subscription_charged_d1: 0 });
+  const latestActiveSub = activeSubDaily[activeSubDaily.length - 1] || {};
+  const subscriberEngagement = subscriberEngagementSummary.find((row) => row.user_type === "subscriber") || {};
+  const nonSubscriberEngagement = subscriberEngagementSummary.find((row) => row.user_type === "non_subscriber") || {};
 
   document.getElementById("subscriptionFocusCards").innerHTML = [
     card("Subscription Revenue", money(sub.revenue), `${pct(sub.revenue_share_pct)} of total | ${trend(sub.revenue_growth_vs_prior_7_pct)} vs prev`),
@@ -1178,6 +1217,66 @@ function renderMonetization(data) {
   chart("subscriptionPlanDailyChart", "line", subscriptionPlanDaily, {
     plugins: { title: { display: true, text: `${chartLabel}: Subscription Revenue by Plan` }, legend: { position: "bottom" } },
     scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" } } },
+  });
+
+  document.getElementById("subscriptionSheetCards").innerHTML = [
+    card("D0 Trial Rate", pct(safePercent(sheetFunnelTotals.trial_purchased_d0, sheetFunnelTotals.new_logins)), `${number(sheetFunnelTotals.trial_purchased_d0)} trials from ${number(sheetFunnelTotals.new_logins)} new logins`),
+    card("D1 Main Conversion", pct(safePercent(maturedFunnelTotals.total_subscription_charged_d1, maturedFunnelTotals.trial_purchased_d0)), `${number(maturedFunnelTotals.total_subscription_charged_d1)} D1 main buyers from matured trial users`),
+    card("Rs 499 D1 Buyers", number(maturedFunnelTotals.subscription_499_charged_d1), `${pct(safePercent(maturedFunnelTotals.subscription_499_charged_d1, maturedFunnelTotals.total_subscription_charged_d1))} of D1 main buyers`),
+    card("Rs 199 D1 Buyers", number(maturedFunnelTotals.subscription_199_charged_d1), `${pct(safePercent(maturedFunnelTotals.subscription_199_charged_d1, maturedFunnelTotals.total_subscription_charged_d1))} of D1 main buyers`),
+    card("Active Paid EOD", number(latestActiveSub.active_paid_subscribers), `${money(latestActiveSub.mrr)} MRR stock`),
+    card("Subscriber Minutes/User", number(subscriberEngagement.minutes_per_user), `${number(subscriberEngagement.active_users)} active subscribers in DB sessions`),
+  ].join("");
+
+  chart("subscriptionDailyFunnelChart", "line", {
+    labels: dailyFunnelAgg.map((row) => shortDate(row.signup_date)),
+    datasets: [
+      { label: "New logins", data: dailyFunnelAgg.map((row) => row.new_logins), borderColor: COLORS.blue, tension: 0.25 },
+      { label: "D0 trial buyers", data: dailyFunnelAgg.map((row) => row.trial_purchased_d0), borderColor: COLORS.teal, tension: 0.25 },
+      { label: "D1 Rs 499 main", data: dailyFunnelAgg.map((row) => row.subscription_499_charged_d1), borderColor: COLORS.green, tension: 0.25 },
+      { label: "D1 Rs 199 main", data: dailyFunnelAgg.map((row) => row.subscription_199_charged_d1), borderColor: COLORS.gold, tension: 0.25 },
+    ],
+  }, {
+    plugins: { title: { display: true, text: `${chartLabel}: New Login to Trial to Main` }, legend: { position: "bottom" } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Users" } } },
+  });
+
+  const trialCohortChart = groupedLine(trialCohorts, "trial_start_date", "subscription_price", "conversion_pct");
+  trialCohortChart.labels = trialCohortChart.labels.map(shortDate);
+  chart("trialToPaidPriceChart", "line", trialCohortChart, {
+    plugins: { title: { display: true, text: `${chartLabel}: Trial Cohort Conversion by Main Price` }, legend: { position: "bottom" } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Conversion %" } } },
+  });
+
+  chart("activeSubscriptionStockChart", "line", {
+    labels: activeSubDaily.map((row) => shortDate(row.date)),
+    datasets: [
+      { label: "Active paid subscribers", data: activeSubDaily.map((row) => row.active_paid_subscribers), borderColor: COLORS.green, tension: 0.25, yAxisID: "y" },
+      { label: "Trial active subscribers", data: activeSubDaily.map((row) => row.trial_active_subscribers), borderColor: COLORS.teal, tension: 0.25, yAxisID: "y" },
+      { label: "MRR stock", data: activeSubDaily.map((row) => row.mrr), borderColor: COLORS.gold, tension: 0.25, yAxisID: "y1" },
+    ],
+  }, {
+    plugins: { title: { display: true, text: `${chartLabel}: Active Subscription Stock` }, legend: { position: "bottom" } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Subscribers" } },
+      y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "MRR" } },
+    },
+  });
+
+  chart("subscriberEngagementChart", "bar", {
+    labels: ["Subscriber", "Non-subscriber"],
+    datasets: [
+      { label: "Active users", data: [subscriberEngagement.active_users || 0, nonSubscriberEngagement.active_users || 0], backgroundColor: COLORS.blue, yAxisID: "y" },
+      { label: "Minutes/user", data: [subscriberEngagement.minutes_per_user || 0, nonSubscriberEngagement.minutes_per_user || 0], backgroundColor: COLORS.teal, yAxisID: "y1" },
+    ],
+  }, {
+    plugins: { title: { display: true, text: `${chartLabel}: Subscriber vs Non-subscriber Engagement` }, legend: { position: "bottom" } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Active Users" } },
+      y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Minutes/User" } },
+    },
   });
 
   const renewalKpis = renewal.kpis || {};
@@ -1303,6 +1402,44 @@ function renderMonetization(data) {
     { key: "transactions", label: "Txns", format: number },
     { key: "avg_transaction", label: "Avg Txn", format: money },
   ], 20);
+
+  table("subscriptionDailyFunnelTable", dailyConfigFunnel, [
+    { key: "signup_date", label: "Date", text: true, format: shortDate },
+    { key: "config_id", label: "Config", text: true },
+    { key: "platform", label: "Platform", text: true },
+    { key: "new_logins", label: "New Logins", format: number },
+    { key: "trial_purchased_d0", label: "D0 Trials", format: number },
+    { key: "new_login_to_trial_d0_pct", label: "D0 Trial %", format: pct },
+    { key: "subscription_199_charged_d1", label: "D1 Rs 199", format: number },
+    { key: "subscription_499_charged_d1", label: "D1 Rs 499", format: number },
+    { key: "trial_d0_to_subscription_d1_pct", label: "Trial to D1 Main", format: pct },
+  ], 20);
+
+  table("trialToPaidPriceTable", trialCohorts, [
+    { key: "trial_start_date", label: "Trial Date", text: true, format: shortDate },
+    { key: "subscription_price", label: "Main Price", format: money },
+    { key: "trial_starts", label: "Trial Starts", format: number },
+    { key: "converted_trials", label: "Converted", format: number },
+    { key: "conversion_pct", label: "Conversion", format: pct },
+    { key: "avg_days_to_convert", label: "Avg Days", format: (v) => Number(v || 0).toFixed(2) },
+  ], 20);
+
+  table("activeSubscriptionDailyTable", activeSubDaily, [
+    { key: "date", label: "Date", text: true, format: shortDate },
+    { key: "active_paid_subscribers", label: "Active Paid", format: number },
+    { key: "trial_active_subscribers", label: "Active Trials", format: number },
+    { key: "mrr", label: "MRR Stock", format: money },
+    { key: "net_mrr_movement", label: "Net MRR Move", format: money },
+  ], 10);
+
+  table("subscriberEngagementTable", subscriberEngagementSummary, [
+    { key: "user_type", label: "Segment", text: true, format: (v) => String(v || "").replace("_", " ") },
+    { key: "active_users", label: "Active Users", format: number },
+    { key: "sessions", label: "Sessions", format: number },
+    { key: "chat_minutes", label: "Chat Min", format: number },
+    { key: "call_minutes", label: "Call Min", format: number },
+    { key: "minutes_per_user", label: "Min/User", format: (v) => Number(v || 0).toFixed(2) },
+  ], 10);
 
   table("paygMergedTable", paygMergedRows, [
     { key: "selection", label: "Selection", text: true },
@@ -2462,12 +2599,17 @@ function subscriptionDetail(data) {
   const m = data.monetization || {};
   const sub = familyMetric(m, "subscription");
   const renewal = m.subscription_renewal || { kpis: {} };
+  const activeSubDaily = m.active_subscription_daily || [];
+  const latestActiveSub = activeSubDaily[activeSubDaily.length - 1] || {};
+  const trialCohorts = m.trial_to_paid_cohort_by_price || [];
   return `
     ${detailMetrics([
       detailMetric("Subscription Revenue", money(sub.revenue), `${pct(sub.revenue_share_pct)} of total revenue`),
       detailMetric("Subscription Payers", number(sub.payers), `${trend(sub.revenue_growth_vs_prior_7_pct)} revenue growth`),
       detailMetric("Main Buyers", number((m.subscription_stage_performance || []).filter((row) => String(row.stage).toLowerCase().includes("main")).reduce((sum, row) => sum + Number(row.payers || 0), 0)), "Users buying main subscription packs"),
-      detailMetric("Renewal Due", money(renewal.kpis?.renewal_due_revenue || 0), `${number(renewal.kpis?.subscriptions_due || 0)} subscriptions due`),
+      detailMetric("Renewal Due", money(renewal.kpis?.renewal_revenue_at_risk || 0), `${number(renewal.kpis?.renewal_due_next_7_days || 0)} subscriptions due`),
+      detailMetric("Active Paid EOD", number(latestActiveSub.active_paid_subscribers), `${money(latestActiveSub.mrr)} MRR stock`),
+      detailMetric("Trial Active EOD", number(latestActiveSub.trial_active_subscribers), "Current trial stock from customer subscriptions"),
     ])}
     ${detailTable("Plan Performance", topRows(m.subscription_plan_performance, "revenue", 8), [
       { key: "selection", label: "Plan", text: true },
@@ -2491,6 +2633,21 @@ function subscriptionDetail(data) {
       { key: "trial_buyers", label: "Trial Buyers", format: number },
       { key: "main_plan_buyers", label: "Main Buyers", format: number },
     ], 5)}
+    ${detailTable("Trial Cohort Conversion by Main Price", trialCohorts, [
+      { key: "trial_start_date", label: "Date", text: true, format: shortDate },
+      { key: "subscription_price", label: "Main Price", format: money },
+      { key: "trial_starts", label: "Trials", format: number },
+      { key: "converted_trials", label: "Converted", format: number },
+      { key: "conversion_pct", label: "Conversion", format: pct },
+      { key: "avg_days_to_convert", label: "Avg Days", format: (v) => Number(v || 0).toFixed(2) },
+    ], 10)}
+    ${detailTable("Active Subscription Stock", activeSubDaily, [
+      { key: "date", label: "Date", text: true, format: shortDate },
+      { key: "active_paid_subscribers", label: "Active Paid", format: number },
+      { key: "trial_active_subscribers", label: "Active Trials", format: number },
+      { key: "mrr", label: "MRR Stock", format: money },
+      { key: "net_mrr_movement", label: "Net MRR Move", format: money },
+    ], 10)}
   `;
 }
 

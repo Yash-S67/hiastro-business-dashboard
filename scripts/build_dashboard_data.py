@@ -54,6 +54,7 @@ def dashboard_source_notes() -> list[str]:
         "Customized day pass revenue comes from MySQL customer_day_pass joined to day_pass_config.",
         "Acquisition new users come from MySQL users.created_at; login success comes from Mixpanel.",
         "Config funnel paywall shown and trial CTA clicks come from Mixpanel; config, gender, and DOB-derived age buckets come from MySQL users/profiles; subscription purchases come from lifecycle revenue events.",
+        "Subscription sheet-style daily funnel, trial cohort conversion, active paid subscriber stock, MRR, and subscriber engagement are rebuilt from MySQL users, subscription_lifecycle_events, customer_subscriptions, and chat_session.",
         "Subscription renewal readiness comes from customer_subscriptions current period dates and cancel-at-period-end state; true autopay success needs recurring charge result events.",
         "Follow-up entity values are resolved to bot names using chat_session bot_id and normalized bot-name slugs.",
         "Retention uses completed MySQL chat_session activity for new-user cohorts.",
@@ -641,7 +642,7 @@ def build_monetization(
                 ' Rs ',
                 CAST(ROUND(sle.charge_amount, 0) AS CHAR)
             ) AS pack,
-            COALESCE(sp.code, 'unknown_plan') AS plan_code,
+            COALESCE(sp.code, 'Unmapped Plan') AS plan_code,
             sle.charge_amount AS amount
         FROM prod.subscription_lifecycle_events sle
         LEFT JOIN prod.subscription_plans sp ON sle.plan_id = sp.id
@@ -1236,6 +1237,7 @@ def build_monetization(
             ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
 
     renewal = build_subscription_renewal(engine, ranges)
+    subscription_sheet_metrics = build_subscription_sheet_metrics(engine, ranges, profiles)
 
     return {
         "kpis": {
@@ -1281,6 +1283,7 @@ def build_monetization(
         "user_revenue_current": records(user_revenue),
         "user_family_revenue_current": records(user_family_revenue),
         "subscription_renewal": renewal,
+        **subscription_sheet_metrics,
     }
 
 
@@ -1424,6 +1427,368 @@ def build_subscription_renewal(engine, ranges: dict[str, Any]) -> dict[str, Any]
             "Autopay-ready excludes subscriptions already marked cancel_at_period_end or CANCELED_PLAN.",
             "Autopay success/failure will need recurring charge events once renewals start.",
         ],
+    }
+
+
+def build_subscription_sheet_metrics(engine, ranges: dict[str, Any], profiles: pd.DataFrame) -> dict[str, Any]:
+    start_day = ranges["current_start"]
+    end_day = ranges["current_end"]
+    purchase_events = read_sql(
+        engine,
+        """
+        SELECT
+            LOWER(BIN_TO_UUID(sle.user_id)) AS user_id,
+            DATE(DATE_ADD(COALESCE(sle.event_created_at, sle.created_at, sle.charge_at, sle.current_start), INTERVAL 330 MINUTE)) AS event_date,
+            CASE
+                WHEN sle.revenue_type = 'subscription_authenticated'
+                     OR sle.event_type = 'subscription.authenticated'
+                THEN 'trial'
+                WHEN sle.revenue_type = 'subscription_charged'
+                     OR sle.event_type = 'subscription.charged'
+                THEN 'main'
+                ELSE 'other'
+            END AS stage,
+            COALESCE(sp.code, 'unknown_plan') AS plan_code,
+            sp.billing_amount AS plan_main_amount,
+            ROUND(sle.charge_amount, 0) AS amount
+        FROM prod.subscription_lifecycle_events sle
+        LEFT JOIN prod.subscription_plans sp ON sle.plan_id = sp.id
+        WHERE COALESCE(sle.event_created_at, sle.created_at, sle.charge_at, sle.current_start) >= :start_utc
+          AND COALESCE(sle.event_created_at, sle.created_at, sle.charge_at, sle.current_start) < :end_utc
+          AND sle.revenue_recorded = 1
+          AND sle.charge_amount IS NOT NULL
+          AND sle.charge_amount > 0
+        """,
+        {
+            "start_utc": utc_naive(local_midnight(start_day)),
+            "end_utc": utc_naive(local_midnight(end_day + timedelta(days=1))),
+        },
+    )
+    if purchase_events.empty:
+        purchase_events = pd.DataFrame(
+            columns=["user_id", "event_date", "stage", "plan_code", "plan_main_amount", "amount"]
+        )
+    else:
+        purchase_events["event_date"] = pd.to_datetime(purchase_events["event_date"], errors="coerce").dt.date
+        for column in ["amount", "plan_main_amount"]:
+            purchase_events[column] = pd.to_numeric(purchase_events[column], errors="coerce").round(0)
+
+    current_signups = profiles[
+        (profiles["signup_date"] >= start_day)
+        & (profiles["signup_date"] <= end_day)
+    ][["user_id", "signup_date", "config_id", "platform"]].copy()
+    if current_signups.empty:
+        daily_funnel = pd.DataFrame(
+            columns=[
+                "signup_date",
+                "config_id",
+                "platform",
+                "new_logins",
+                "trial_purchased_d0",
+                "subscription_199_charged_d1",
+                "subscription_499_charged_d1",
+                "total_subscription_charged_d1",
+                "new_login_to_trial_d0_pct",
+                "trial_d0_to_subscription_d1_pct",
+                "new_login_to_subscription_d1_pct",
+                "d1_matured",
+            ]
+        )
+        config_daily = pd.DataFrame(columns=["signup_date", "config_id", "platform", "new_users", "new_user_share_pct"])
+    else:
+        current_signups["config_id"] = current_signups["config_id"].fillna("Unassigned").astype(str)
+        current_signups["platform"] = current_signups["platform"].fillna("unattributed").astype(str).str.lower()
+        current_signups["d1_date"] = current_signups["signup_date"].apply(lambda value: value + timedelta(days=1))
+
+        base = (
+            current_signups.groupby(["signup_date", "config_id", "platform"], as_index=False)
+            .agg(new_logins=("user_id", "nunique"))
+        )
+        trial_d0 = current_signups.merge(
+            purchase_events[
+                purchase_events["stage"].eq("trial")
+                & purchase_events["amount"].isin([1, 49])
+            ][["user_id", "event_date"]],
+            left_on=["user_id", "signup_date"],
+            right_on=["user_id", "event_date"],
+            how="inner",
+        )
+        trial_d0 = (
+            trial_d0.groupby(["signup_date", "config_id", "platform"], as_index=False)
+            .agg(trial_purchased_d0=("user_id", "nunique"))
+        )
+        main_d1 = current_signups.merge(
+            purchase_events[
+                purchase_events["stage"].eq("main")
+                & purchase_events["amount"].isin([199, 499])
+            ][["user_id", "event_date", "amount"]],
+            left_on=["user_id", "d1_date"],
+            right_on=["user_id", "event_date"],
+            how="inner",
+        )
+        if main_d1.empty:
+            main_d1_pivot = pd.DataFrame(
+                columns=["signup_date", "config_id", "platform", "subscription_199_charged_d1", "subscription_499_charged_d1"]
+            )
+        else:
+            main_d1_pivot = (
+                main_d1.groupby(["signup_date", "config_id", "platform", "amount"], as_index=False)
+                .agg(users=("user_id", "nunique"))
+                .pivot_table(
+                    index=["signup_date", "config_id", "platform"],
+                    columns="amount",
+                    values="users",
+                    fill_value=0,
+                    aggfunc="sum",
+                )
+                .reset_index()
+                .rename(columns={199.0: "subscription_199_charged_d1", 499.0: "subscription_499_charged_d1"})
+            )
+            for column in ["subscription_199_charged_d1", "subscription_499_charged_d1"]:
+                if column not in main_d1_pivot.columns:
+                    main_d1_pivot[column] = 0
+
+        daily_funnel = base.merge(trial_d0, on=["signup_date", "config_id", "platform"], how="left").merge(
+            main_d1_pivot,
+            on=["signup_date", "config_id", "platform"],
+            how="left",
+        )
+        for column in ["trial_purchased_d0", "subscription_199_charged_d1", "subscription_499_charged_d1"]:
+            daily_funnel[column] = pd.to_numeric(daily_funnel[column], errors="coerce").fillna(0).astype(int)
+        daily_funnel["total_subscription_charged_d1"] = (
+            daily_funnel["subscription_199_charged_d1"] + daily_funnel["subscription_499_charged_d1"]
+        )
+        daily_funnel["new_login_to_trial_d0_pct"] = (
+            daily_funnel["trial_purchased_d0"] / daily_funnel["new_logins"] * 100
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        daily_funnel["trial_d0_to_subscription_d1_pct"] = (
+            daily_funnel["total_subscription_charged_d1"] / daily_funnel["trial_purchased_d0"] * 100
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        daily_funnel["new_login_to_subscription_d1_pct"] = (
+            daily_funnel["total_subscription_charged_d1"] / daily_funnel["new_logins"] * 100
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        daily_funnel["d1_matured"] = daily_funnel["signup_date"] < end_day
+        daily_funnel = daily_funnel.sort_values(["signup_date", "config_id", "platform"])
+
+        config_daily = base.rename(columns={"new_logins": "new_users"}).copy()
+        day_totals = config_daily.groupby("signup_date")["new_users"].transform("sum")
+        config_daily["new_user_share_pct"] = (config_daily["new_users"] / day_totals * 100).round(2)
+        config_daily = config_daily.sort_values(["signup_date", "new_users"], ascending=[True, False])
+
+    trial_events = purchase_events[
+        purchase_events["stage"].eq("trial")
+        & purchase_events["amount"].isin([1, 49])
+        & purchase_events["plan_main_amount"].isin([199, 499])
+    ].copy()
+    main_events = purchase_events[
+        purchase_events["stage"].eq("main")
+        & purchase_events["amount"].isin([199, 499])
+    ].copy()
+    if trial_events.empty:
+        trial_conversion = pd.DataFrame(
+            columns=["trial_start_date", "subscription_price", "trial_starts", "converted_trials", "conversion_pct", "avg_days_to_convert"]
+        )
+    else:
+        trial_events = trial_events.reset_index(drop=True)
+        trial_events["trial_id"] = trial_events.index
+        conversion_candidates = trial_events[["trial_id", "user_id", "event_date", "plan_code", "plan_main_amount"]].merge(
+            main_events[["user_id", "event_date", "plan_code", "amount"]],
+            on=["user_id", "plan_code"],
+            how="left",
+            suffixes=("_trial", "_main"),
+        )
+        conversion_candidates = conversion_candidates[
+            conversion_candidates["event_date_main"].notna()
+            & (conversion_candidates["event_date_main"] >= conversion_candidates["event_date_trial"])
+        ].copy()
+        if conversion_candidates.empty:
+            converted = pd.DataFrame(columns=["trial_id", "days_to_convert"])
+        else:
+            conversion_candidates["days_to_convert"] = (
+                conversion_candidates["event_date_main"] - conversion_candidates["event_date_trial"]
+            ).apply(lambda value: value.days)
+            converted = (
+                conversion_candidates.sort_values(["trial_id", "days_to_convert"])
+                .drop_duplicates("trial_id")[["trial_id", "days_to_convert"]]
+            )
+        trial_events = trial_events.merge(converted, on="trial_id", how="left")
+        trial_events["converted_flag"] = trial_events["days_to_convert"].notna()
+        trial_conversion = (
+            trial_events.groupby(["event_date", "plan_main_amount"], as_index=False)
+            .agg(
+                trial_starts=("trial_id", "nunique"),
+                converted_trials=("converted_flag", "sum"),
+                avg_days_to_convert=("days_to_convert", "mean"),
+            )
+            .rename(columns={"event_date": "trial_start_date", "plan_main_amount": "subscription_price"})
+            .sort_values(["trial_start_date", "subscription_price"])
+        )
+        trial_conversion["conversion_pct"] = (
+            trial_conversion["converted_trials"] / trial_conversion["trial_starts"] * 100
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        trial_conversion["avg_days_to_convert"] = trial_conversion["avg_days_to_convert"].fillna(0).round(2)
+
+    subs = read_sql(
+        engine,
+        """
+        SELECT
+            LOWER(BIN_TO_UUID(cs.user_id)) AS user_id,
+            COALESCE(sp.code, 'Unmapped Plan') AS plan_code,
+            sp.billing_amount,
+            cs.status,
+            cs.subscription_case,
+            DATE(DATE_ADD(cs.current_period_starts_at, INTERVAL 330 MINUTE)) AS period_start_date,
+            DATE(DATE_ADD(cs.current_period_ends_at, INTERVAL 330 MINUTE)) AS period_end_date,
+            DATE(DATE_ADD(cs.trial_ends_at, INTERVAL 330 MINUTE)) AS trial_end_date
+        FROM prod.customer_subscriptions cs
+        LEFT JOIN prod.subscription_plans sp ON cs.plan_id = sp.id
+        WHERE cs.created_at < :as_of_end_utc
+        """,
+        {"as_of_end_utc": utc_naive(local_midnight(end_day + timedelta(days=1)))},
+    )
+    active_daily_rows = []
+    active_paid_pairs: set[tuple[str, date]] = set()
+    if not subs.empty:
+        for column in ["period_start_date", "period_end_date", "trial_end_date"]:
+            subs[column] = pd.to_datetime(subs[column], errors="coerce").dt.date
+        subs["billing_amount"] = pd.to_numeric(subs["billing_amount"], errors="coerce").fillna(0)
+        subs["is_paid_active"] = subs["status"].eq("ACTIVE") & subs["subscription_case"].isin(["PLAN", "CANCELED_PLAN"])
+        subs["is_trial_active"] = subs["status"].eq("TRIAL_ACTIVE")
+        d = start_day
+        while d <= end_day:
+            paid = subs[
+                subs["is_paid_active"]
+                & subs["period_start_date"].notna()
+                & subs["period_end_date"].notna()
+                & (subs["period_start_date"] <= d)
+                & (subs["period_end_date"] >= d)
+            ].copy()
+            trial = subs[
+                subs["is_trial_active"]
+                & subs["trial_end_date"].notna()
+                & (subs["trial_end_date"] >= d)
+            ].copy()
+            for user_id in paid["user_id"].dropna().astype(str).unique():
+                active_paid_pairs.add((user_id, d))
+            plan_groups = paid.groupby("plan_code", dropna=False)
+            if paid.empty:
+                active_daily_rows.append(
+                    {
+                        "date": d,
+                        "plan_code": "All",
+                        "active_paid_subscribers": 0,
+                        "mrr": 0,
+                        "trial_active_subscribers": int(trial["user_id"].nunique()),
+                    }
+                )
+            else:
+                active_daily_rows.append(
+                    {
+                        "date": d,
+                        "plan_code": "All",
+                        "active_paid_subscribers": int(paid["user_id"].nunique()),
+                        "mrr": round(float(paid["billing_amount"].sum()), 2),
+                        "trial_active_subscribers": int(trial["user_id"].nunique()),
+                    }
+                )
+                for plan_code, group in plan_groups:
+                    active_daily_rows.append(
+                        {
+                            "date": d,
+                            "plan_code": str(plan_code),
+                            "active_paid_subscribers": int(group["user_id"].nunique()),
+                            "mrr": round(float(group["billing_amount"].sum()), 2),
+                            "trial_active_subscribers": 0,
+                        }
+                    )
+            d += timedelta(days=1)
+    active_daily = pd.DataFrame(active_daily_rows)
+    if active_daily.empty:
+        active_daily = pd.DataFrame(columns=["date", "plan_code", "active_paid_subscribers", "mrr", "trial_active_subscribers"])
+    active_all = active_daily[active_daily["plan_code"].eq("All")].copy()
+    active_all["net_mrr_movement"] = active_all["mrr"].diff().fillna(0).round(2) if not active_all.empty else []
+
+    activity = read_sql(
+        engine,
+        """
+        SELECT
+            LOWER(BIN_TO_UUID(user_id)) AS user_id,
+            DATE(DATE_ADD(started_at, INTERVAL 330 MINUTE)) AS active_date,
+            LOWER(COALESCE(session_type, 'chat')) AS session_type,
+            COUNT(*) AS sessions,
+            SUM(COALESCE(duration_mins, 0)) AS minutes
+        FROM prod.chat_session
+        WHERE started_at >= :start_utc
+          AND started_at < :end_utc
+          AND status = 'COMPLETED'
+        GROUP BY user_id, active_date, session_type
+        """,
+        {
+            "start_utc": utc_naive(local_midnight(start_day)),
+            "end_utc": utc_naive(local_midnight(end_day + timedelta(days=1))),
+        },
+    )
+    if activity.empty:
+        engagement_daily = pd.DataFrame(columns=["date", "user_type", "platform", "dau", "sessions", "chat_minutes", "call_minutes", "total_minutes", "minutes_per_user"])
+        engagement_summary = pd.DataFrame(columns=["user_type", "active_users", "sessions", "chat_minutes", "call_minutes", "total_minutes", "minutes_per_user"])
+    else:
+        activity["active_date"] = pd.to_datetime(activity["active_date"], errors="coerce").dt.date
+        activity = activity.merge(profiles[["user_id", "platform"]], on="user_id", how="left")
+        activity["platform"] = activity["platform"].fillna("unknown").astype(str).str.lower()
+        activity["user_type"] = activity.apply(
+            lambda row: "subscriber" if (str(row["user_id"]), row["active_date"]) in active_paid_pairs else "non_subscriber",
+            axis=1,
+        )
+        activity["chat_minutes_value"] = activity.apply(
+            lambda row: float(row["minutes"] or 0) if "call" not in str(row["session_type"]) and "voice" not in str(row["session_type"]) else 0.0,
+            axis=1,
+        )
+        activity["call_minutes_value"] = activity.apply(
+            lambda row: float(row["minutes"] or 0) if "call" in str(row["session_type"]) or "voice" in str(row["session_type"]) else 0.0,
+            axis=1,
+        )
+        engagement_daily = (
+            activity.groupby(["active_date", "user_type", "platform"], as_index=False)
+            .agg(
+                dau=("user_id", "nunique"),
+                sessions=("sessions", "sum"),
+                chat_minutes=("chat_minutes_value", "sum"),
+                call_minutes=("call_minutes_value", "sum"),
+            )
+            .rename(columns={"active_date": "date"})
+            .sort_values(["date", "user_type", "platform"])
+        )
+        engagement_daily["total_minutes"] = (engagement_daily["chat_minutes"] + engagement_daily["call_minutes"]).round(2)
+        engagement_daily["chat_minutes"] = engagement_daily["chat_minutes"].round(2)
+        engagement_daily["call_minutes"] = engagement_daily["call_minutes"].round(2)
+        engagement_daily["minutes_per_user"] = (
+            engagement_daily["total_minutes"] / engagement_daily["dau"]
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        engagement_summary = (
+            activity.groupby("user_type", as_index=False)
+            .agg(
+                active_users=("user_id", "nunique"),
+                sessions=("sessions", "sum"),
+                chat_minutes=("chat_minutes_value", "sum"),
+                call_minutes=("call_minutes_value", "sum"),
+            )
+            .sort_values("active_users", ascending=False)
+        )
+        engagement_summary["total_minutes"] = (engagement_summary["chat_minutes"] + engagement_summary["call_minutes"]).round(2)
+        engagement_summary["chat_minutes"] = engagement_summary["chat_minutes"].round(2)
+        engagement_summary["call_minutes"] = engagement_summary["call_minutes"].round(2)
+        engagement_summary["minutes_per_user"] = (
+            engagement_summary["total_minutes"] / engagement_summary["active_users"]
+        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+
+    return {
+        "daily_config_platform_funnel": records(daily_funnel),
+        "daily_config_signup_distribution": records(config_daily),
+        "trial_to_paid_cohort_by_price": records(trial_conversion),
+        "active_subscription_daily": records(active_all),
+        "active_subscription_daily_by_plan": records(active_daily[~active_daily["plan_code"].eq("All")] if not active_daily.empty else active_daily),
+        "subscriber_engagement_daily": records(engagement_daily),
+        "subscriber_engagement_summary": records(engagement_summary),
     }
 
 
@@ -2304,6 +2669,15 @@ def build_metric_coverage(period_dashboard: dict[str, Any]) -> dict[str, Any]:
         row.get("paywall_shown_users", 0) or row.get("trial_cta_users", 0)
         for row in config_rows
     )
+    has_subscription_sheet_metrics = all(
+        monetization.get(key)
+        for key in [
+            "daily_config_platform_funnel",
+            "trial_to_paid_cohort_by_price",
+            "active_subscription_daily",
+            "subscriber_engagement_summary",
+        ]
+    )
     followup_entities = acquisition.get("followup_entity_events", [])
     total_entity_events = sum(row.get("followup_events", 0) for row in followup_entities)
     unmapped_entity_events = sum(
@@ -2356,6 +2730,14 @@ def build_metric_coverage(period_dashboard: dict[str, Any]) -> dict[str, Any]:
             "next_data_needed": "Track renewal_success, renewal_failed, and renewal_retry events with user_id, plan_id, amount, and due date.",
         },
         {
+            "area": "Monetization",
+            "metric": "Subscription workbook parity: daily config/platform funnel, trial cohort conversion, active paid stock, MRR, subscriber engagement",
+            "status": "Available" if has_subscription_sheet_metrics else "Partial",
+            "coverage_pct": 100 if has_subscription_sheet_metrics else 80,
+            "missing_detail": "None" if has_subscription_sheet_metrics else "One or more DB-backed subscription workbook sections returned no rows for the selected window.",
+            "next_data_needed": "None",
+        },
+        {
             "area": "Acquisition",
             "metric": "New user to follow-up to payment conversion",
             "status": "Available",
@@ -2368,8 +2750,8 @@ def build_metric_coverage(period_dashboard: dict[str, Any]) -> dict[str, Any]:
             "metric": "Marketing channel / campaign source conversion",
             "status": "Missing source",
             "coverage_pct": 0,
-            "missing_detail": "The current source set does not include campaign attribution or ad spend for new users.",
-            "next_data_needed": "Install/UTM attribution fields or an ad-spend export keyed by campaign/date.",
+            "missing_detail": "Excluded from the dynamic dashboard because the current DB pipeline does not contain ad spend, installs, CAC, or campaign attribution refresh data.",
+            "next_data_needed": "Add a dynamic ad-spend/install attribution table keyed by date and campaign before enabling marketing metrics.",
         },
         {
             "area": "Persona",
