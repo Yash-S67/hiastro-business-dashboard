@@ -24,13 +24,45 @@ Chart.defaults.color = "#475569";
 Chart.defaults.plugins.legend.labels.boxWidth = 10;
 Chart.defaults.plugins.tooltip.backgroundColor = "#111827";
 
+function applyTheme(theme = THEME) {
+  THEME = theme === "day" ? "day" : "night";
+  document.body.dataset.theme = THEME;
+  localStorage.setItem("hiastro-dashboard-theme", THEME);
+  Chart.defaults.color = THEME === "day" ? "#475569" : "#cbd5e1";
+  Chart.defaults.plugins.tooltip.backgroundColor = THEME === "day" ? "#0f172a" : "#020617";
+  const toggle = document.getElementById("themeToggle");
+  if (toggle) {
+    toggle.textContent = THEME === "day" ? "Day" : "Night";
+    toggle.setAttribute("aria-label", `Switch to ${THEME === "day" ? "night" : "day"} mode`);
+  }
+  Object.values(CHARTS).forEach((chartInstance) => {
+    chartInstance.update("none");
+  });
+}
+
+function setupThemeToggle() {
+  applyTheme(THEME);
+  const toggle = document.getElementById("themeToggle");
+  if (!toggle) return;
+  toggle.addEventListener("click", () => {
+    applyTheme(THEME === "day" ? "night" : "day");
+    if (DASHBOARD_DATA) {
+      renderDashboard();
+      resizeVisibleCharts();
+    }
+  });
+}
+
 const CHARTS = {};
 const API_BASE_URL = String(window.HIASTRO_DASHBOARD_API_BASE_URL || "").replace(/\/$/, "");
+const SECTION_IDS = ["monetization", "acquisition", "retention", "engagement", "coverage"];
 let DASHBOARD_DATA = null;
 let SELECTED_PERIOD = "weekly";
 let SELECTED_DAY = null;
 let DATE_STATUS_MESSAGE = "";
 let LIVE_API_STATUS = null;
+let ACTIVE_SECTION = "monetization";
+let THEME = localStorage.getItem("hiastro-dashboard-theme") || "night";
 const TABLE_FILTERS = {
   payerSegment: { segment: "all", limit: 25 },
   payerFamilySegment: { family_label: "all", segment: "all", limit: 25 },
@@ -741,6 +773,9 @@ function chart(id, type, data, options = {}) {
   if (CHARTS[id]) {
     CHARTS[id].destroy();
   }
+  const chartText = THEME === "day" ? "#334155" : "#cbd5e1";
+  const titleText = THEME === "day" ? "#0f172a" : "#f7f9ff";
+  const gridColor = THEME === "day" ? "#e2e8f0" : "rgba(255,255,255,0.10)";
   CHARTS[id] = new Chart(el, {
     type,
     data,
@@ -748,12 +783,12 @@ function chart(id, type, data, options = {}) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { position: "bottom", labels: { color: "#cbd5e1", boxWidth: 10, boxHeight: 10 } },
-        title: { color: "#f7f9ff", font: { weight: "700" } },
+        legend: { position: "bottom", labels: { color: chartText, boxWidth: 10, boxHeight: 10 } },
+        title: { color: titleText, font: { weight: "700" } },
       },
       scales: type === "doughnut" ? {} : {
-        x: { grid: { display: false }, ticks: { color: "#96a3ba" } },
-        y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, ticks: { color: "#96a3ba" } },
+        x: { grid: { display: false }, ticks: { color: chartText } },
+        y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: chartText } },
       },
       ...options,
     },
@@ -2195,13 +2230,14 @@ async function main() {
     DASHBOARD_DATA = hideUnknownRows(await response.json());
     await fetchLiveStatus();
     SELECTED_PERIOD = DASHBOARD_DATA.metadata.default_period || "weekly";
+    ACTIVE_SECTION = sectionFromHash();
+    setupThemeToggle();
     setupPeriodControls();
     setupDayDownloadControls();
     setupTabs();
     setupDrilldowns();
     setupSectionNav();
     renderDashboard();
-    window.setTimeout(scrollToCurrentSection, 120);
   } catch (error) {
     document.getElementById("freshness").textContent = "Could not load dashboard data.";
     document.body.insertAdjacentHTML("afterbegin", `<div class="panel" style="margin:16px">Data load failed: ${error.message}</div>`);
@@ -2265,40 +2301,55 @@ function setupTabs() {
 
 function setupSectionNav() {
   const links = [...document.querySelectorAll(".section-nav a")];
-  const sections = links
-    .map((link) => document.querySelector(link.getAttribute("href")))
-    .filter(Boolean);
-
-  const setActive = () => {
-    const current = sections
-      .filter((section) => section.getBoundingClientRect().top <= 120)
-      .pop() || sections[0];
-    links.forEach((link) => {
-      link.classList.toggle("active", link.getAttribute("href") === `#${current.id}`);
-    });
-  };
-
   links.forEach((link) => {
-    link.addEventListener("click", () => {
-      window.setTimeout(setActive, 80);
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      const targetId = link.getAttribute("href").replace("#", "");
+      showSectionPage(targetId, { updateHash: true, rerender: true });
     });
   });
-  window.addEventListener("scroll", setActive, { passive: true });
   window.addEventListener("hashchange", () => {
-    window.setTimeout(scrollToCurrentSection, 40);
-    window.setTimeout(setActive, 90);
+    showSectionPage(sectionFromHash(), { updateHash: false, rerender: true });
   });
-  setActive();
+  showSectionPage(ACTIVE_SECTION, { updateHash: false, rerender: false });
 }
 
-function scrollToCurrentSection() {
-  if (!window.location.hash) return;
-  const section = document.querySelector(window.location.hash);
-  if (!section) return;
-  section.scrollIntoView({ block: "start" });
-  document.querySelectorAll(".section-nav a").forEach((link) => {
-    link.classList.toggle("active", link.getAttribute("href") === window.location.hash);
+function sectionFromHash() {
+  const id = window.location.hash.replace("#", "");
+  return SECTION_IDS.includes(id) ? id : "monetization";
+}
+
+function resizeVisibleCharts() {
+  window.requestAnimationFrame(() => {
+    Object.values(CHARTS).forEach((chartInstance) => {
+      chartInstance.resize();
+      chartInstance.update("none");
+    });
   });
+}
+
+function showSectionPage(sectionId, options = {}) {
+  const id = SECTION_IDS.includes(sectionId) ? sectionId : "monetization";
+  ACTIVE_SECTION = id;
+  document.querySelectorAll(".band").forEach((section) => {
+    section.classList.toggle("is-hidden", section.id !== id);
+  });
+  document.querySelectorAll(".source-note").forEach((section) => {
+    section.classList.toggle("is-hidden", id !== "coverage");
+  });
+  document.querySelectorAll(".section-nav a").forEach((link) => {
+    link.classList.toggle("active", link.getAttribute("href") === `#${id}`);
+  });
+  if (options.updateHash && window.location.hash !== `#${id}`) {
+    history.pushState(null, "", `#${id}`);
+  }
+  if (options.rerender) {
+    renderDashboard();
+    resizeVisibleCharts();
+  }
+  if (options.updateHash) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 }
 
 function renderDataPolicy(meta) {
@@ -2623,7 +2674,7 @@ function closeDrilldown() {
 function setupDrilldowns() {
   document.addEventListener("click", (event) => {
     const target = event.target.closest("[data-drilldown-label]");
-    if (!target || target.closest(".section-nav")) return;
+    if (!target || target.closest(".section-nav") || target.closest("#businessFlow")) return;
     event.preventDefault();
     openDrilldown(target.dataset.drilldownLabel);
   });

@@ -32,6 +32,98 @@ body {
   line-height: 1.45;
 }
 
+body[data-theme="day"] {
+  --bg: #eef3f8;
+  --surface: #ffffff;
+  --surface-soft: #f8fafc;
+  --ink: #0f172a;
+  --muted: #667085;
+  --line: #d9e2ec;
+  --line-soft: #edf2f7;
+  --teal: #0f766e;
+  --blue: #2563eb;
+  --gold: #b7791f;
+  --rose: #be3455;
+  --green: #15803d;
+  --slate: #334155;
+  --shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+  --soft-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+  background:
+    linear-gradient(145deg, rgba(37, 99, 235, 0.08), transparent 34%),
+    linear-gradient(315deg, rgba(15, 118, 110, 0.08), transparent 36%),
+    var(--bg);
+}
+
+body[data-theme="day"] .topbar {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom-color: var(--line);
+}
+
+body[data-theme="day"] .topbar .eyebrow {
+  color: var(--muted);
+}
+
+body[data-theme="day"] .freshness,
+body[data-theme="day"] .period-toggle,
+body[data-theme="day"] .download-controls {
+  color: var(--slate);
+  background: rgba(15, 23, 42, 0.04);
+  border-color: var(--line);
+}
+
+body[data-theme="day"] .period-toggle button {
+  color: var(--slate);
+}
+
+body[data-theme="day"] .period-toggle button.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--teal), var(--blue));
+}
+
+body[data-theme="day"] .download-controls select,
+body[data-theme="day"] .download-controls input,
+body[data-theme="day"] .table-controls select {
+  color: var(--ink);
+  background: #ffffff;
+}
+
+body[data-theme="day"] .section-nav,
+body[data-theme="day"] .panel,
+body[data-theme="day"] .source-note,
+body[data-theme="day"] .drilldown-panel {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+body[data-theme="day"] .guide-card,
+body[data-theme="day"] .flow-card,
+body[data-theme="day"] .kpi-card,
+body[data-theme="day"] .insight-card,
+body[data-theme="day"] .action-card,
+body[data-theme="day"] .funnel-step,
+body[data-theme="day"] .stream-card,
+body[data-theme="day"] .detail-metric {
+  background: #ffffff;
+}
+
+body[data-theme="day"] .mini-metric,
+body[data-theme="day"] .policy-item,
+body[data-theme="day"] .detail-table,
+body[data-theme="day"] .table-controls,
+body[data-theme="day"] .limit-toggle,
+body[data-theme="day"] .table-wrap {
+  background: #f8fafc;
+}
+
+body[data-theme="day"] th {
+  color: var(--slate);
+  background: #eef3f8;
+}
+
+body[data-theme="day"] tbody tr:hover {
+  background: #f2fbfa;
+}
+
 .topbar {
   min-height: 92px;
   padding: 18px 36px;
@@ -96,6 +188,26 @@ body {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 8px;
+}
+
+.theme-toggle {
+  appearance: none;
+  min-width: 74px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  color: var(--ink);
+  background: linear-gradient(135deg, rgba(232, 121, 249, 0.22), rgba(34, 211, 199, 0.16));
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+body[data-theme="day"] .theme-toggle {
+  color: #ffffff;
+  background: #111827;
+  border-color: #111827;
 }
 
 .download-controls {
@@ -376,6 +488,11 @@ main {
   margin-top: 32px;
   padding-top: 4px;
   scroll-margin-top: 76px;
+}
+
+.band.is-hidden,
+.source-note.is-hidden {
+  display: none !important;
 }
 
 .section-heading {
