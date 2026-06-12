@@ -64,6 +64,7 @@ let LIVE_API_STATUS = null;
 let ACTIVE_SECTION = "monetization";
 let THEME = localStorage.getItem("hiastro-dashboard-theme") || "night";
 let MARKETING_UPLOAD_STATE = null;
+const MARKETING_UPLOAD_STORAGE_KEY = "hiastro-marketing-upload-v1";
 const MARKETING_TEMPLATE_COLUMNS = [
   "Date",
   "Platform",
@@ -238,6 +239,41 @@ function parseCsv(text) {
     });
     return out;
   });
+}
+
+function loadMarketingUploadState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(MARKETING_UPLOAD_STORAGE_KEY) || "null");
+    if (!saved || !Array.isArray(saved.rows) || !saved.rows.length) return null;
+    return {
+      fileName: saved.fileName || "saved-marketing.csv",
+      rows: saved.rows,
+      loadedAt: saved.loadedAt || null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveMarketingUploadState(state) {
+  try {
+    localStorage.setItem(MARKETING_UPLOAD_STORAGE_KEY, JSON.stringify({
+      fileName: state.fileName,
+      rows: state.rows,
+      loadedAt: state.loadedAt,
+    }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function clearMarketingUploadState() {
+  try {
+    localStorage.removeItem(MARKETING_UPLOAD_STORAGE_KEY);
+  } catch {
+    // The in-memory upload can still be cleared even if browser storage fails.
+  }
 }
 
 function datesBetween(start, end) {
@@ -999,9 +1035,12 @@ function setupMarketingUploadControls(data) {
   if (!input || !status || !clear || !template) return;
 
   if (MARKETING_UPLOAD_STATE) {
+    const loadedAt = MARKETING_UPLOAD_STATE.loadedAt
+      ? new Date(MARKETING_UPLOAD_STATE.loadedAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+      : "saved";
     status.innerHTML = `
       <strong>${number(MARKETING_UPLOAD_STATE.rows.length)} uploaded rows ready.</strong>
-      <span>${escapeHtml(MARKETING_UPLOAD_STATE.fileName)} is applied to the current Marketing view only.</span>
+      <span>${escapeHtml(MARKETING_UPLOAD_STATE.fileName)} is saved in this browser from ${loadedAt}. Upload a newer CSV to replace it.</span>
     `;
   } else {
     status.innerHTML = `
@@ -1013,6 +1052,7 @@ function setupMarketingUploadControls(data) {
   input.onchange = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    const previousUpload = MARKETING_UPLOAD_STATE;
     try {
       const text = await file.text();
       const rows = parseCsv(text);
@@ -1022,10 +1062,11 @@ function setupMarketingUploadControls(data) {
         rows,
         loadedAt: new Date().toISOString(),
       };
+      saveMarketingUploadState(MARKETING_UPLOAD_STATE);
       renderDashboard();
       resizeVisibleCharts();
     } catch (error) {
-      MARKETING_UPLOAD_STATE = null;
+      MARKETING_UPLOAD_STATE = previousUpload;
       status.innerHTML = `<strong>Upload failed.</strong><span>${escapeHtml(error.message)}</span>`;
     } finally {
       input.value = "";
@@ -1034,6 +1075,7 @@ function setupMarketingUploadControls(data) {
 
   clear.onclick = () => {
     MARKETING_UPLOAD_STATE = null;
+    clearMarketingUploadState();
     renderDashboard();
     resizeVisibleCharts();
   };
@@ -3340,6 +3382,7 @@ async function main() {
     DASHBOARD_DATA = hideUnknownRows(await response.json());
     await fetchLiveStatus();
     SELECTED_PERIOD = DASHBOARD_DATA.metadata.default_period || "weekly";
+    MARKETING_UPLOAD_STATE = loadMarketingUploadState();
     ACTIVE_SECTION = sectionFromHash();
     setupThemeToggle();
     setupPeriodControls();
