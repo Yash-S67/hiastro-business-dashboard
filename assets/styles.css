@@ -104,6 +104,7 @@ body {
 }
 
 .download-controls select,
+.download-controls input,
 .download-controls button {
   height: 32px;
   border: 0;
@@ -113,11 +114,16 @@ body {
   font-weight: 800;
 }
 
-.download-controls select {
+.download-controls select,
+.download-controls input {
   min-width: 130px;
   padding: 0 8px;
   color: #111827;
   background: #ffffff;
+}
+
+.download-controls input {
+  min-width: 140px;
 }
 
 .download-controls button {
@@ -125,6 +131,14 @@ body {
   color: #ffffff;
   background: #0f766e;
   cursor: pointer;
+}
+
+.date-status {
+  max-width: 260px;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .period-toggle button {
@@ -775,6 +789,7 @@ tbody tr:last-child td {
   }
 
   .download-controls {
+    flex-wrap: wrap;
     justify-content: space-between;
     width: 100%;
   }

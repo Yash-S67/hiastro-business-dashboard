@@ -28,6 +28,7 @@ const CHARTS = {};
 let DASHBOARD_DATA = null;
 let SELECTED_PERIOD = "weekly";
 let SELECTED_DAY = null;
+let DATE_STATUS_MESSAGE = "";
 const TABLE_FILTERS = {
   payerSegment: { segment: "all", limit: 25 },
   payerFamilySegment: { family_label: "all", segment: "all", limit: 25 },
@@ -431,6 +432,69 @@ function dashboardDateOptions() {
   return [...days].filter(Boolean).sort();
 }
 
+function latestSelectableDate() {
+  const days = dashboardDateOptions();
+  if (days.length) return days[days.length - 1];
+  return DASHBOARD_DATA.metadata?.current_window?.end || new Date().toISOString().slice(0, 10);
+}
+
+function setDateStatus(message) {
+  DATE_STATUS_MESSAGE = message || "";
+  const status = document.getElementById("dateFetchStatus");
+  if (status) status.textContent = DATE_STATUS_MESSAGE;
+}
+
+function hasDailyPeriod(day) {
+  return Boolean(DASHBOARD_DATA.periods?.[`daily_${day}`]);
+}
+
+function upsertDailyPeriod(day, period) {
+  if (!DASHBOARD_DATA.periods) DASHBOARD_DATA.periods = {};
+  const periodId = `daily_${day}`;
+  DASHBOARD_DATA.periods[periodId] = period;
+  const metadata = DASHBOARD_DATA.metadata || {};
+  const existing = metadata.daily_periods || [];
+  const nextPeriod = {
+    id: periodId,
+    date: day,
+    label: shortDate(day),
+    ...(period.metadata || {}),
+  };
+  metadata.daily_periods = [
+    ...existing.filter((row) => row.date !== day),
+    nextPeriod,
+  ].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  DASHBOARD_DATA.metadata = metadata;
+}
+
+async function ensureDailyPeriod(day) {
+  if (hasDailyPeriod(day)) return true;
+  setDateStatus(`Fetching ${shortDate(day)}...`);
+  try {
+    const response = await fetch(`/api/dashboard?date=${encodeURIComponent(day)}`, { cache: "no-store" });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.error || "Live data fetch failed.");
+    }
+    const cleaned = hideUnknownRows(payload);
+    upsertDailyPeriod(cleaned.date || day, cleaned.period);
+    if (cleaned.metadata?.generated_at_ist) {
+      DASHBOARD_DATA.metadata.generated_at_ist = cleaned.metadata.generated_at_ist;
+    }
+    if (cleaned.metadata?.source_notes) {
+      DASHBOARD_DATA.metadata.source_notes = cleaned.metadata.source_notes;
+    }
+    if (cleaned.metadata?.data_retention_policy) {
+      DASHBOARD_DATA.metadata.data_retention_policy = cleaned.metadata.data_retention_policy;
+    }
+    setDateStatus(`Loaded ${shortDate(day)} live`);
+    return true;
+  } catch (error) {
+    setDateStatus(`Live fetch unavailable: ${error.message}`);
+    return false;
+  }
+}
+
 function csvValue(value) {
   const text = String(value ?? "");
   return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
@@ -459,6 +523,21 @@ function dayRows(rows, key, day) {
 }
 
 function buildDayExportRows(day) {
+  const dailyPeriod = DASHBOARD_DATA.periods?.[`daily_${day}`];
+  if (dailyPeriod) {
+    const sections = [
+      ["Monetization", "Daily revenue by stream", dailyPeriod.monetization?.daily || []],
+      ["Monetization", "Daily pack detail", dailyPeriod.monetization?.daily_pack_merged || dailyPeriod.monetization?.daily_pack || []],
+      ["Monetization", "Daily new vs old revenue", dailyPeriod.monetization?.daily_user_cohort || []],
+      ["Acquisition", "Daily new user funnel", dailyPeriod.acquisition?.daily || []],
+      ["Acquisition", "Daily payment family", dailyPeriod.acquisition?.daily_payment_family || []],
+      ["Engagement", "Daily sessions", dailyPeriod.engagement?.session_daily || []],
+      ["Engagement", "Daily BIM opens", dailyPeriod.engagement?.bim_daily || []],
+      ["Engagement", "Session new vs old", dailyPeriod.engagement?.session_user_cohort_daily || []],
+      ["Engagement", "BIM new vs old", dailyPeriod.engagement?.bim_user_cohort_daily || []],
+    ];
+    return sections.flatMap(([area, tableName, rows]) => rows.map((row) => ({ area, table: tableName, ...row })));
+  }
   const weekly = DASHBOARD_DATA.periods?.weekly || selectedData();
   const sections = [
     ["Monetization", "Daily revenue by stream", dayRows(weekly.monetization?.daily, "day", day)],
@@ -478,26 +557,37 @@ function setupDayDownloadControls() {
   const controls = document.getElementById("dayDownloadControls");
   if (!controls) return;
   const days = dashboardDateOptions();
-  if (!days.length) {
+  const maxDay = latestSelectableDate();
+  if (!days.length && !maxDay) {
     controls.innerHTML = "";
     return;
   }
-  const defaultDay = days[days.length - 1];
-  if (!SELECTED_DAY || !days.includes(SELECTED_DAY)) SELECTED_DAY = defaultDay;
-  const applySelectedDay = (day) => {
-    if (!days.includes(day)) return;
+  const defaultDay = days[days.length - 1] || maxDay;
+  if (!SELECTED_DAY) SELECTED_DAY = defaultDay;
+  const selectDays = days.includes(SELECTED_DAY)
+    ? days
+    : [...days, SELECTED_DAY].filter(Boolean).sort();
+  const applySelectedDay = async (day) => {
+    if (!day) return;
+    if (maxDay && day > maxDay) {
+      setDateStatus(`Latest complete date is ${shortDate(maxDay)}`);
+      return;
+    }
     SELECTED_DAY = day;
     SELECTED_PERIOD = "daily";
     setupPeriodControls();
     setupDayDownloadControls();
-    renderDashboard();
+    const ready = await ensureDailyPeriod(day);
+    setupDayDownloadControls();
+    if (ready) renderDashboard();
   };
   controls.innerHTML = `
     <select id="downloadDaySelect" aria-label="Day to download">
-      ${days.map((day) => `<option value="${escapeHtml(day)}"${day === SELECTED_DAY ? " selected" : ""}>${escapeHtml(shortDate(day))}</option>`).join("")}
+      ${selectDays.map((day) => `<option value="${escapeHtml(day)}"${day === SELECTED_DAY ? " selected" : ""}>${escapeHtml(shortDate(day))}</option>`).join("")}
     </select>
-    <input id="customDayInput" type="date" min="${escapeHtml(days[0])}" max="${escapeHtml(days[days.length - 1])}" value="${escapeHtml(SELECTED_DAY)}" aria-label="Custom daily date" />
+    <input id="customDayInput" type="date" max="${escapeHtml(maxDay)}" value="${escapeHtml(SELECTED_DAY)}" aria-label="Custom daily date" />
     <button type="button" id="downloadDayCsv">Download CSV</button>
+    <span class="date-status" id="dateFetchStatus">${escapeHtml(DATE_STATUS_MESSAGE)}</span>
   `;
   document.getElementById("downloadDaySelect").addEventListener("change", (event) => {
     applySelectedDay(event.target.value);
@@ -2034,7 +2124,7 @@ function setupPeriodControls() {
   const controls = document.getElementById("periodControls");
   controls.querySelectorAll("button").forEach((button) => {
     button.classList.toggle("active", button.dataset.period === SELECTED_PERIOD);
-    button.addEventListener("click", () => {
+    button.onclick = () => {
       SELECTED_PERIOD = button.dataset.period;
       if (SELECTED_PERIOD === "daily" && !SELECTED_DAY) {
         const days = dashboardDateOptions();
@@ -2043,7 +2133,7 @@ function setupPeriodControls() {
       controls.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.period === SELECTED_PERIOD));
       setupDayDownloadControls();
       renderDashboard();
-    });
+    };
   });
 }
 

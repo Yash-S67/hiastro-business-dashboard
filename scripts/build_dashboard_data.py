@@ -35,6 +35,31 @@ REVENUE_FAMILIES = [
     ("pay_as_you_go", "Pay as you go"),
     ("day_pass", "Day pass"),
 ]
+MIXPANEL_EVENTS = [
+    "$ae_session",
+    "Login Success",
+    "Follow up Query",
+    "App Opened from Notification",
+    "subscription_paywall_shown",
+    "subscription_trial_initiated",
+]
+
+
+def dashboard_source_notes() -> list[str]:
+    return [
+        "Subscription revenue comes from MySQL subscription_lifecycle_events where revenue_recorded = 1 and charge_amount > 0, joined to subscription_plans.",
+        "Plan-level Main / Trial is a same-period movement ratio, not a user-level cohort conversion; use Follow-up to Main for pack funnel comparison.",
+        "Daily date selection uses preloaded aggregate periods on GitHub Pages; the local dashboard server can fetch selected dates on demand through /api/dashboard without saving raw rows.",
+        "Pay as you go means successful ADD_MONEY wallet payment orders.",
+        "Customized day pass revenue comes from MySQL customer_day_pass joined to day_pass_config.",
+        "Acquisition new users come from MySQL users.created_at; login success comes from Mixpanel.",
+        "Config funnel paywall shown and trial CTA clicks come from Mixpanel; config, gender, and DOB-derived age buckets come from MySQL users/profiles; subscription purchases come from lifecycle revenue events.",
+        "Subscription renewal readiness comes from customer_subscriptions current period dates and cancel-at-period-end state; true autopay success needs recurring charge result events.",
+        "Follow-up entity values are resolved to bot names using chat_session bot_id and normalized bot-name slugs.",
+        "Retention uses completed MySQL chat_session activity for new-user cohorts.",
+        "Engagement duration and BIM notification opens come from Mixpanel app events.",
+        "Metric coverage flags show where a dashboard metric is partial or missing because a denominator/source is unavailable.",
+    ]
 
 
 def clean_value(value: Any) -> Any:
@@ -2465,6 +2490,70 @@ def write_latest_dashboard(dashboard: dict[str, Any]) -> None:
     os.replace(tmp_path, OUTPUT_PATH)
 
 
+def build_periods(
+    env: dict[str, str],
+    engine,
+    period_ranges: dict[str, dict[str, Any]],
+    latest_complete_day: date,
+    mixpanel_start: date,
+    mixpanel_end: date,
+) -> dict[str, dict[str, Any]]:
+    sql_lookup_start = min(ranges["prior_30_start"] for ranges in period_ranges.values())
+    current_end = max(ranges["current_end"] for ranges in period_ranges.values())
+    mixpanel_events = fetch_mixpanel_events(env, MIXPANEL_EVENTS, mixpanel_start, mixpanel_end)
+    profiles = build_profiles(engine, latest_complete_day)
+    bot_lookup = build_bot_lookup(engine, sql_lookup_start, current_end)
+    return {
+        period_id: build_period_dashboard(
+            engine,
+            profiles,
+            mixpanel_events,
+            ranges,
+            bot_lookup,
+            latest_complete_day,
+        )
+        for period_id, ranges in period_ranges.items()
+    }
+
+
+def build_daily_api_payload(day_value: date) -> dict[str, Any]:
+    today_ist = datetime.now(IST).date()
+    latest_complete_day = today_ist - timedelta(days=1)
+    if day_value > latest_complete_day:
+        raise ValueError(f"{day_value.isoformat()} is not complete yet. Latest complete date is {latest_complete_day.isoformat()}.")
+    env = load_env()
+    engine = mysql_engine(env)
+    period_id = f"daily_{day_value.isoformat()}"
+    period_ranges = {
+        period_id: make_ranges("daily", day_value, day_value),
+    }
+    periods = build_periods(
+        env,
+        engine,
+        period_ranges,
+        latest_complete_day,
+        day_value,
+        day_value,
+    )
+    period = periods[period_id]
+    return {
+        "metadata": {
+            "generated_at_ist": datetime.now(IST).isoformat(timespec="seconds"),
+            "timezone": "Asia/Kolkata",
+            "latest_complete_day": latest_complete_day.isoformat(),
+            "source_notes": dashboard_source_notes(),
+            "data_retention_policy": {
+                "storage": "In-memory response for the selected aggregate dashboard period",
+                "refresh_behavior": "Selecting a date fetches aggregate metrics for that date; the local API does not append the result to dashboard_data.json.",
+                "raw_data": "Raw SQL rows, Mixpanel event exports, user-level funnel rows, and credentials are not returned to the browser.",
+            },
+        },
+        "period_id": period_id,
+        "date": day_value.isoformat(),
+        "period": period,
+    }
+
+
 def main() -> None:
     env = load_env()
     engine = mysql_engine(env)
@@ -2482,35 +2571,7 @@ def main() -> None:
         day_value = date.fromisoformat(day)
         period_ranges[f"daily_{day}"] = make_ranges("daily", day_value, day_value)
     mixpanel_start = daily_start
-    sql_lookup_start = min(ranges["prior_30_start"] for ranges in period_ranges.values())
-
-    mixpanel_events = fetch_mixpanel_events(
-        env,
-        [
-            "$ae_session",
-            "Login Success",
-            "Follow up Query",
-            "App Opened from Notification",
-            "subscription_paywall_shown",
-            "subscription_trial_initiated",
-        ],
-        mixpanel_start,
-        current_end,
-    )
-
-    profiles = build_profiles(engine, latest_complete_day)
-    bot_lookup = build_bot_lookup(engine, sql_lookup_start, current_end)
-    periods = {
-        period_id: build_period_dashboard(
-            engine,
-            profiles,
-            mixpanel_events,
-            ranges,
-            bot_lookup,
-            latest_complete_day,
-        )
-        for period_id, ranges in period_ranges.items()
-    }
+    periods = build_periods(env, engine, period_ranges, latest_complete_day, mixpanel_start, current_end)
     weekly = periods["weekly"]
     daily_periods = [
         {
@@ -2541,20 +2602,7 @@ def main() -> None:
                 "refresh_behavior": "Each refresh replaces the previous dashboard_data.json file; old aggregate output is not appended or archived.",
                 "raw_data": "Raw SQL rows, Mixpanel event exports, user-level funnel rows, and credentials are not stored in this repo.",
             },
-            "source_notes": [
-                "Subscription revenue comes from MySQL subscription_lifecycle_events where revenue_recorded = 1 and charge_amount > 0, joined to subscription_plans.",
-                "Plan-level Main / Trial is a same-period movement ratio, not a user-level cohort conversion; use Follow-up to Main for pack funnel comparison.",
-                "Custom daily date selection uses preloaded daily dashboard periods from the latest refresh; increase DASHBOARD_DAILY_HISTORY_DAYS before refresh to preload more past dates.",
-                "Pay as you go means successful ADD_MONEY wallet payment orders.",
-                "Customized day pass revenue comes from MySQL customer_day_pass joined to day_pass_config.",
-                "Acquisition new users come from MySQL users.created_at; login success comes from Mixpanel.",
-                "Config funnel paywall shown and trial CTA clicks come from Mixpanel; config, gender, and DOB-derived age buckets come from MySQL users/profiles; subscription purchases come from lifecycle revenue events.",
-                "Subscription renewal readiness comes from customer_subscriptions current period dates and cancel-at-period-end state; true autopay success needs recurring charge result events.",
-                "Follow-up entity values are resolved to bot names using chat_session bot_id and normalized bot-name slugs.",
-                "Retention uses completed MySQL chat_session activity for new-user cohorts.",
-                "Engagement duration and BIM notification opens come from Mixpanel app events.",
-                "Metric coverage flags show where a dashboard metric is partial or missing because a denominator/source is unavailable.",
-            ],
+            "source_notes": dashboard_source_notes(),
         },
         "periods": periods,
         "monetization": weekly["monetization"],

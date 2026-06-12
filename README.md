@@ -20,14 +20,24 @@ hiastro-business-dashboard/data/dashboard_data.json
 
 ```bash
 cd /Users/yashs/Documents/WorkDirectory/hiastro-business-dashboard
-python3 -m http.server 8080
+/Users/yashs/Documents/WorkDirectory/.venv/bin/python scripts/serve_dashboard.py --port 8080
 ```
 
 Open `http://localhost:8080`.
 
+This local server also enables flexible daily selection. When you pick a date that is not already in `data/dashboard_data.json`, the browser calls:
+
+```text
+/api/dashboard?date=YYYY-MM-DD
+```
+
+The endpoint fetches aggregate metrics from MySQL and Mixpanel using the parent `.env` file. It does not write the selected-date result to the repo and does not return raw rows or credentials to the browser.
+
 ## GitHub Pages
 
 This folder is ready to push as a static GitHub Pages site. Do not commit credentials; the dashboard only includes aggregated JSON.
+
+GitHub Pages can switch only across dates already present in `data/dashboard_data.json`. Arbitrary dynamic date selection is available on the local server because GitHub Pages cannot safely hold MySQL or Mixpanel credentials.
 
 ## Daily update
 
