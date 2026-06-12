@@ -4,13 +4,13 @@ import argparse
 import json
 import os
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from build_dashboard_data import DASHBOARD_ROOT, build_daily_api_payload
+from build_dashboard_data import DASHBOARD_ROOT, IST, build_daily_api_payload
 
 
 class DashboardRequestHandler(SimpleHTTPRequestHandler):
@@ -18,11 +18,21 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(DASHBOARD_ROOT), **kwargs)
 
     def end_headers(self) -> None:
+        self.send_header("Access-Control-Allow-Origin", os.environ.get("DASHBOARD_ALLOWED_ORIGIN", "*"))
+        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
 
+    def do_OPTIONS(self) -> None:
+        self.send_response(HTTPStatus.NO_CONTENT.value)
+        self.end_headers()
+
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
+        if parsed.path == "/api/status":
+            self.handle_status_api()
+            return
         if parsed.path == "/api/dashboard":
             self.handle_dashboard_api(parsed.query)
             return
@@ -35,6 +45,19 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def handle_status_api(self) -> None:
+        latest_complete_day = datetime.now(IST).date() - timedelta(days=1)
+        self.write_json(
+            HTTPStatus.OK,
+            {
+                "status": "ok",
+                "live_daily_api": True,
+                "latest_complete_day": latest_complete_day.isoformat(),
+                "timezone": "Asia/Kolkata",
+                "generated_at_ist": datetime.now(IST).isoformat(timespec="seconds"),
+            },
+        )
 
     def handle_dashboard_api(self, query: str) -> None:
         params = parse_qs(query)

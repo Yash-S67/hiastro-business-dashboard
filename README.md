@@ -37,7 +37,15 @@ The endpoint fetches aggregate metrics from MySQL and Mixpanel using the parent 
 
 This folder is ready to push as a static GitHub Pages site. Do not commit credentials; the dashboard only includes aggregated JSON.
 
-GitHub Pages can switch only across dates already present in `data/dashboard_data.json`. Arbitrary dynamic date selection is available on the local server because GitHub Pages cannot safely hold MySQL or Mixpanel credentials.
+GitHub Pages can switch across dates already present in `data/dashboard_data.json`. The GitHub workflow is scheduled daily at **03:15 UTC / 08:45 IST** and can refresh this aggregate file when GitHub can reach the database and repository secrets are configured.
+
+Arbitrary dynamic date selection on GitHub Pages needs a separate API service, because GitHub Pages cannot safely hold MySQL or Mixpanel credentials. This repo includes `scripts/serve_dashboard.py` plus `render.yaml` so the same live API can be deployed as a small web service. After deployment, set this public, non-secret value in `assets/config.js`:
+
+```js
+window.HIASTRO_DASHBOARD_API_BASE_URL = "https://your-dashboard-api.example.com";
+```
+
+Keep all MySQL and Mixpanel credentials only as API-service environment variables.
 
 ## Daily update
 
@@ -55,7 +63,7 @@ Manual refresh:
 /Users/yashs/Documents/WorkDirectory/hiastro-business-dashboard/scripts/refresh_and_push.sh
 ```
 
-The workflow `.github/workflows/refresh-data.yml` remains available for manual runs if the database is ever opened to GitHub runners or moved behind a reachable analytics endpoint.
+The workflow `.github/workflows/refresh-data.yml` also runs daily and remains available for manual runs. If GitHub runners cannot reach MySQL, the Mac LaunchAgent is the reliable refresh path; if the DB is opened to GitHub runners or moved behind a reachable analytics endpoint, GitHub can refresh without your Mac.
 
 Add these repository secrets in GitHub before enabling the hosted refresh:
 

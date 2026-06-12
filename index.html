@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HiAstro Business Dashboard</title>
-    <link rel="stylesheet" href="assets/styles.css?v=20260612-live-date-api" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260612-structured-dynamic" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -32,6 +32,10 @@
     </nav>
 
     <main>
+      <section class="dashboard-guide" aria-label="Dashboard operating summary">
+        <div class="guide-grid" id="dashboardGuide"></div>
+        <div class="workflow-strip" id="businessFlow"></div>
+      </section>
       <section class="kpi-grid" id="overviewCards"></section>
       <section class="insight-strip" id="decisionInsights"></section>
 
@@ -550,6 +554,7 @@
       </section>
     </main>
 
-    <script src="assets/app.js?v=20260612-live-date-api"></script>
+    <script src="assets/config.js?v=20260612-structured-dynamic"></script>
+    <script src="assets/app.js?v=20260612-structured-dynamic"></script>
   </body>
 </html>

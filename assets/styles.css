@@ -235,6 +235,104 @@ main {
   padding: 24px 32px 56px;
 }
 
+.dashboard-guide {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.guide-card,
+.flow-card {
+  position: relative;
+  min-width: 0;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.guide-card {
+  padding: 13px 14px;
+  border-top: 3px solid #7c8da1;
+}
+
+.guide-card.good {
+  border-top-color: var(--green);
+}
+
+.guide-card.risk {
+  border-top-color: var(--rose);
+}
+
+.guide-label,
+.flow-label {
+  color: #5e6b7a;
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.guide-value {
+  margin-top: 7px;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 850;
+  line-height: 1.12;
+}
+
+.guide-sub {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.workflow-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.flow-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 13px;
+  color: inherit;
+  text-decoration: none;
+  border-left: 3px solid #7c8da1;
+}
+
+.flow-card.good {
+  border-left-color: var(--green);
+}
+
+.flow-card.risk {
+  border-left-color: var(--rose);
+}
+
+.flow-card:hover {
+  border-color: var(--teal);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.flow-card strong {
+  color: var(--ink);
+  font-size: 19px;
+  line-height: 1.1;
+}
+
+.flow-card span:last-child {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .band,
 .source-note {
   margin-top: 32px;
@@ -760,12 +858,14 @@ tbody tr:last-child td {
 @media (max-width: 1100px) {
   .kpi-grid,
   .kpi-grid.compact,
+  .guide-grid,
   .grid.two,
   .insight-strip,
   .action-grid,
   .funnel-strip,
   .funnel-strip-wide,
   .stream-grid,
+  .workflow-strip,
   .policy-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -838,6 +938,8 @@ tbody tr:last-child td {
 
   .grid.two,
   .action-grid,
+  .guide-grid,
+  .workflow-strip,
   .policy-grid {
     grid-template-columns: 1fr;
   }
@@ -877,9 +979,11 @@ tbody tr:last-child td {
 
   .kpi-grid,
   .kpi-grid.compact,
+  .guide-grid,
   .insight-strip,
   .funnel-strip,
   .funnel-strip-wide,
+  .workflow-strip,
   .stream-grid {
     grid-template-columns: 1fr;
   }

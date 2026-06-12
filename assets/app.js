@@ -25,10 +25,12 @@ Chart.defaults.plugins.legend.labels.boxWidth = 10;
 Chart.defaults.plugins.tooltip.backgroundColor = "#111827";
 
 const CHARTS = {};
+const API_BASE_URL = String(window.HIASTRO_DASHBOARD_API_BASE_URL || "").replace(/\/$/, "");
 let DASHBOARD_DATA = null;
 let SELECTED_PERIOD = "weekly";
 let SELECTED_DAY = null;
 let DATE_STATUS_MESSAGE = "";
+let LIVE_API_STATUS = null;
 const TABLE_FILTERS = {
   payerSegment: { segment: "all", limit: 25 },
   payerFamilySegment: { family_label: "all", segment: "all", limit: 25 },
@@ -432,7 +434,24 @@ function dashboardDateOptions() {
   return [...days].filter(Boolean).sort();
 }
 
+function apiUrl(path) {
+  return `${API_BASE_URL}${path}`;
+}
+
+async function fetchLiveStatus() {
+  try {
+    const response = await fetch(apiUrl("/api/status"), { cache: "no-store" });
+    if (!response.ok) return null;
+    LIVE_API_STATUS = await response.json();
+    return LIVE_API_STATUS;
+  } catch (_error) {
+    LIVE_API_STATUS = null;
+    return null;
+  }
+}
+
 function latestSelectableDate() {
+  if (LIVE_API_STATUS?.latest_complete_day) return LIVE_API_STATUS.latest_complete_day;
   const days = dashboardDateOptions();
   if (days.length) return days[days.length - 1];
   return DASHBOARD_DATA.metadata?.current_window?.end || new Date().toISOString().slice(0, 10);
@@ -469,9 +488,13 @@ function upsertDailyPeriod(day, period) {
 
 async function ensureDailyPeriod(day) {
   if (hasDailyPeriod(day)) return true;
+  if (!LIVE_API_STATUS?.live_daily_api) {
+    setDateStatus("Live API not connected; using preloaded dates");
+    return false;
+  }
   setDateStatus(`Fetching ${shortDate(day)}...`);
   try {
-    const response = await fetch(`/api/dashboard?date=${encodeURIComponent(day)}`, { cache: "no-store" });
+    const response = await fetch(apiUrl(`/api/dashboard?date=${encodeURIComponent(day)}`), { cache: "no-store" });
     const payload = await response.json();
     if (!response.ok) {
       throw new Error(payload.error || "Live data fetch failed.");
@@ -578,6 +601,10 @@ function setupDayDownloadControls() {
     setupPeriodControls();
     setupDayDownloadControls();
     const ready = await ensureDailyPeriod(day);
+    if (ready) {
+      SELECTED_DAY = day;
+      SELECTED_PERIOD = "daily";
+    }
     setupDayDownloadControls();
     if (ready) renderDashboard();
   };
@@ -723,6 +750,70 @@ function chart(id, type, data, options = {}) {
     },
   });
   return CHARTS[id];
+}
+
+function compactWindowLabel(windowMeta) {
+  if (!windowMeta?.start || !windowMeta?.end) return "Current window";
+  if (windowMeta.start === windowMeta.end) return shortDate(windowMeta.start);
+  return `${shortDate(windowMeta.start)} - ${shortDate(windowMeta.end)}`;
+}
+
+function guideCard(label, value, sub = "", tone = "neutral") {
+  return `
+    <article class="guide-card ${tone}">
+      <div class="guide-label">${escapeHtml(label)}</div>
+      <div class="guide-value">${value}</div>
+      <div class="guide-sub">${sub}</div>
+    </article>
+  `;
+}
+
+function flowCard(anchor, label, value, sub = "", tone = "neutral") {
+  return `
+    <a class="flow-card ${tone}" href="${anchor}">
+      <span class="flow-label">${escapeHtml(label)}</span>
+      <strong>${value}</strong>
+      <span>${sub}</span>
+    </a>
+  `;
+}
+
+function renderDashboardGuide(data) {
+  const rootMeta = DASHBOARD_DATA.metadata || {};
+  const meta = data.metadata || rootMeta;
+  const m = data.monetization?.kpis?.current || {};
+  const a = data.acquisition?.kpis || {};
+  const r = (data.retention?.curve || []).find((row) => row.day_n === 1) || {};
+  const e = data.engagement?.kpis || {};
+  const coverageRows = data.metric_coverage?.rows || [];
+  const availableMetrics = coverageRows.filter((row) => row.status === "Available").length;
+  const partialMetrics = coverageRows.filter((row) => row.status !== "Available").length;
+  const liveMode = LIVE_API_STATUS?.live_daily_api;
+  const connectedMode = liveMode ? "Live API" : "Static Data";
+  const latestDay = latestSelectableDate();
+  const selectedWindow = meta.current_window || rootMeta.current_window;
+  const selectedLabel = SELECTED_PERIOD === "daily" ? "Daily View" : "Weekly View";
+  const dateModeText = liveMode
+    ? `Any complete date through ${shortDate(latestDay)}`
+    : `Preloaded through ${shortDate(latestDay)}`;
+  const sourceModeText = liveMode
+    ? "Local/API fetches MySQL and Mixpanel on demand"
+    : "GitHub Pages reads the latest committed aggregate JSON";
+
+  document.getElementById("dashboardGuide").innerHTML = [
+    guideCard("Data Mode", connectedMode, sourceModeText, liveMode ? "good" : "neutral"),
+    guideCard("Selected Window", compactWindowLabel(selectedWindow), `${selectedLabel} | ${dateModeText}`),
+    guideCard("Operating Revenue", money(m.revenue), `${number(m.payers)} payers | ${number(m.transactions)} transactions`),
+    guideCard("Metric Trust", `${number(availableMetrics)} ready`, `${number(partialMetrics)} partial or missing metrics`, partialMetrics ? "risk" : "good"),
+  ].join("");
+
+  document.getElementById("businessFlow").innerHTML = [
+    flowCard("#monetization", "1. Monetization", money(m.revenue), `${number(m.payers)} payers`, "good"),
+    flowCard("#acquisition", "2. Acquisition", number(a.new_users), `${pct(a.new_user_to_followup_pct)} to follow-up`),
+    flowCard("#retention", "3. Retention", pct(r.retention_pct || 0), "D1 chat retention"),
+    flowCard("#engagement", "4. Engagement", number(e.sessions), `${e.avg_minutes_per_user || 0} min/user`),
+    flowCard("#coverage", "5. Coverage", `${number(availableMetrics)}/${number(coverageRows.length)}`, "metrics ready", partialMetrics ? "risk" : "good"),
+  ].join("");
 }
 
 function renderOverview(data) {
@@ -2100,6 +2191,7 @@ async function main() {
   try {
     const response = await fetch(`data/dashboard_data.json?ts=${Date.now()}`, { cache: "no-store" });
     DASHBOARD_DATA = hideUnknownRows(await response.json());
+    await fetchLiveStatus();
     SELECTED_PERIOD = DASHBOARD_DATA.metadata.default_period || "weekly";
     setupPeriodControls();
     setupDayDownloadControls();
@@ -2228,6 +2320,7 @@ function renderDashboard() {
   const rootMeta = DASHBOARD_DATA.metadata;
   const meta = data.metadata || rootMeta;
   document.getElementById("freshness").textContent = `Generated ${new Date(rootMeta.generated_at_ist).toLocaleString("en-IN")} IST | ${SELECTED_PERIOD.toUpperCase()} ${meta.current_window.start} to ${meta.current_window.end}`;
+  renderDashboardGuide(data);
   renderOverview(data);
   renderMonetization(data);
   renderAcquisition(data);

@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: hiastro-dashboard-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/serve_dashboard.py --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: MYSQL_HOST
+        sync: false
+      - key: MYSQL_PORT
+        sync: false
+      - key: MYSQL_USER
+        sync: false
+      - key: MYSQL_PASSWORD
+        sync: false
+      - key: MYSQL_DATABASE
+        sync: false
+      - key: MIXPANEL_PROJECT_ID
+        sync: false
+      - key: MIXPANEL_SERVICE_ACCOUNT_USERNAME
+        sync: false
+      - key: MIXPANEL_SERVICE_ACCOUNT_SECRET
+        sync: false
+      - key: DASHBOARD_ALLOWED_ORIGIN
+        value: https://yash-s67.github.io
