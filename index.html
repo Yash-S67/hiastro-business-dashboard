@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HiAstro Business Dashboard</title>
-    <link rel="stylesheet" href="assets/styles.css?v=20260612-command-center-3" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260612-operating-depth" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -27,6 +27,7 @@
     <nav class="section-nav" aria-label="Dashboard sections">
       <a href="#monetization">Monetization</a>
       <a href="#acquisition">Acquisition</a>
+      <a href="#marketing">Marketing</a>
       <a href="#retention">Retention</a>
       <a href="#engagement">Engagement</a>
       <a href="#coverage">Data Quality</a>
@@ -60,6 +61,7 @@
           <button type="button" data-tab-target="monetization-subscription">Subscription</button>
           <button type="button" data-tab-target="monetization-renewal">Renewal</button>
           <button type="button" data-tab-target="monetization-payg">PayG</button>
+          <button type="button" data-tab-target="monetization-payments">Payments</button>
           <button type="button" data-tab-target="monetization-packs">Pack Comparison</button>
           <button type="button" data-tab-target="monetization-funnels">Funnels</button>
           <button type="button" data-tab-target="monetization-funnel-graphs">Funnel Graphs</button>
@@ -150,6 +152,20 @@
             <div class="panel"><canvas id="subscriberEngagementChart"></canvas></div>
           </div>
           <div class="grid two">
+            <div class="panel"><canvas id="planUsageChart"></canvas></div>
+            <div class="panel"><canvas id="planRiskChart"></canvas></div>
+          </div>
+          <div class="grid two">
+            <div class="panel">
+              <h3>Plan Usage and Voice Mix</h3>
+              <div id="planUsageTable"></div>
+            </div>
+            <div class="panel">
+              <h3>At-Risk Subscriber Buckets</h3>
+              <div id="atRiskBucketTable"></div>
+            </div>
+          </div>
+          <div class="grid two">
             <div class="panel">
               <h3>Daily Config Funnel</h3>
               <div id="subscriptionDailyFunnelTable"></div>
@@ -198,6 +214,30 @@
             <h3>Subscription Status Breakdown</h3>
             <div id="renewalStatusTable"></div>
           </div>
+          <div class="grid two">
+            <div class="panel"><canvas id="renewalRealizedChart"></canvas></div>
+            <div class="panel"><canvas id="cancelDistributionChart"></canvas></div>
+          </div>
+          <div class="grid two">
+            <div class="panel">
+              <h3>Realized Renewal Cohorts</h3>
+              <div id="renewalCohortTable"></div>
+            </div>
+            <div class="panel">
+              <h3>Cancel Timing</h3>
+              <div id="cancelDistributionTable"></div>
+            </div>
+          </div>
+          <div class="grid two">
+            <div class="panel">
+              <h3>Trial Lifecycle</h3>
+              <div id="trialLifecycleTable"></div>
+            </div>
+            <div class="panel">
+              <h3>Trial Cancel by Plan</h3>
+              <div id="trialCancelPlanTable"></div>
+            </div>
+          </div>
         </div>
         <div class="tab-panel" id="monetization-payg">
           <div class="split-heading">
@@ -225,6 +265,34 @@
           <div class="panel">
             <h3>Revenue Concentration</h3>
             <div id="revenueConcentrationTable"></div>
+          </div>
+        </div>
+        <div class="tab-panel" id="monetization-payments">
+          <div class="split-heading">
+            <div>
+              <p class="eyebrow">Initiated, Success, Retries, Refunds</p>
+              <h3>Payment Mechanics</h3>
+            </div>
+            <p>Separates payment success from purchase intent so low success is not confused with weak demand.</p>
+          </div>
+          <div class="kpi-grid compact" id="paymentCards"></div>
+          <div class="grid two">
+            <div class="panel"><canvas id="paymentDailyChart"></canvas></div>
+            <div class="panel"><canvas id="paymentMethodChart"></canvas></div>
+          </div>
+          <div class="grid two">
+            <div class="panel">
+              <h3>Payment Method Success</h3>
+              <div id="paymentMethodTable"></div>
+            </div>
+            <div class="panel">
+              <h3>Retry Behavior</h3>
+              <div id="paymentRetryTable"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>Payment Status Breakdown</h3>
+            <div id="paymentStatusTable"></div>
           </div>
         </div>
         <div class="tab-panel" id="monetization-packs">
@@ -443,6 +511,35 @@
         </div>
       </section>
 
+      <section class="band" id="marketing">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Spend, CAC, ROAS, Payback</p>
+            <h2>Marketing</h2>
+          </div>
+          <p id="marketingNote"></p>
+        </div>
+        <div class="kpi-grid compact" id="marketingCards"></div>
+        <div class="grid two">
+          <div class="panel"><canvas id="marketingSpendRevenueChart"></canvas></div>
+          <div class="panel"><canvas id="marketingCampaignChart"></canvas></div>
+        </div>
+        <div class="grid two">
+          <div class="panel">
+            <h3>Daily Spend and Return</h3>
+            <div id="marketingDailyTable"></div>
+          </div>
+          <div class="panel">
+            <h3>Campaign CAC and ROAS</h3>
+            <div id="marketingCampaignTable"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Platform Efficiency</h3>
+          <div id="marketingPlatformTable"></div>
+        </div>
+      </section>
+
       <section class="band" id="retention">
         <div class="section-heading">
           <div>
@@ -509,6 +606,7 @@
         <div class="kpi-grid compact" id="engagementCards"></div>
         <div class="section-tabs" data-tab-group="engagement">
           <button type="button" class="active" data-tab-target="engagement-sessions">Sessions</button>
+          <button type="button" data-tab-target="engagement-stickiness">Stickiness</button>
           <button type="button" data-tab-target="engagement-notifications">Notifications</button>
         </div>
         <div class="tab-panel active" id="engagement-sessions">
@@ -537,6 +635,34 @@
           <div class="panel">
             <h3>Daily Session Detail</h3>
             <div id="sessionDailyTable"></div>
+          </div>
+        </div>
+        <div class="tab-panel" id="engagement-stickiness">
+          <div class="split-heading">
+            <div>
+              <p class="eyebrow">DAU, WAU, MAU and Frequency</p>
+              <h3>Habit Depth</h3>
+            </div>
+            <p>Distinguishes habitual users from one-time or low-frequency users using completed session activity.</p>
+          </div>
+          <div class="kpi-grid compact" id="stickinessCards"></div>
+          <div class="grid two">
+            <div class="panel"><canvas id="stickinessDailyChart"></canvas></div>
+            <div class="panel"><canvas id="frequencyChart"></canvas></div>
+          </div>
+          <div class="grid two">
+            <div class="panel">
+              <h3>L7 Frequency</h3>
+              <div id="frequencyL7Table"></div>
+            </div>
+            <div class="panel">
+              <h3>L28 Frequency</h3>
+              <div id="frequencyL28Table"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>Daily Stickiness Detail</h3>
+            <div id="stickinessDailyTable"></div>
           </div>
         </div>
         <div class="tab-panel" id="engagement-notifications">
@@ -609,7 +735,7 @@
       <div class="drilldown-body" id="drilldownBody"></div>
     </aside>
 
-    <script src="assets/config.js?v=20260612-command-center-3"></script>
-    <script src="assets/app.js?v=20260612-command-center-3"></script>
+    <script src="assets/config.js?v=20260612-operating-depth"></script>
+    <script src="assets/app.js?v=20260612-operating-depth"></script>
   </body>
 </html>

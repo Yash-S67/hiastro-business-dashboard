@@ -971,6 +971,11 @@ tbody tr:hover {
   background: rgba(34, 211, 199, 0.055);
 }
 
+tbody tr.immature td {
+  color: var(--muted);
+  opacity: 0.62;
+}
+
 tbody tr:last-child td {
   border-bottom: 0;
 }

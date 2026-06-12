@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+import io
 import json
 import math
 import os
@@ -43,6 +45,11 @@ MIXPANEL_EVENTS = [
     "subscription_paywall_shown",
     "subscription_trial_initiated",
 ]
+DEFAULT_MARKETING_SHEET_CSV_URL = (
+    "https://docs.google.com/spreadsheets/d/"
+    "1-QvG0U0TKFu_SbglBqGcq2K3q2Fq8lnnip8iGtu2B98/export?format=csv&gid=493345888"
+)
+MARKETING_CSV_CACHE: tuple[pd.DataFrame, str, str] | None = None
 
 
 def dashboard_source_notes() -> list[str]:
@@ -57,6 +64,8 @@ def dashboard_source_notes() -> list[str]:
         "Subscription sheet-style daily funnel, trial cohort conversion, active paid subscriber stock, MRR, and subscriber engagement are rebuilt from MySQL users, subscription_lifecycle_events, customer_subscriptions, and chat_session.",
         "LLM cost is not calculated yet because the current MySQL schema does not expose model, prompt token, completion token, provider cost, or request-level usage fields.",
         "Subscription renewal readiness comes from customer_subscriptions current period dates and cancel-at-period-end state; true autopay success needs recurring charge result events.",
+        "Payment method success, retries, and refunds come from MySQL payment_orders; gateway failure reason is unavailable because failure payloads are not stored in the current table.",
+        "Marketing spend/CAC can be pulled daily from a published Campaign Data CSV URL; the provided Google Sheet currently requires authentication, so spend metrics remain gated until access is refreshed or a publish-to-web CSV URL is supplied.",
         "Follow-up entity values are resolved to bot names using chat_session bot_id and normalized bot-name slugs.",
         "Retention uses completed MySQL chat_session activity for new-user cohorts.",
         "Engagement duration and BIM notification opens come from Mixpanel app events.",
@@ -93,8 +102,39 @@ def safe_div(num: float, den: float) -> float:
     return round(num / den * 100, 2) if den else 0.0
 
 
+def safe_div_series(num: pd.Series, den: pd.Series) -> pd.Series:
+    den = pd.to_numeric(den, errors="coerce").replace(0, pd.NA)
+    num = pd.to_numeric(num, errors="coerce").fillna(0)
+    return (num / den * 100).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+
+
 def safe_ratio(num: float, den: float) -> float:
     return round(num / den, 2) if den else 0.0
+
+
+def numeric_value(value: Any) -> float:
+    if value is None:
+        return 0.0
+    if isinstance(value, (int, float, Decimal)):
+        return float(value)
+    text_value = str(value).strip().replace(",", "").replace("₹", "").replace("$", "")
+    if text_value.endswith("%"):
+        text_value = text_value[:-1]
+    try:
+        return float(text_value)
+    except ValueError:
+        return 0.0
+
+
+def normalize_header(value: Any) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", str(value or "").strip().lower()).strip("_")
+
+
+def first_present(row: dict[str, Any], candidates: list[str]) -> Any:
+    for key in candidates:
+        if key in row and row[key] not in (None, ""):
+            return row[key]
+    return None
 
 
 def local_midnight(d: date) -> datetime:
@@ -1239,6 +1279,9 @@ def build_monetization(
 
     renewal = build_subscription_renewal(engine, ranges)
     subscription_sheet_metrics = build_subscription_sheet_metrics(engine, ranges, profiles)
+    payment_funnel = build_payment_funnel(engine, ranges)
+    subscription_lifecycle_depth = build_subscription_lifecycle_depth(engine, ranges)
+    plan_usage_and_risk = build_plan_usage_and_risk(engine, ranges)
 
     return {
         "kpis": {
@@ -1285,6 +1328,9 @@ def build_monetization(
         "user_family_revenue_current": records(user_family_revenue),
         "subscription_renewal": renewal,
         **subscription_sheet_metrics,
+        **payment_funnel,
+        **subscription_lifecycle_depth,
+        **plan_usage_and_risk,
     }
 
 
@@ -1308,8 +1354,19 @@ def build_subscription_renewal(engine, ranges: dict[str, Any]) -> dict[str, Any]
         FROM prod.customer_subscriptions cs
         LEFT JOIN prod.subscription_plans sp ON cs.plan_id = sp.id
         WHERE cs.created_at < :as_of_end_utc
+          AND (
+            cs.status IN ('ACTIVE', 'TRIAL_ACTIVE')
+            OR cs.cancel_at_period_end = 1
+            OR cs.subscription_case = 'CANCELED_PLAN'
+          )
+          AND (
+            (cs.current_period_starts_at < :due_end_utc AND cs.current_period_ends_at >= :current_start_utc)
+            OR cs.trial_ends_at >= :current_start_utc
+          )
         """,
         {
+            "current_start_utc": utc_naive(local_midnight(ranges["current_start"])),
+            "due_end_utc": utc_naive(local_midnight(due_end + timedelta(days=1))),
             "as_of_end_utc": utc_naive(local_midnight(ranges["current_end"] + timedelta(days=1))),
         },
     )
@@ -1626,10 +1683,17 @@ def build_subscription_sheet_metrics(engine, ranges: dict[str, Any], profiles: p
             .rename(columns={"event_date": "trial_start_date", "plan_main_amount": "subscription_price"})
             .sort_values(["trial_start_date", "subscription_price"])
         )
-        trial_conversion["conversion_pct"] = (
-            trial_conversion["converted_trials"] / trial_conversion["trial_starts"] * 100
-        ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
-        trial_conversion["avg_days_to_convert"] = trial_conversion["avg_days_to_convert"].fillna(0).round(2)
+    trial_conversion["conversion_pct"] = (
+        trial_conversion["converted_trials"] / trial_conversion["trial_starts"] * 100
+    ).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+    trial_conversion["avg_days_to_convert"] = trial_conversion["avg_days_to_convert"].fillna(0).round(2)
+    if "trial_start_date" in trial_conversion.columns:
+        trial_conversion["conversion_matured"] = trial_conversion["trial_start_date"].apply(
+            lambda value: bool(pd.notna(value) and value <= (end_day - timedelta(days=2)))
+        )
+        trial_conversion["maturity_status"] = trial_conversion["conversion_matured"].apply(
+            lambda matured: "Matured" if matured else "Not matured"
+        )
 
     subs = read_sql(
         engine,
@@ -1646,8 +1710,16 @@ def build_subscription_sheet_metrics(engine, ranges: dict[str, Any], profiles: p
         FROM prod.customer_subscriptions cs
         LEFT JOIN prod.subscription_plans sp ON cs.plan_id = sp.id
         WHERE cs.created_at < :as_of_end_utc
+          AND cs.status IN ('ACTIVE', 'TRIAL_ACTIVE')
+          AND (
+            (cs.current_period_starts_at < :as_of_end_utc AND cs.current_period_ends_at >= :start_utc)
+            OR cs.trial_ends_at >= :start_utc
+          )
         """,
-        {"as_of_end_utc": utc_naive(local_midnight(end_day + timedelta(days=1)))},
+        {
+            "start_utc": utc_naive(local_midnight(start_day)),
+            "as_of_end_utc": utc_naive(local_midnight(end_day + timedelta(days=1))),
+        },
     )
     active_daily_rows = []
     active_paid_pairs: set[tuple[str, date]] = set()
@@ -1792,6 +1864,693 @@ def build_subscription_sheet_metrics(engine, ranges: dict[str, Any], profiles: p
         "active_subscription_daily_by_plan": records(active_daily[~active_daily["plan_code"].eq("All")] if not active_daily.empty else active_daily),
         "subscriber_engagement_daily": records(engagement_daily),
         "subscriber_engagement_summary": records(engagement_summary),
+    }
+
+
+def build_payment_funnel(engine, ranges: dict[str, Any]) -> dict[str, Any]:
+    start_day = ranges["current_start"]
+    end_day = ranges["current_end"]
+    payments = read_sql(
+        engine,
+        """
+        SELECT
+            LOWER(BIN_TO_UUID(user_id)) AS user_id,
+            DATE(DATE_ADD(created_at, INTERVAL 330 MINUTE)) AS day,
+            COALESCE(NULLIF(payment_method, ''), 'method_not_captured') AS payment_method,
+            COALESCE(status, 'Unspecified') AS status,
+            JSON_UNQUOTE(JSON_EXTRACT(notes, '$.type')) AS payment_type,
+            amount,
+            created_at,
+            updated_at,
+            razorpay_order_id,
+            razorpay_payment_id,
+            refund_amount,
+            refunded_at
+        FROM prod.payment_orders
+        WHERE created_at >= :start_utc
+          AND created_at < :end_utc
+        """,
+        {
+            "start_utc": utc_naive(local_midnight(start_day)),
+            "end_utc": utc_naive(local_midnight(end_day + timedelta(days=1))),
+        },
+    )
+    if payments.empty:
+        empty_cols = ["day", "payment_type", "payment_method", "initiated_orders", "successful_orders", "failed_orders", "success_rate_pct", "paid_amount", "refund_amount", "retry_orders"]
+        return {
+            "payment_kpis": {
+                "initiated_orders": 0,
+                "successful_orders": 0,
+                "failed_orders": 0,
+                "created_orders": 0,
+                "success_rate_pct": 0,
+                "refund_orders": 0,
+                "refund_amount": 0,
+                "retry_users": 0,
+            },
+            "payment_daily": [],
+            "payment_method": [],
+            "payment_retry": [],
+            "payment_failure_status": [],
+            "payment_source_status": "available",
+            "payment_notes": ["No payment orders found in this period."],
+        }
+
+    payments["day"] = pd.to_datetime(payments["day"], errors="coerce").dt.date
+    payments["payment_type"] = payments["payment_type"].fillna("UNSPECIFIED").astype(str)
+    payments["amount"] = pd.to_numeric(payments["amount"], errors="coerce").fillna(0)
+    payments["refund_amount"] = pd.to_numeric(payments["refund_amount"], errors="coerce").fillna(0)
+    payments["is_success"] = payments["status"].eq("PAID")
+    payments["is_failed"] = payments["status"].eq("FAILED")
+    payments["is_created"] = payments["status"].eq("CREATED")
+    payments["is_refunded"] = payments["status"].eq("REFUNDED") | payments["refund_amount"].gt(0)
+
+    def summarize(group_cols: list[str]) -> pd.DataFrame:
+        out = (
+            payments.groupby(group_cols, dropna=False, as_index=False)
+            .agg(
+                initiated_orders=("razorpay_order_id", "count"),
+                successful_orders=("is_success", "sum"),
+                failed_orders=("is_failed", "sum"),
+                created_orders=("is_created", "sum"),
+                paid_amount=("amount", lambda s: float(s[payments.loc[s.index, "is_success"]].sum())),
+                refund_orders=("is_refunded", "sum"),
+                refund_amount=("refund_amount", "sum"),
+                users=("user_id", "nunique"),
+            )
+        )
+        out["success_rate_pct"] = (out["successful_orders"] / out["initiated_orders"] * 100).round(2)
+        out["failure_rate_pct"] = (out["failed_orders"] / out["initiated_orders"] * 100).round(2)
+        out["paid_amount"] = out["paid_amount"].round(2)
+        out["refund_amount"] = out["refund_amount"].round(2)
+        return out
+
+    daily = summarize(["day", "payment_type"])
+    daily["day"] = daily["day"].astype(str)
+    method = summarize(["payment_type", "payment_method"]).sort_values(["payment_type", "initiated_orders"], ascending=[True, False])
+
+    retry = (
+        payments.groupby(["user_id", "payment_type"], as_index=False)
+        .agg(
+            attempts=("razorpay_order_id", "count"),
+            successful_orders=("is_success", "sum"),
+            failed_orders=("is_failed", "sum"),
+            first_day=("day", "min"),
+            last_day=("day", "max"),
+        )
+    )
+    retry = retry[retry["attempts"] > 1].copy()
+    if retry.empty:
+        retry_summary = pd.DataFrame(columns=["payment_type", "retry_users", "retry_success_users", "retry_success_pct", "avg_attempts"])
+    else:
+        retry["retry_success"] = retry["successful_orders"] > 0
+        retry_summary = (
+            retry.groupby("payment_type", as_index=False)
+            .agg(
+                retry_users=("user_id", "nunique"),
+                retry_success_users=("retry_success", "sum"),
+                avg_attempts=("attempts", "mean"),
+            )
+        )
+        retry_summary["retry_success_pct"] = (retry_summary["retry_success_users"] / retry_summary["retry_users"] * 100).round(2)
+        retry_summary["avg_attempts"] = retry_summary["avg_attempts"].round(2)
+
+    status = summarize(["payment_type", "status"]).sort_values(["payment_type", "initiated_orders"], ascending=[True, False])
+    kpis = {
+        "initiated_orders": int(len(payments)),
+        "successful_orders": int(payments["is_success"].sum()),
+        "failed_orders": int(payments["is_failed"].sum()),
+        "created_orders": int(payments["is_created"].sum()),
+        "success_rate_pct": safe_div(int(payments["is_success"].sum()), int(len(payments))),
+        "refund_orders": int(payments["is_refunded"].sum()),
+        "refund_amount": round(float(payments["refund_amount"].sum()), 2),
+        "retry_users": int(retry["user_id"].nunique()) if not retry.empty else 0,
+    }
+    return {
+        "payment_kpis": kpis,
+        "payment_daily": records(daily.sort_values(["day", "payment_type"])),
+        "payment_method": records(method),
+        "payment_retry": records(retry_summary),
+        "payment_failure_status": records(status),
+        "payment_source_status": "available",
+        "payment_notes": [
+            "Payment method is available on successful orders; failed/created rows often lack payment_method, so UPI/card success by failed method is partial.",
+            "Failure reason is not present in payment_orders; only status-level failure is available.",
+        ],
+    }
+
+
+def build_subscription_lifecycle_depth(engine, ranges: dict[str, Any]) -> dict[str, Any]:
+    start_day = ranges["current_start"]
+    end_day = ranges["current_end"]
+    subs = read_sql(
+        engine,
+        """
+        SELECT
+            LOWER(BIN_TO_UUID(cs.user_id)) AS user_id,
+            COALESCE(sp.code, 'Unmapped Plan') AS plan_code,
+            sp.billing_amount,
+            cs.status,
+            cs.subscription_case,
+            cs.cancel_at_period_end,
+            DATE(DATE_ADD(cs.created_at, INTERVAL 330 MINUTE)) AS created_date,
+            DATE(DATE_ADD(cs.trial_starts_at, INTERVAL 330 MINUTE)) AS trial_start_date,
+            DATE(DATE_ADD(cs.trial_ends_at, INTERVAL 330 MINUTE)) AS trial_end_date,
+            DATE(DATE_ADD(cs.current_period_starts_at, INTERVAL 330 MINUTE)) AS period_start_date,
+            DATE(DATE_ADD(cs.current_period_ends_at, INTERVAL 330 MINUTE)) AS period_end_date,
+            DATE(DATE_ADD(cs.cancel_requested_at, INTERVAL 330 MINUTE)) AS cancel_requested_date,
+            DATE(DATE_ADD(cs.canceled_at, INTERVAL 330 MINUTE)) AS canceled_date
+        FROM prod.customer_subscriptions cs
+        LEFT JOIN prod.subscription_plans sp ON cs.plan_id = sp.id
+        WHERE cs.created_at < :end_utc
+          AND (
+            cs.created_at >= :context_start_utc
+            OR cs.trial_starts_at >= :start_utc
+            OR cs.cancel_requested_at >= :context_start_utc
+            OR cs.canceled_at >= :context_start_utc
+            OR (cs.current_period_starts_at < :end_utc AND cs.current_period_ends_at >= :start_utc)
+          )
+        """,
+        {
+            "context_start_utc": utc_naive(local_midnight(start_day - timedelta(days=45))),
+            "start_utc": utc_naive(local_midnight(start_day)),
+            "end_utc": utc_naive(local_midnight(end_day + timedelta(days=1))),
+        },
+    )
+    if subs.empty:
+        return {
+            "trial_lifecycle": [],
+            "trial_cancel_by_plan": [],
+            "cancel_kpis": {},
+            "cancel_distribution": [],
+            "renewal_realized": {},
+            "renewal_cohorts": [],
+        }
+    for column in ["created_date", "trial_start_date", "trial_end_date", "period_start_date", "period_end_date", "cancel_requested_date", "canceled_date"]:
+        subs[column] = pd.to_datetime(subs[column], errors="coerce").dt.date
+    subs["billing_amount"] = pd.to_numeric(subs["billing_amount"], errors="coerce").fillna(0)
+    subs["trial_cancel_before_charge"] = (
+        subs["cancel_requested_date"].notna()
+        & subs["trial_end_date"].notna()
+        & (subs["cancel_requested_date"] <= subs["trial_end_date"])
+    )
+    subs["trial_cancel_d0"] = (
+        subs["trial_cancel_before_charge"]
+        & subs["trial_start_date"].notna()
+        & (subs["cancel_requested_date"] == subs["trial_start_date"])
+    )
+    trial_rows = subs[subs["trial_start_date"].notna() & (subs["trial_start_date"] >= start_day) & (subs["trial_start_date"] <= end_day)].copy()
+    if trial_rows.empty:
+        trial_lifecycle = pd.DataFrame(columns=["trial_start_date", "trials", "cancel_before_charge", "d0_cancel", "cancel_before_charge_pct", "d0_cancel_pct"])
+        trial_cancel_by_plan = pd.DataFrame(columns=["plan_code", "trials", "cancel_before_charge", "d0_cancel", "cancel_before_charge_pct", "d0_cancel_pct"])
+    else:
+        trial_lifecycle = (
+            trial_rows.groupby("trial_start_date", as_index=False)
+            .agg(
+                trials=("user_id", "nunique"),
+                cancel_before_charge=("trial_cancel_before_charge", "sum"),
+                d0_cancel=("trial_cancel_d0", "sum"),
+            )
+            .sort_values("trial_start_date")
+        )
+        trial_lifecycle["cancel_before_charge_pct"] = (trial_lifecycle["cancel_before_charge"] / trial_lifecycle["trials"] * 100).round(2)
+        trial_lifecycle["d0_cancel_pct"] = (trial_lifecycle["d0_cancel"] / trial_lifecycle["trials"] * 100).round(2)
+        trial_lifecycle["trial_start_date"] = trial_lifecycle["trial_start_date"].astype(str)
+        trial_cancel_by_plan = (
+            trial_rows.groupby("plan_code", as_index=False)
+            .agg(
+                trials=("user_id", "nunique"),
+                cancel_before_charge=("trial_cancel_before_charge", "sum"),
+                d0_cancel=("trial_cancel_d0", "sum"),
+            )
+            .sort_values("trials", ascending=False)
+        )
+        trial_cancel_by_plan["cancel_before_charge_pct"] = (trial_cancel_by_plan["cancel_before_charge"] / trial_cancel_by_plan["trials"] * 100).round(2)
+        trial_cancel_by_plan["d0_cancel_pct"] = (trial_cancel_by_plan["d0_cancel"] / trial_cancel_by_plan["trials"] * 100).round(2)
+
+    canceled = subs[subs["cancel_requested_date"].notna() | subs["canceled_date"].notna()].copy()
+    if canceled.empty:
+        cancel_distribution = pd.DataFrame(columns=["bucket", "subscriptions"])
+    else:
+        canceled["effective_cancel_date"] = canceled["cancel_requested_date"].combine_first(canceled["canceled_date"])
+        canceled["cancel_age_days"] = (canceled["effective_cancel_date"] - canceled["created_date"]).apply(lambda value: value.days if pd.notna(value) else None)
+        canceled["bucket"] = pd.cut(
+            pd.to_numeric(canceled["cancel_age_days"], errors="coerce"),
+            bins=[-1, 0, 1, 3, 7, 14, 30, 99999],
+            labels=["D0", "D1", "D2-D3", "D4-D7", "D8-D14", "D15-D30", "D31+"],
+        ).astype(str)
+        cancel_distribution = (
+            canceled.groupby(["bucket", "plan_code"], as_index=False)
+            .agg(subscriptions=("user_id", "nunique"))
+            .sort_values(["bucket", "subscriptions"], ascending=[True, False])
+        )
+    active_paid = subs[subs["status"].eq("ACTIVE") & subs["subscription_case"].isin(["PLAN", "CANCELED_PLAN"])].copy()
+    cancel_kpis = {
+        "active_paid_subscriptions": int(active_paid["user_id"].nunique()),
+        "cancel_scheduled_users": int(active_paid[active_paid["cancel_at_period_end"].eq(1)]["user_id"].nunique()) if not active_paid.empty else 0,
+        "trial_cancel_before_charge": int(subs["trial_cancel_before_charge"].sum()),
+        "trial_d0_cancel": int(subs["trial_cancel_d0"].sum()),
+        "canceled_subscriptions": int(canceled["user_id"].nunique()) if not canceled.empty else 0,
+    }
+
+    charges = read_sql(
+        engine,
+        """
+        SELECT
+            LOWER(BIN_TO_UUID(sle.user_id)) AS user_id,
+            COALESCE(sp.code, 'Unmapped Plan') AS plan_code,
+            DATE(DATE_ADD(COALESCE(sle.event_created_at, sle.created_at, sle.charge_at, sle.current_start), INTERVAL 330 MINUTE)) AS charge_date,
+            ROUND(sle.charge_amount, 0) AS amount
+        FROM prod.subscription_lifecycle_events sle
+        LEFT JOIN prod.subscription_plans sp ON sle.plan_id = sp.id
+        WHERE COALESCE(sle.event_created_at, sle.created_at, sle.charge_at, sle.current_start) >= :start_utc
+          AND COALESCE(sle.event_created_at, sle.created_at, sle.charge_at, sle.current_start) < :end_utc
+          AND sle.revenue_recorded = 1
+          AND (sle.revenue_type = 'subscription_charged' OR sle.event_type = 'subscription.charged')
+          AND sle.charge_amount > 0
+        """,
+        {
+            "start_utc": utc_naive(local_midnight(ranges["prior_30_start"])),
+            "end_utc": utc_naive(local_midnight(end_day + timedelta(days=1))),
+        },
+    )
+    if charges.empty:
+        renewal_cohorts = pd.DataFrame(columns=["first_charge_week", "plan_code", "main_buyers", "renewed_users", "renewal_rate_pct", "matured"])
+        renewal_realized = {
+            "matured_main_buyers": 0,
+            "renewed_users": 0,
+            "m1_renewal_rate_pct": None,
+            "matured": False,
+        }
+    else:
+        charges["charge_date"] = pd.to_datetime(charges["charge_date"], errors="coerce").dt.date
+        charges = charges.sort_values(["user_id", "plan_code", "charge_date"])
+        first_charge = charges.drop_duplicates(["user_id", "plan_code"])[["user_id", "plan_code", "charge_date"]].rename(columns={"charge_date": "first_charge_date"})
+        renewal_candidates = first_charge.merge(charges, on=["user_id", "plan_code"], how="left")
+        renewal_candidates["days_after_first"] = (renewal_candidates["charge_date"] - renewal_candidates["first_charge_date"]).apply(lambda value: value.days)
+        renewal_candidates = renewal_candidates[(renewal_candidates["days_after_first"] >= 25) & (renewal_candidates["days_after_first"] <= 45)]
+        renewed_ids = set(zip(renewal_candidates["user_id"], renewal_candidates["plan_code"], renewal_candidates["first_charge_date"]))
+        first_charge["matured"] = first_charge["first_charge_date"] <= (end_day - timedelta(days=25))
+        first_charge["renewed"] = first_charge.apply(lambda row: (row["user_id"], row["plan_code"], row["first_charge_date"]) in renewed_ids, axis=1)
+        first_charge["first_charge_week"] = pd.to_datetime(first_charge["first_charge_date"]).dt.to_period("W-SUN").astype(str)
+        renewal_cohorts = (
+            first_charge.groupby(["first_charge_week", "plan_code", "matured"], as_index=False)
+            .agg(main_buyers=("user_id", "nunique"), renewed_users=("renewed", "sum"))
+            .sort_values(["first_charge_week", "plan_code"])
+        )
+        renewal_cohorts["renewal_rate_pct"] = (
+            renewal_cohorts["renewed_users"] / renewal_cohorts["main_buyers"] * 100
+        ).round(2)
+        matured_rows = first_charge[first_charge["matured"]]
+        renewal_realized = {
+            "matured_main_buyers": int(matured_rows["user_id"].nunique()),
+            "renewed_users": int(matured_rows.loc[matured_rows["renewed"], "user_id"].nunique()),
+            "m1_renewal_rate_pct": safe_div(int(matured_rows.loc[matured_rows["renewed"], "user_id"].nunique()), int(matured_rows["user_id"].nunique())),
+            "matured": bool(not matured_rows.empty),
+        }
+
+    return {
+        "trial_lifecycle": records(trial_lifecycle),
+        "trial_cancel_by_plan": records(trial_cancel_by_plan),
+        "cancel_kpis": cancel_kpis,
+        "cancel_distribution": records(cancel_distribution),
+        "renewal_realized": renewal_realized,
+        "renewal_cohorts": records(renewal_cohorts),
+    }
+
+
+def build_plan_usage_and_risk(engine, ranges: dict[str, Any]) -> dict[str, Any]:
+    end_day = ranges["current_end"]
+    usage_start = max(ranges["current_start"], end_day - timedelta(days=6))
+    params = {
+        "as_of_end_utc": utc_naive(local_midnight(end_day + timedelta(days=1))),
+        "usage_start_utc": utc_naive(local_midnight(usage_start)),
+        "usage_end_utc": utc_naive(local_midnight(end_day + timedelta(days=1))),
+    }
+    subs = read_sql(
+        engine,
+        """
+        SELECT
+            LOWER(BIN_TO_UUID(cs.user_id)) AS user_id,
+            COALESCE(sp.code, 'Unmapped Plan') AS plan_code,
+            COALESCE(sp.name, sp.code, 'Unmapped Plan') AS plan_name,
+            COALESCE(sp.billing_amount, 0) AS billing_amount,
+            COALESCE(sp.daily_chat_mins, 0) AS daily_chat_mins,
+            COALESCE(sp.daily_call_mins, 0) AS daily_call_mins,
+            COALESCE(sp.voice_notes_enabled, 0) AS voice_notes_enabled,
+            cs.cancel_at_period_end,
+            DATE(DATE_ADD(cs.current_period_starts_at, INTERVAL 330 MINUTE)) AS period_start_date,
+            DATE(DATE_ADD(cs.current_period_ends_at, INTERVAL 330 MINUTE)) AS period_end_date
+        FROM prod.customer_subscriptions cs
+        LEFT JOIN prod.subscription_plans sp ON cs.plan_id = sp.id
+        WHERE cs.created_at < :as_of_end_utc
+          AND cs.status = 'ACTIVE'
+          AND cs.subscription_case IN ('PLAN', 'CANCELED_PLAN')
+          AND cs.current_period_starts_at < :as_of_end_utc
+          AND cs.current_period_ends_at >= :as_of_start_utc
+        """,
+        {
+            "as_of_start_utc": utc_naive(local_midnight(end_day)),
+            "as_of_end_utc": params["as_of_end_utc"],
+        },
+    )
+    if subs.empty:
+        return {
+            "plan_usage": [],
+            "at_risk_subscriber_buckets": [],
+            "at_risk_subscribers": [],
+        }
+    for column in ["period_start_date", "period_end_date"]:
+        subs[column] = pd.to_datetime(subs[column], errors="coerce").dt.date
+    subs = subs[
+        subs["period_start_date"].notna()
+        & subs["period_end_date"].notna()
+        & (subs["period_start_date"] <= end_day)
+        & (subs["period_end_date"] >= end_day)
+    ].copy()
+    if subs.empty:
+        return {
+            "plan_usage": [],
+            "at_risk_subscriber_buckets": [],
+            "at_risk_subscribers": [],
+        }
+    for column in ["billing_amount", "daily_chat_mins", "daily_call_mins", "voice_notes_enabled", "cancel_at_period_end"]:
+        subs[column] = pd.to_numeric(subs[column], errors="coerce").fillna(0)
+
+    activity = read_sql(
+        engine,
+        """
+        SELECT
+            LOWER(BIN_TO_UUID(user_id)) AS user_id,
+            LOWER(COALESCE(session_type, 'chat')) AS session_type,
+            COUNT(*) AS sessions,
+            SUM(COALESCE(duration_mins, 0)) AS minutes,
+            MAX(DATE(DATE_ADD(started_at, INTERVAL 330 MINUTE))) AS last_active_date
+        FROM prod.chat_session
+        WHERE started_at >= :usage_start_utc
+          AND started_at < :usage_end_utc
+          AND status = 'COMPLETED'
+        GROUP BY user_id, session_type
+        """,
+        params,
+    )
+    if activity.empty:
+        activity = pd.DataFrame(columns=["user_id", "session_type", "sessions", "minutes", "last_active_date"])
+    else:
+        activity["minutes"] = pd.to_numeric(activity["minutes"], errors="coerce").fillna(0)
+        activity["sessions"] = pd.to_numeric(activity["sessions"], errors="coerce").fillna(0)
+        activity["is_call"] = activity["session_type"].astype(str).str.contains("call|voice", case=False, regex=True)
+        activity["chat_minutes_value"] = activity.apply(lambda row: 0.0 if row["is_call"] else float(row["minutes"]), axis=1)
+        activity["call_minutes_value"] = activity.apply(lambda row: float(row["minutes"]) if row["is_call"] else 0.0, axis=1)
+    user_usage = (
+        activity.groupby("user_id", as_index=False)
+        .agg(
+            l7_sessions=("sessions", "sum"),
+            l7_chat_minutes=("chat_minutes_value", "sum"),
+            l7_call_minutes=("call_minutes_value", "sum"),
+            last_active_date=("last_active_date", "max"),
+        )
+        if not activity.empty
+        else pd.DataFrame(columns=["user_id", "l7_sessions", "l7_chat_minutes", "l7_call_minutes", "last_active_date"])
+    )
+    merged = subs.merge(user_usage, on="user_id", how="left")
+    for column in ["l7_sessions", "l7_chat_minutes", "l7_call_minutes"]:
+        merged[column] = pd.to_numeric(merged[column], errors="coerce").fillna(0)
+    merged["l7_total_minutes"] = merged["l7_chat_minutes"] + merged["l7_call_minutes"]
+    merged["last_active_date"] = pd.to_datetime(merged["last_active_date"], errors="coerce").dt.date
+    merged["days_since_active"] = merged["last_active_date"].apply(
+        lambda value: (end_day - value).days if pd.notna(value) else None
+    )
+
+    plan_usage = (
+        merged.groupby(["plan_code", "plan_name"], as_index=False)
+        .agg(
+            active_paid_users=("user_id", "nunique"),
+            revenue_stock=("billing_amount", "sum"),
+            daily_chat_mins=("daily_chat_mins", "max"),
+            daily_call_mins=("daily_call_mins", "max"),
+            voice_notes_enabled=("voice_notes_enabled", "max"),
+            l7_sessions=("l7_sessions", "sum"),
+            l7_chat_minutes=("l7_chat_minutes", "sum"),
+            l7_call_minutes=("l7_call_minutes", "sum"),
+            l7_total_minutes=("l7_total_minutes", "sum"),
+            l7_active_users=("last_active_date", lambda s: int(s.notna().sum())),
+            cancel_scheduled_users=("cancel_at_period_end", "sum"),
+        )
+        .sort_values("active_paid_users", ascending=False)
+    )
+    days = (end_day - usage_start).days + 1
+    plan_usage["chat_minutes_per_user"] = (plan_usage["l7_chat_minutes"] / plan_usage["active_paid_users"]).round(2)
+    plan_usage["call_minutes_per_user"] = (plan_usage["l7_call_minutes"] / plan_usage["active_paid_users"]).round(2)
+    plan_usage["total_minutes_per_user"] = (plan_usage["l7_total_minutes"] / plan_usage["active_paid_users"]).round(2)
+    plan_usage["call_minutes_share_pct"] = safe_div_series(plan_usage["l7_call_minutes"], plan_usage["l7_total_minutes"])
+    plan_usage["l7_active_user_pct"] = safe_div_series(plan_usage["l7_active_users"], plan_usage["active_paid_users"])
+    plan_usage["chat_entitlement_used_pct"] = safe_div_series(
+        plan_usage["l7_chat_minutes"],
+        plan_usage["active_paid_users"] * plan_usage["daily_chat_mins"] * days,
+    )
+    plan_usage["call_entitlement_used_pct"] = safe_div_series(
+        plan_usage["l7_call_minutes"],
+        plan_usage["active_paid_users"] * plan_usage["daily_call_mins"] * days,
+    )
+
+    risk_rows = []
+    for _, row in merged.iterrows():
+        reasons = []
+        if int(row.get("cancel_at_period_end") or 0):
+            reasons.append("Cancel scheduled")
+        if not row.get("last_active_date"):
+            reasons.append("Inactive L7")
+        if float(row.get("l7_total_minutes") or 0) < 5:
+            reasons.append("Low usage L7")
+        if float(row.get("daily_call_mins") or 0) > 0 and float(row.get("l7_call_minutes") or 0) == 0:
+            reasons.append("No call usage")
+        if not reasons:
+            continue
+        primary_reason = reasons[0]
+        risk_rows.append(
+            {
+                "subscriber_ref": str(row["user_id"])[:8],
+                "plan_code": row["plan_code"],
+                "risk_reason": primary_reason,
+                "risk_detail": ", ".join(reasons),
+                "l7_sessions": int(row.get("l7_sessions") or 0),
+                "l7_minutes": round(float(row.get("l7_total_minutes") or 0), 2),
+                "last_active_date": row.get("last_active_date").isoformat() if pd.notna(row.get("last_active_date")) else "No L7 activity",
+                "days_since_active": row.get("days_since_active"),
+            }
+        )
+    at_risk = pd.DataFrame(risk_rows)
+    if at_risk.empty:
+        buckets = pd.DataFrame(columns=["plan_code", "risk_reason", "subscribers"])
+    else:
+        buckets = (
+            at_risk.groupby(["plan_code", "risk_reason"], as_index=False)
+            .agg(subscribers=("subscriber_ref", "nunique"))
+            .sort_values("subscribers", ascending=False)
+        )
+        at_risk = at_risk.sort_values(["l7_minutes", "l7_sessions"], ascending=[True, True]).head(50)
+
+    return {
+        "plan_usage": records(plan_usage),
+        "at_risk_subscriber_buckets": records(buckets),
+        "at_risk_subscribers": records(at_risk),
+    }
+
+
+def build_stickiness(engine, profiles: pd.DataFrame, ranges: dict[str, Any]) -> dict[str, Any]:
+    end_day = ranges["current_end"]
+    start_28 = end_day - timedelta(days=27)
+    activity = read_sql(
+        engine,
+        """
+        SELECT
+            LOWER(BIN_TO_UUID(user_id)) AS user_id,
+            DATE(DATE_ADD(started_at, INTERVAL 330 MINUTE)) AS active_date,
+            COUNT(*) AS sessions,
+            SUM(COALESCE(duration_mins, 0)) AS minutes
+        FROM prod.chat_session
+        WHERE started_at >= :start_utc
+          AND started_at < :end_utc
+          AND status = 'COMPLETED'
+        GROUP BY user_id, active_date
+        """,
+        {
+            "start_utc": utc_naive(local_midnight(start_28)),
+            "end_utc": utc_naive(local_midnight(end_day + timedelta(days=1))),
+        },
+    )
+    if activity.empty:
+        return {
+            "stickiness_kpis": {"dau": 0, "wau": 0, "mau": 0, "dau_mau_pct": 0, "avg_dau_l7": 0, "avg_dau_l28": 0},
+            "stickiness_daily": [],
+            "frequency_l7": [],
+            "frequency_l28": [],
+        }
+    activity["active_date"] = pd.to_datetime(activity["active_date"], errors="coerce").dt.date
+    activity = activity.merge(profiles[["user_id", "platform", "gender", "age_bucket", "config_id"]], on="user_id", how="left")
+    daily = (
+        activity.groupby("active_date", as_index=False)
+        .agg(dau=("user_id", "nunique"), sessions=("sessions", "sum"), minutes=("minutes", "sum"))
+        .rename(columns={"active_date": "date"})
+        .sort_values("date")
+    )
+    daily["sessions_per_user"] = (daily["sessions"] / daily["dau"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+    daily["minutes_per_user"] = (daily["minutes"] / daily["dau"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+    daily["date"] = daily["date"].astype(str)
+    l7 = activity[activity["active_date"] >= (end_day - timedelta(days=6))]
+    l28 = activity
+
+    def frequency(rows: pd.DataFrame, window_days: int) -> pd.DataFrame:
+        if rows.empty:
+            return pd.DataFrame(columns=["window", "bucket", "users", "user_share_pct"])
+        user_days = rows.groupby("user_id", as_index=False).agg(active_days=("active_date", "nunique"), sessions=("sessions", "sum"), minutes=("minutes", "sum"))
+        if window_days == 7:
+            bins = [0, 1, 3, 6, 7]
+            labels = ["1 day", "2-3 days", "4-6 days", "7 days"]
+        else:
+            bins = [0, 1, 3, 7, 14, 28]
+            labels = ["1 day", "2-3 days", "4-7 days", "8-14 days", "15-28 days"]
+        user_days["bucket"] = pd.cut(user_days["active_days"], bins=bins, labels=labels, include_lowest=True).astype(str)
+        out = user_days.groupby("bucket", as_index=False).agg(users=("user_id", "nunique"), sessions=("sessions", "sum"), minutes=("minutes", "sum"))
+        out["window"] = f"L{window_days}"
+        out["user_share_pct"] = (out["users"] / out["users"].sum() * 100).round(2)
+        out["sessions_per_user"] = (out["sessions"] / out["users"]).round(2)
+        out["minutes_per_user"] = (out["minutes"] / out["users"]).round(2)
+        return out[["window", "bucket", "users", "user_share_pct", "sessions_per_user", "minutes_per_user"]]
+
+    dau = int(activity.loc[activity["active_date"].eq(end_day), "user_id"].nunique())
+    wau = int(l7["user_id"].nunique())
+    mau = int(l28["user_id"].nunique())
+    kpis = {
+        "dau": dau,
+        "wau": wau,
+        "mau": mau,
+        "dau_mau_pct": safe_div(dau, mau),
+        "wau_mau_pct": safe_div(wau, mau),
+        "avg_dau_l7": round(float(daily.tail(7)["dau"].mean()), 2) if not daily.empty else 0,
+        "avg_dau_l28": round(float(daily["dau"].mean()), 2) if not daily.empty else 0,
+    }
+    return {
+        "stickiness_kpis": kpis,
+        "stickiness_daily": records(daily),
+        "frequency_l7": records(frequency(l7, 7)),
+        "frequency_l28": records(frequency(l28, 28)),
+    }
+
+
+def fetch_marketing_csv(env: dict[str, str]) -> tuple[pd.DataFrame, str, str]:
+    global MARKETING_CSV_CACHE
+    if MARKETING_CSV_CACHE is not None:
+        raw, status, message = MARKETING_CSV_CACHE
+        return raw.copy(), status, message
+    url = env.get("MARKETING_SHEET_CSV_URL") or env.get("GOOGLE_MARKETING_CSV_URL") or DEFAULT_MARKETING_SHEET_CSV_URL
+    try:
+        response = requests.get(url, timeout=12)
+    except requests.RequestException as exc:
+        MARKETING_CSV_CACHE = (pd.DataFrame(), "error", f"Could not fetch marketing CSV: {exc}")
+        return MARKETING_CSV_CACHE
+    content_type = response.headers.get("content-type", "")
+    text = response.text or ""
+    if response.status_code != 200:
+        MARKETING_CSV_CACHE = (pd.DataFrame(), "error", f"Marketing CSV returned HTTP {response.status_code}.")
+        return MARKETING_CSV_CACHE
+    if "text/html" in content_type or "accounts.google.com" in response.url or "<html" in text[:500].lower():
+        MARKETING_CSV_CACHE = (
+            pd.DataFrame(),
+            "auth_required",
+            "Google Sheet export requires sign-in. Publish the Campaign Data tab as CSV or reconnect the Google Sheets connector.",
+        )
+        return MARKETING_CSV_CACHE
+    try:
+        rows = list(csv.DictReader(io.StringIO(text)))
+    except csv.Error as exc:
+        MARKETING_CSV_CACHE = (pd.DataFrame(), "error", f"Could not parse marketing CSV: {exc}")
+        return MARKETING_CSV_CACHE
+    if not rows:
+        MARKETING_CSV_CACHE = (pd.DataFrame(), "empty", "Marketing CSV fetched but contained no rows.")
+        return MARKETING_CSV_CACHE
+    normalized_rows = []
+    for row in rows:
+        normalized_rows.append({normalize_header(key): value for key, value in row.items()})
+    MARKETING_CSV_CACHE = (pd.DataFrame(normalized_rows), "available", "Marketing CSV fetched successfully.")
+    raw, status, message = MARKETING_CSV_CACHE
+    return raw.copy(), status, message
+
+
+def build_marketing(env: dict[str, str], ranges: dict[str, Any], acquisition: dict[str, Any], monetization: dict[str, Any]) -> dict[str, Any]:
+    raw, status, message = fetch_marketing_csv(env)
+    start_day = ranges["current_start"]
+    end_day = ranges["current_end"]
+    empty = {
+        "source_status": status,
+        "source_message": message,
+        "kpis": {"spend": 0, "trial_cac": None, "subscriber_cac": None, "roas_pct": None, "payback_days": None},
+        "daily": [],
+        "campaigns": [],
+        "platforms": [],
+    }
+    if raw.empty:
+        return empty
+    date_col = next((col for col in raw.columns if col in {"date", "day", "dt", "metric_date", "campaign_date"}), None)
+    if not date_col:
+        empty["source_status"] = "error"
+        empty["source_message"] = "Marketing CSV does not include a date/day column."
+        return empty
+    raw["date"] = pd.to_datetime(raw[date_col], errors="coerce").dt.date
+    raw = raw[(raw["date"] >= start_day) & (raw["date"] <= end_day)].copy()
+    if raw.empty:
+        empty["source_status"] = "empty"
+        empty["source_message"] = "Marketing CSV has no rows in the selected dashboard window."
+        return empty
+    spend_col = next((col for col in raw.columns if col in {"spend", "cost", "amount_spent", "marketing_spend", "marketing_spends", "total_spend"}), None)
+    campaign_col = next((col for col in raw.columns if col in {"campaign", "campaign_name", "campaigns"}), None)
+    platform_col = next((col for col in raw.columns if col in {"platform", "os", "acquisition_device"}), None)
+    install_col = next((col for col in raw.columns if col in {"installs", "install", "app_installs"}), None)
+    login_col = next((col for col in raw.columns if col in {"new_logins", "logins", "login", "new_users"}), None)
+    trial_col = next((col for col in raw.columns if col in {"trials", "trial_starts", "successful_trials"}), None)
+    sub_col = next((col for col in raw.columns if col in {"paid_subs", "subscribers", "new_paid_subscribers", "subscriptions"}), None)
+    revenue_col = next((col for col in raw.columns if col in {"revenue", "subscription_revenue", "sub_revenue", "gross_revenue"}), None)
+    for target, col in [
+        ("spend", spend_col),
+        ("installs", install_col),
+        ("new_logins", login_col),
+        ("trials", trial_col),
+        ("subscribers", sub_col),
+        ("revenue", revenue_col),
+    ]:
+        raw[target] = raw[col].apply(numeric_value) if col else 0.0
+    raw["campaign"] = raw[campaign_col].fillna("Unattributed").astype(str) if campaign_col else "Unattributed"
+    raw["platform"] = raw[platform_col].fillna("Unattributed").astype(str).str.lower() if platform_col else "Unattributed"
+    daily = raw.groupby("date", as_index=False).agg(spend=("spend", "sum"), installs=("installs", "sum"), new_logins=("new_logins", "sum"), trials=("trials", "sum"), subscribers=("subscribers", "sum"), revenue=("revenue", "sum"))
+    daily["trial_cac"] = (daily["spend"] / daily["trials"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+    daily["subscriber_cac"] = (daily["spend"] / daily["subscribers"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+    daily["roas_pct"] = (daily["revenue"] / daily["spend"] * 100).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+    daily["date"] = daily["date"].astype(str)
+    campaigns = raw.groupby("campaign", as_index=False).agg(spend=("spend", "sum"), installs=("installs", "sum"), new_logins=("new_logins", "sum"), trials=("trials", "sum"), subscribers=("subscribers", "sum"), revenue=("revenue", "sum")).sort_values("spend", ascending=False)
+    platforms = raw.groupby("platform", as_index=False).agg(spend=("spend", "sum"), installs=("installs", "sum"), new_logins=("new_logins", "sum"), trials=("trials", "sum"), subscribers=("subscribers", "sum"), revenue=("revenue", "sum")).sort_values("spend", ascending=False)
+    for df in [campaigns, platforms]:
+        df["cost_per_trial"] = (df["spend"] / df["trials"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        df["subscriber_cac"] = (df["spend"] / df["subscribers"]).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        df["roas_pct"] = (df["revenue"] / df["spend"] * 100).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+        df["login_to_trial_pct"] = (df["trials"] / df["new_logins"] * 100).replace([float("inf"), -float("inf")], 0).fillna(0).round(2)
+    total_spend = float(raw["spend"].sum())
+    total_trials = float(raw["trials"].sum())
+    total_subscribers = float(raw["subscribers"].sum())
+    total_revenue = float(raw["revenue"].sum()) or float((monetization.get("kpis") or {}).get("current", {}).get("revenue") or 0)
+    return {
+        "source_status": status,
+        "source_message": message,
+        "kpis": {
+            "spend": round(total_spend, 2),
+            "trial_cac": round(total_spend / total_trials, 2) if total_trials else None,
+            "subscriber_cac": round(total_spend / total_subscribers, 2) if total_subscribers else None,
+            "roas_pct": safe_div(total_revenue, total_spend),
+            "payback_days": round((total_spend / total_revenue) * ranges["period_days"], 1) if total_revenue else None,
+        },
+        "daily": records(daily),
+        "campaigns": records(campaigns.head(30)),
+        "platforms": records(platforms),
     }
 
 
@@ -2663,6 +3422,7 @@ def build_metric_coverage(period_dashboard: dict[str, Any]) -> dict[str, Any]:
     acquisition = period_dashboard["acquisition"]
     monetization = period_dashboard["monetization"]
     engagement = period_dashboard["engagement"]
+    marketing = period_dashboard.get("marketing", {})
 
     demographics = acquisition.get("followup_demographics", {})
     unknown_gender_pct = bucket_pct(demographics.get("gender", []), "unknown")
@@ -2690,6 +3450,12 @@ def build_metric_coverage(period_dashboard: dict[str, Any]) -> dict[str, Any]:
     )
     unmapped_entity_pct = safe_div(unmapped_entity_events, total_entity_events)
     bim_opens = engagement["kpis"].get("bim_notification_opens", 0)
+    has_marketing = marketing.get("source_status") == "available" and bool(marketing.get("daily"))
+    payment_kpis = monetization.get("payment_kpis", {})
+    has_stickiness = bool(engagement.get("stickiness_kpis"))
+    has_lifecycle = bool(monetization.get("trial_lifecycle") or monetization.get("trial_cancel_by_plan"))
+    has_renewal_realized = bool(monetization.get("renewal_realized", {}).get("matured"))
+    has_mrr = bool(monetization.get("active_subscription_daily"))
 
     rows = [
         {
@@ -2734,6 +3500,46 @@ def build_metric_coverage(period_dashboard: dict[str, Any]) -> dict[str, Any]:
         },
         {
             "area": "Monetization",
+            "metric": "Realized M1 renewal by matured cohort",
+            "status": "Available" if has_renewal_realized else "Not matured",
+            "coverage_pct": 100 if has_renewal_realized else 60,
+            "missing_detail": "None" if has_renewal_realized else "No main-charge cohort is old enough for a complete M1 renewal read in this selected window.",
+            "next_data_needed": "Add recurring charge success/failure and failed-payment recovery events for voluntary vs involuntary churn.",
+        },
+        {
+            "area": "Monetization",
+            "metric": "Payment initiated to success by method, retries, refunds",
+            "status": "Partial" if payment_kpis else "Missing source",
+            "coverage_pct": 75 if payment_kpis else 0,
+            "missing_detail": "Payment order status and retry behavior are available; gateway failure reason and method on failed orders are not consistently captured.",
+            "next_data_needed": "Store Razorpay failure reason, payment method on failed attempts, retry source, and dunning recovery status.",
+        },
+        {
+            "area": "Monetization",
+            "metric": "Trial lifecycle, cancel-before-charge, D0 cancel, time to convert",
+            "status": "Partial" if has_lifecycle else "Missing source",
+            "coverage_pct": 80 if has_lifecycle else 0,
+            "missing_detail": "Cancel-before-charge and time-to-convert are available; refund/complaint reason and cancel-flow step events are not captured.",
+            "next_data_needed": "Track trial_refund, complaint, cancel_flow_opened, cancel_intercept_shown, cancel_kept, and cancel_completed events.",
+        },
+        {
+            "area": "Monetization",
+            "metric": "MRR EOD and net MRR movement",
+            "status": "Available" if has_mrr else "Partial",
+            "coverage_pct": 100 if has_mrr else 70,
+            "missing_detail": "None" if has_mrr else "No active subscription stock rows returned for this period.",
+            "next_data_needed": "None",
+        },
+        {
+            "area": "Monetization",
+            "metric": "Per-plan chat/call usage and at-risk subscribers",
+            "status": "Available" if monetization.get("plan_usage") else "Partial",
+            "coverage_pct": 100 if monetization.get("plan_usage") else 70,
+            "missing_detail": "None" if monetization.get("plan_usage") else "No active paid plan usage rows returned for this period.",
+            "next_data_needed": "Add explicit voice-pack consumption/debit ledger if voice minutes can be consumed outside chat_session.",
+        },
+        {
+            "area": "Monetization",
             "metric": "Subscription workbook parity: daily config/platform funnel, trial cohort conversion, active paid stock, MRR, subscriber engagement",
             "status": "Available" if has_subscription_sheet_metrics else "Partial",
             "coverage_pct": 100 if has_subscription_sheet_metrics else 80,
@@ -2759,10 +3565,10 @@ def build_metric_coverage(period_dashboard: dict[str, Any]) -> dict[str, Any]:
         {
             "area": "Acquisition",
             "metric": "Marketing channel / campaign source conversion",
-            "status": "Missing source",
-            "coverage_pct": 0,
-            "missing_detail": "Excluded from the dynamic dashboard because the current DB pipeline does not contain ad spend, installs, CAC, or campaign attribution refresh data.",
-            "next_data_needed": "Add a dynamic ad-spend/install attribution table keyed by date and campaign before enabling marketing metrics.",
+            "status": "Available" if has_marketing else "Missing source",
+            "coverage_pct": 100 if has_marketing else 0,
+            "missing_detail": "None" if has_marketing else marketing.get("source_message", "Campaign Data sheet is not accessible to the dashboard fetcher."),
+            "next_data_needed": "None" if has_marketing else "Reconnect Google Sheets connector or publish the Campaign Data tab as a CSV URL and set MARKETING_SHEET_CSV_URL.",
         },
         {
             "area": "Persona",
@@ -2806,6 +3612,14 @@ def build_metric_coverage(period_dashboard: dict[str, Any]) -> dict[str, Any]:
         },
         {
             "area": "Engagement",
+            "metric": "WAU, MAU, DAU/MAU, and L7/L28 frequency buckets",
+            "status": "Available" if has_stickiness else "Partial",
+            "coverage_pct": 100 if has_stickiness else 70,
+            "missing_detail": "None" if has_stickiness else "No completed chat_session rows returned for stickiness window.",
+            "next_data_needed": "Add app-open activity table if product wants stickiness from app opens rather than completed sessions.",
+        },
+        {
+            "area": "Engagement",
             "metric": "Notification open rate",
             "status": "Missing denominator",
             "coverage_pct": 0,
@@ -2824,6 +3638,7 @@ def build_metric_coverage(period_dashboard: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_period_dashboard(
+    env: dict[str, str],
     engine,
     profiles: pd.DataFrame,
     all_mixpanel_events: list[dict[str, Any]],
@@ -2847,6 +3662,8 @@ def build_period_dashboard(
     enrich_subscription_plan_followup(monetization, config_funnel)
     retention = build_retention(engine, profiles, ranges)
     engagement = build_engagement(mixpanel, profiles, ranges)
+    engagement = {**engagement, **build_stickiness(engine, profiles, ranges)}
+    marketing = build_marketing(env, ranges, acquisition, monetization)
     period_dashboard = {
         "metadata": {
             "period_id": ranges["period_id"],
@@ -2869,6 +3686,7 @@ def build_period_dashboard(
         "acquisition": acquisition,
         "retention": retention,
         "engagement": engagement,
+        "marketing": marketing,
     }
     period_dashboard["metric_coverage"] = build_metric_coverage(period_dashboard)
     return period_dashboard
@@ -2898,6 +3716,7 @@ def build_periods(
     bot_lookup = build_bot_lookup(engine, sql_lookup_start, current_end)
     return {
         period_id: build_period_dashboard(
+            env,
             engine,
             profiles,
             mixpanel_events,
@@ -2954,7 +3773,7 @@ def main() -> None:
     latest_complete_day = today_ist - timedelta(days=1)
     current_end = latest_complete_day
     weekly_start = current_end - timedelta(days=6)
-    daily_history_days = max(7, min(31, int(env.get("DASHBOARD_DAILY_HISTORY_DAYS", "7"))))
+    daily_history_days = max(3, min(31, int(env.get("DASHBOARD_DAILY_HISTORY_DAYS", "3"))))
     daily_start = current_end - timedelta(days=daily_history_days - 1)
     period_ranges = {
         "daily": make_ranges("daily", current_end, current_end),
@@ -3002,6 +3821,7 @@ def main() -> None:
         "acquisition": weekly["acquisition"],
         "retention": weekly["retention"],
         "engagement": weekly["engagement"],
+        "marketing": weekly["marketing"],
         "metric_coverage": weekly["metric_coverage"],
     }
 

@@ -55,7 +55,7 @@ function setupThemeToggle() {
 
 const CHARTS = {};
 const API_BASE_URL = String(window.HIASTRO_DASHBOARD_API_BASE_URL || "").replace(/\/$/, "");
-const SECTION_IDS = ["monetization", "acquisition", "retention", "engagement", "coverage"];
+const SECTION_IDS = ["monetization", "acquisition", "marketing", "retention", "engagement", "coverage"];
 let DASHBOARD_DATA = null;
 let SELECTED_PERIOD = "weekly";
 let SELECTED_DAY = null;
@@ -264,7 +264,7 @@ function table(containerId, rows, columns, limit = 12) {
             ${sliced
               .map(
                 (row) => `
-                  <tr>
+                  <tr class="${row.matured === false || row.d1_matured === false || row.conversion_matured === false ? "immature" : ""}">
                     ${columns
                       .map((c) => {
                         const value = c.format ? c.format(row[c.key], row) : row[c.key];
@@ -863,6 +863,7 @@ function renderDashboardGuide(data) {
   document.getElementById("businessFlow").innerHTML = [
     flowCard("#monetization", "Monetization", money(m.revenue), `Subscription ${pct(sub.revenue_share_pct)} | PayG ${pct(payg.revenue_share_pct)}`, "good"),
     flowCard("#acquisition", "Acquisition", number(a.new_users), `${pct(a.new_user_to_payment_pct)} new-user payment`),
+    flowCard("#marketing", "Marketing", money((data.marketing?.kpis || {}).spend || 0), (data.marketing?.source_status || "") === "available" ? `CAC ${money((data.marketing?.kpis || {}).subscriber_cac || 0)}` : "Spend source pending"),
     flowCard("#retention", "Retention", pct(r.retention_pct || 0), "Day-1 returning users", Number(r.retention_pct || 0) >= 8 ? "good" : "risk"),
     flowCard("#engagement", "Engagement", `${e.avg_minutes_per_user || 0}m`, `${number(e.sessions)} sessions`),
     flowCard("#coverage", "Data Quality", `${number(availableMetrics)}/${number(coverageRows.length)}`, "metric families ready"),
@@ -1079,6 +1080,19 @@ function renderMonetization(data) {
   const trialCohorts = m.trial_to_paid_cohort_by_price || [];
   const activeSubDaily = m.active_subscription_daily || [];
   const subscriberEngagementSummary = m.subscriber_engagement_summary || [];
+  const planUsage = m.plan_usage || [];
+  const atRiskBuckets = m.at_risk_subscriber_buckets || [];
+  const atRiskSubscribers = m.at_risk_subscribers || [];
+  const paymentKpis = m.payment_kpis || {};
+  const paymentDaily = m.payment_daily || [];
+  const paymentMethod = m.payment_method || [];
+  const paymentRetry = m.payment_retry || [];
+  const paymentStatus = m.payment_failure_status || [];
+  const trialLifecycle = m.trial_lifecycle || [];
+  const trialCancelByPlan = m.trial_cancel_by_plan || [];
+  const cancelDistribution = m.cancel_distribution || [];
+  const renewalRealized = m.renewal_realized || {};
+  const renewalCohorts = m.renewal_cohorts || [];
   const paygMergedRows = m.payg_merged || [];
   const paygMerged = paygMergedRows[0] || familyMetric(m, "pay_as_you_go");
   const paygAmounts = m.payg_amount_breakdown || [];
@@ -1279,6 +1293,50 @@ function renderMonetization(data) {
     },
   });
 
+  const topPlanUsage = topRows(planUsage, "active_paid_users", 8);
+  chart("planUsageChart", "bar", {
+    labels: topPlanUsage.map((row) => row.plan_code),
+    datasets: [
+      { label: "Chat min/user", data: topPlanUsage.map((row) => row.chat_minutes_per_user), backgroundColor: COLORS.blue },
+      { label: "Call min/user", data: topPlanUsage.map((row) => row.call_minutes_per_user), backgroundColor: COLORS.teal },
+      { label: "Call share %", data: topPlanUsage.map((row) => row.call_minutes_share_pct), backgroundColor: COLORS.gold, yAxisID: "y1" },
+    ],
+  }, {
+    plugins: { title: { display: true, text: "Per-Plan Chat vs Call Consumption" }, legend: { position: "bottom" } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Minutes per subscriber" } },
+      y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Call share %" } },
+    },
+  });
+
+  chart("planRiskChart", "bar", {
+    labels: atRiskBuckets.slice(0, 10).map((row) => `${row.plan_code} | ${row.risk_reason}`),
+    datasets: [{ label: "Subscribers", data: atRiskBuckets.slice(0, 10).map((row) => row.subscribers), backgroundColor: COLORS.rose }],
+  }, {
+    indexAxis: "y",
+    plugins: { title: { display: true, text: "At-Risk Subscriber Reasons" }, legend: { display: false } },
+  });
+
+  table("planUsageTable", planUsage, [
+    { key: "plan_code", label: "Plan", text: true },
+    { key: "active_paid_users", label: "Active Paid", format: number },
+    { key: "revenue_stock", label: "MRR Stock", format: money },
+    { key: "l7_active_user_pct", label: "L7 Active", format: pct },
+    { key: "chat_minutes_per_user", label: "Chat Min/User", format: (v) => Number(v || 0).toFixed(2) },
+    { key: "call_minutes_per_user", label: "Call Min/User", format: (v) => Number(v || 0).toFixed(2) },
+    { key: "call_minutes_share_pct", label: "Call Share", format: pct },
+    { key: "chat_entitlement_used_pct", label: "Chat Limit Used", format: pct },
+    { key: "call_entitlement_used_pct", label: "Call Limit Used", format: pct },
+    { key: "cancel_scheduled_users", label: "Cancel Scheduled", format: number },
+  ], 12);
+
+  table("atRiskBucketTable", atRiskBuckets, [
+    { key: "plan_code", label: "Plan", text: true },
+    { key: "risk_reason", label: "Risk Reason", text: true },
+    { key: "subscribers", label: "Subscribers", format: number },
+  ], 12);
+
   const renewalKpis = renewal.kpis || {};
   const dueDaily = renewal.due_daily || [];
   const dueByPlan = renewal.due_by_plan || [];
@@ -1336,6 +1394,49 @@ function renderMonetization(data) {
     { key: "status", label: "Status", text: true },
     { key: "subscription_case", label: "Case", text: true },
     { key: "users", label: "Users", format: number },
+  ], 12);
+
+  chart("renewalRealizedChart", "bar", {
+    labels: ["Matured main buyers", "Renewed users"],
+    datasets: [{ label: "Users", data: [renewalRealized.matured_main_buyers || 0, renewalRealized.renewed_users || 0], backgroundColor: [COLORS.blue, COLORS.green] }],
+  }, {
+    plugins: { title: { display: true, text: `Realized M1 Renewal: ${renewalRealized.matured ? pct(renewalRealized.m1_renewal_rate_pct) : "Not matured"}` }, legend: { display: false } },
+  });
+  chart("cancelDistributionChart", "bar", {
+    labels: cancelDistribution.slice(0, 12).map((row) => `${row.bucket} | ${row.plan_code}`),
+    datasets: [{ label: "Subscriptions", data: cancelDistribution.slice(0, 12).map((row) => row.subscriptions), backgroundColor: COLORS.rose }],
+  }, {
+    indexAxis: "y",
+    plugins: { title: { display: true, text: "Time to Cancel Distribution" }, legend: { display: false } },
+  });
+  table("renewalCohortTable", renewalCohorts, [
+    { key: "first_charge_week", label: "First Charge Cohort", text: true },
+    { key: "plan_code", label: "Plan", text: true },
+    { key: "matured", label: "Maturity", text: true, format: (v) => v ? "Matured" : "Not matured" },
+    { key: "main_buyers", label: "Main Buyers", format: number },
+    { key: "renewed_users", label: "Renewed", format: number },
+    { key: "renewal_rate_pct", label: "M1 Renewal", format: pct },
+  ], 16);
+  table("cancelDistributionTable", cancelDistribution, [
+    { key: "bucket", label: "Cancel Age", text: true },
+    { key: "plan_code", label: "Plan", text: true },
+    { key: "subscriptions", label: "Subscriptions", format: number },
+  ], 16);
+  table("trialLifecycleTable", trialLifecycle, [
+    { key: "trial_start_date", label: "Trial Date", text: true, format: shortDate },
+    { key: "trials", label: "Trials", format: number },
+    { key: "cancel_before_charge", label: "Cancel Before Charge", format: number },
+    { key: "cancel_before_charge_pct", label: "Cancel Before Charge %", format: pct },
+    { key: "d0_cancel", label: "D0 Cancel", format: number },
+    { key: "d0_cancel_pct", label: "D0 Cancel %", format: pct },
+  ], 14);
+  table("trialCancelPlanTable", trialCancelByPlan, [
+    { key: "plan_code", label: "Plan", text: true },
+    { key: "trials", label: "Trials", format: number },
+    { key: "cancel_before_charge", label: "Cancel Before Charge", format: number },
+    { key: "cancel_before_charge_pct", label: "Cancel Before Charge %", format: pct },
+    { key: "d0_cancel", label: "D0 Cancel", format: number },
+    { key: "d0_cancel_pct", label: "D0 Cancel %", format: pct },
   ], 12);
 
   const paygDailyRows = (mTrend.daily || m.daily || []).filter((row) => row.family === "pay_as_you_go");
@@ -1417,6 +1518,7 @@ function renderMonetization(data) {
 
   table("trialToPaidPriceTable", trialCohorts, [
     { key: "trial_start_date", label: "Trial Date", text: true, format: shortDate },
+    { key: "maturity_status", label: "Maturity", text: true },
     { key: "subscription_price", label: "Main Price", format: money },
     { key: "trial_starts", label: "Trial Starts", format: number },
     { key: "converted_trials", label: "Converted", format: number },
@@ -1453,6 +1555,58 @@ function renderMonetization(data) {
     { key: "avg_transaction", label: "Avg Txn", format: money },
     { key: "avg_revenue_per_payer", label: "ARPP", format: money },
   ], 5);
+
+  document.getElementById("paymentCards").innerHTML = [
+    card("Initiated Orders", number(paymentKpis.initiated_orders), `${number(paymentKpis.successful_orders)} successful`),
+    card("Payment Success", pct(paymentKpis.success_rate_pct), `${number(paymentKpis.failed_orders)} failed | ${number(paymentKpis.created_orders)} created`),
+    card("Retries", number(paymentKpis.retry_users), "Users with more than one attempt"),
+    card("Refunds", number(paymentKpis.refund_orders), `${money(paymentKpis.refund_amount)} refunded`),
+  ].join("");
+  const paymentDailyGrouped = groupedLine(paymentDaily, "day", "payment_type", "success_rate_pct");
+  paymentDailyGrouped.labels = paymentDailyGrouped.labels.map(shortDate);
+  chart("paymentDailyChart", "line", paymentDailyGrouped, {
+    plugins: { title: { display: true, text: "Payment Success Rate by Source" }, legend: { position: "bottom" } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, max: 100, grid: { color: "rgba(255,255,255,0.10)" } } },
+  });
+  chart("paymentMethodChart", "bar", {
+    labels: paymentMethod.slice(0, 10).map((row) => `${row.payment_type} | ${row.payment_method}`),
+    datasets: [
+      { label: "Initiated", data: paymentMethod.slice(0, 10).map((row) => row.initiated_orders), backgroundColor: COLORS.blue },
+      { label: "Success rate %", data: paymentMethod.slice(0, 10).map((row) => row.success_rate_pct), backgroundColor: COLORS.green, yAxisID: "y1" },
+    ],
+  }, {
+    indexAxis: "y",
+    plugins: { title: { display: true, text: "Payment Method Success" }, legend: { position: "bottom" } },
+    scales: {
+      x: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" } },
+      y1: { beginAtZero: true, max: 100, position: "right", grid: { drawOnChartArea: false } },
+    },
+  });
+  table("paymentMethodTable", paymentMethod, [
+    { key: "payment_type", label: "Source", text: true },
+    { key: "payment_method", label: "Method", text: true },
+    { key: "initiated_orders", label: "Initiated", format: number },
+    { key: "successful_orders", label: "Success", format: number },
+    { key: "failed_orders", label: "Failed", format: number },
+    { key: "success_rate_pct", label: "Success Rate", format: pct },
+    { key: "paid_amount", label: "Paid Amount", format: money },
+    { key: "refund_amount", label: "Refund", format: money },
+  ], 20);
+  table("paymentRetryTable", paymentRetry, [
+    { key: "payment_type", label: "Source", text: true },
+    { key: "retry_users", label: "Retry Users", format: number },
+    { key: "retry_success_users", label: "Retry Success", format: number },
+    { key: "retry_success_pct", label: "Retry Success %", format: pct },
+    { key: "avg_attempts", label: "Avg Attempts", format: (v) => Number(v || 0).toFixed(2) },
+  ], 10);
+  table("paymentStatusTable", paymentStatus, [
+    { key: "payment_type", label: "Source", text: true },
+    { key: "status", label: "Status", text: true },
+    { key: "initiated_orders", label: "Orders", format: number },
+    { key: "users", label: "Users", format: number },
+    { key: "paid_amount", label: "Paid Amount", format: money },
+    { key: "success_rate_pct", label: "Success Rate", format: pct },
+  ], 20);
 
   const packColumns = [
     { key: "selection", label: "Selection", text: true },
@@ -2092,6 +2246,90 @@ function renderAcquisition(data) {
   });
 }
 
+function renderMarketing(data) {
+  const mk = data.marketing || {};
+  const k = mk.kpis || {};
+  const sourceOk = mk.source_status === "available";
+  document.getElementById("marketingNote").textContent = sourceOk
+    ? "Campaign spend is loaded from the configured daily Campaign Data feed."
+    : (mk.source_message || "Marketing spend feed is not connected yet.");
+  document.getElementById("marketingCards").innerHTML = [
+    card("Spend", money(k.spend), sourceOk ? "Campaign Data feed" : "Source pending"),
+    card("Trial CAC", k.trial_cac === null || k.trial_cac === undefined ? "Pending" : money(k.trial_cac), "Spend / trials"),
+    card("Subscriber CAC", k.subscriber_cac === null || k.subscriber_cac === undefined ? "Pending" : money(k.subscriber_cac), "Spend / subscribers"),
+    card("ROAS", k.roas_pct === null || k.roas_pct === undefined ? "Pending" : pct(k.roas_pct), "Revenue / spend"),
+    card("Payback", k.payback_days === null || k.payback_days === undefined ? "Pending" : `${k.payback_days} days`, "Spend recovery pace"),
+  ].join("");
+
+  const daily = mk.daily || [];
+  chart("marketingSpendRevenueChart", "line", {
+    labels: daily.map((row) => shortDate(row.date)),
+    datasets: [
+      { label: "Spend", data: daily.map((row) => row.spend), borderColor: COLORS.rose, backgroundColor: "rgba(190,52,85,0.12)", tension: 0.25 },
+      { label: "Revenue", data: daily.map((row) => row.revenue), borderColor: COLORS.green, tension: 0.25 },
+      { label: "Trials", data: daily.map((row) => row.trials), borderColor: COLORS.teal, yAxisID: "y1", tension: 0.25 },
+      { label: "Subscribers", data: daily.map((row) => row.subscribers), borderColor: COLORS.gold, yAxisID: "y1", tension: 0.25 },
+    ],
+  }, {
+    plugins: { title: { display: true, text: "Daily Spend, Revenue and Conversion Volume" }, legend: { position: "bottom" } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Spend / revenue" } },
+      y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Trials / subscribers" } },
+    },
+  });
+
+  const campaigns = mk.campaigns || [];
+  chart("marketingCampaignChart", "bar", {
+    labels: campaigns.slice(0, 10).map((row) => row.campaign),
+    datasets: [
+      { label: "Spend", data: campaigns.slice(0, 10).map((row) => row.spend), backgroundColor: COLORS.blue },
+      { label: "Subscriber CAC", data: campaigns.slice(0, 10).map((row) => row.subscriber_cac), backgroundColor: COLORS.gold, yAxisID: "y1" },
+    ],
+  }, {
+    indexAxis: "y",
+    plugins: { title: { display: true, text: "Campaign Spend and Subscriber CAC" }, legend: { position: "bottom" } },
+    scales: {
+      x: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" } },
+      y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false } },
+    },
+  });
+
+  table("marketingDailyTable", daily, [
+    { key: "date", label: "Date", text: true, format: shortDate },
+    { key: "spend", label: "Spend", format: money },
+    { key: "installs", label: "Installs", format: number },
+    { key: "new_logins", label: "Logins", format: number },
+    { key: "trials", label: "Trials", format: number },
+    { key: "subscribers", label: "Subscribers", format: number },
+    { key: "revenue", label: "Revenue", format: money },
+    { key: "trial_cac", label: "Trial CAC", format: money },
+    { key: "subscriber_cac", label: "Sub CAC", format: money },
+    { key: "roas_pct", label: "ROAS", format: pct },
+  ], 14);
+  table("marketingCampaignTable", campaigns, [
+    { key: "campaign", label: "Campaign", text: true },
+    { key: "spend", label: "Spend", format: money },
+    { key: "installs", label: "Installs", format: number },
+    { key: "new_logins", label: "Logins", format: number },
+    { key: "trials", label: "Trials", format: number },
+    { key: "subscribers", label: "Subscribers", format: number },
+    { key: "cost_per_trial", label: "Cost / Trial", format: money },
+    { key: "subscriber_cac", label: "Sub CAC", format: money },
+    { key: "roas_pct", label: "ROAS", format: pct },
+  ], 20);
+  table("marketingPlatformTable", mk.platforms || [], [
+    { key: "platform", label: "Platform", text: true },
+    { key: "spend", label: "Spend", format: money },
+    { key: "trials", label: "Trials", format: number },
+    { key: "subscribers", label: "Subscribers", format: number },
+    { key: "cost_per_trial", label: "Cost / Trial", format: money },
+    { key: "subscriber_cac", label: "Sub CAC", format: money },
+    { key: "login_to_trial_pct", label: "Login to Trial", format: pct },
+    { key: "roas_pct", label: "ROAS", format: pct },
+  ], 12);
+}
+
 function renderRetention(data) {
   const r = data.retention;
   document.getElementById("retentionNote").textContent = `Cohorts: ${r.cohort_window.start} to ${r.cohort_window.end}; retained means completed chat/call session on day N.`;
@@ -2183,11 +2421,13 @@ function renderEngagement(data) {
   const e = data.engagement;
   const eTrend = trendSection("engagement");
   const chartLabel = trendWindowLabel();
+  const stickiness = e.stickiness_kpis || {};
   document.getElementById("engagementNote").textContent = "Average time uses Mixpanel $ae_session_length; BIM is campaign_name = Bot Initiated Messages.";
   document.getElementById("engagementCards").innerHTML = [
     card("Active Users", number(e.kpis.active_users), `${number(e.kpis.sessions)} app sessions`),
     card("Avg Time / User", `${e.kpis.avg_minutes_per_user}m`, `${e.kpis.avg_minutes_per_session}m per session`),
     card("Total Time", `${number(e.kpis.total_minutes)}m`, "Across app sessions"),
+    card("DAU / MAU", pct(stickiness.dau_mau_pct), `${number(stickiness.dau)} DAU | ${number(stickiness.mau)} MAU`),
     card("BIM Opens", number(e.kpis.bim_notification_opens), `${number(e.kpis.bim_notification_users)} users`),
   ].join("");
 
@@ -2230,6 +2470,57 @@ function renderEngagement(data) {
     { key: "avg_minutes_per_user", label: "Avg Min/User", format: (v) => Number(v || 0).toFixed(2) },
     { key: "sessions_per_user", label: "Sessions/User", format: (v) => Number(v || 0).toFixed(2) },
   ], 14);
+
+  document.getElementById("stickinessCards").innerHTML = [
+    card("DAU", number(stickiness.dau), `Avg L7 DAU ${number(stickiness.avg_dau_l7)}`),
+    card("WAU", number(stickiness.wau), `${pct(stickiness.wau_mau_pct)} of MAU`),
+    card("MAU", number(stickiness.mau), "Completed-session active users"),
+    card("DAU / MAU", pct(stickiness.dau_mau_pct), "Habit ratio"),
+  ].join("");
+  chart("stickinessDailyChart", "line", {
+    labels: (e.stickiness_daily || []).map((row) => shortDate(row.date)),
+    datasets: [
+      { label: "DAU", data: (e.stickiness_daily || []).map((row) => row.dau), borderColor: COLORS.blue, tension: 0.25 },
+      { label: "Sessions/user", data: (e.stickiness_daily || []).map((row) => row.sessions_per_user), borderColor: COLORS.gold, yAxisID: "y1", tension: 0.25 },
+      { label: "Minutes/user", data: (e.stickiness_daily || []).map((row) => row.minutes_per_user), borderColor: COLORS.teal, yAxisID: "y1", tension: 0.25 },
+    ],
+  }, {
+    plugins: { title: { display: true, text: "Daily Stickiness and Depth" }, legend: { position: "bottom" } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "DAU" } },
+      y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Per user" } },
+    },
+  });
+  chart("frequencyChart", "bar", {
+    labels: [...(e.frequency_l7 || []), ...(e.frequency_l28 || [])].map((row) => `${row.window} ${row.bucket}`),
+    datasets: [{ label: "Users", data: [...(e.frequency_l7 || []), ...(e.frequency_l28 || [])].map((row) => row.users), backgroundColor: COLORS.teal }],
+  }, {
+    plugins: { title: { display: true, text: "L7 and L28 Frequency Buckets" }, legend: { display: false } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" } } },
+  });
+  table("frequencyL7Table", e.frequency_l7 || [], [
+    { key: "bucket", label: "Active Days", text: true },
+    { key: "users", label: "Users", format: number },
+    { key: "user_share_pct", label: "Share", format: pct },
+    { key: "sessions_per_user", label: "Sessions/User", format: (v) => Number(v || 0).toFixed(2) },
+    { key: "minutes_per_user", label: "Min/User", format: (v) => Number(v || 0).toFixed(2) },
+  ], 8);
+  table("frequencyL28Table", e.frequency_l28 || [], [
+    { key: "bucket", label: "Active Days", text: true },
+    { key: "users", label: "Users", format: number },
+    { key: "user_share_pct", label: "Share", format: pct },
+    { key: "sessions_per_user", label: "Sessions/User", format: (v) => Number(v || 0).toFixed(2) },
+    { key: "minutes_per_user", label: "Min/User", format: (v) => Number(v || 0).toFixed(2) },
+  ], 8);
+  table("stickinessDailyTable", e.stickiness_daily || [], [
+    { key: "date", label: "Date", text: true, format: shortDate },
+    { key: "dau", label: "DAU", format: number },
+    { key: "sessions", label: "Sessions", format: number },
+    { key: "minutes", label: "Minutes", format: number },
+    { key: "sessions_per_user", label: "Sessions/User", format: (v) => Number(v || 0).toFixed(2) },
+    { key: "minutes_per_user", label: "Min/User", format: (v) => Number(v || 0).toFixed(2) },
+  ], 28);
 
   chart("bimDailyChart", "line", {
     labels: (eTrend.bim_daily || e.bim_daily).map((r) => shortDate(r.date)),
@@ -2750,10 +3041,12 @@ function retentionDetail(data) {
 function engagementDetail(data) {
   const e = data.engagement || {};
   const k = e.kpis || {};
+  const s = e.stickiness_kpis || {};
   return `
     ${detailMetrics([
       detailMetric("Active Users", number(k.active_users), `${number(k.sessions)} sessions`),
       detailMetric("Avg Time/User", `${k.avg_minutes_per_user || 0}m`, `${k.avg_minutes_per_session || 0}m per session`),
+      detailMetric("DAU / MAU", pct(s.dau_mau_pct), `${number(s.dau)} DAU | ${number(s.mau)} MAU`),
       detailMetric("BIM Opens", number(k.bim_notification_opens), `${number(k.bim_notification_users)} users`),
       detailMetric("Total Minutes", number(k.total_minutes), "Engagement minutes"),
     ])}
@@ -2769,6 +3062,28 @@ function engagementDetail(data) {
       { key: "users", label: "Users", format: number },
       { key: "opens_per_user", label: "Opens/User", format: number },
     ], 5)}
+  `;
+}
+
+function marketingDetail(data) {
+  const mk = data.marketing || {};
+  const k = mk.kpis || {};
+  return `
+    ${detailMetrics([
+      detailMetric("Spend", money(k.spend), mk.source_status === "available" ? "Campaign Data feed" : "Source pending"),
+      detailMetric("Trial CAC", k.trial_cac === null || k.trial_cac === undefined ? "Pending" : money(k.trial_cac), "Spend / trial"),
+      detailMetric("Subscriber CAC", k.subscriber_cac === null || k.subscriber_cac === undefined ? "Pending" : money(k.subscriber_cac), "Spend / subscriber"),
+      detailMetric("ROAS", k.roas_pct === null || k.roas_pct === undefined ? "Pending" : pct(k.roas_pct), "Revenue / spend"),
+    ])}
+    ${detailNote("Source Status", mk.source_message || "Marketing feed status is not available.")}
+    ${detailTable("Top Campaigns", mk.campaigns, [
+      { key: "campaign", label: "Campaign", text: true },
+      { key: "spend", label: "Spend", format: money },
+      { key: "trials", label: "Trials", format: number },
+      { key: "subscribers", label: "Subscribers", format: number },
+      { key: "subscriber_cac", label: "Sub CAC", format: money },
+      { key: "roas_pct", label: "ROAS", format: pct },
+    ], 8)}
   `;
 }
 
@@ -2800,6 +3115,7 @@ function drilldownHtmlFor(label) {
   if (key.includes("acquisition") || key.includes("new user") || key.includes("follow") || key.includes("conversion")) return acquisitionDetail(data);
   if (key.includes("retention") || key.includes("repeat")) return retentionDetail(data);
   if (key.includes("engagement") || key.includes("session") || key.includes("bim") || key.includes("time")) return engagementDetail(data);
+  if (key.includes("marketing") || key.includes("cac") || key.includes("roas") || key.includes("spend")) return marketingDetail(data);
   if (key.includes("quality") || key.includes("coverage")) return dataQualityDetail(data);
   if (key.includes("revenue") || key.includes("monetization") || key.includes("payer") || key.includes("transaction") || key.includes("stream") || key.includes("watch area") || key.includes("growing")) return monetizationDetail(data);
   return `
@@ -2857,6 +3173,7 @@ function renderDashboard() {
   renderOverview(data);
   renderMonetization(data);
   renderAcquisition(data);
+  renderMarketing(data);
   renderRetention(data);
   renderEngagement(data);
   renderMetricCoverage(data);
