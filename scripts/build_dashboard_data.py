@@ -2896,35 +2896,64 @@ def build_marketing(env: dict[str, str], ranges: dict[str, Any], acquisition: di
     }
 
 
-def build_profiles(engine, as_of: date) -> pd.DataFrame:
-    sql = """
-    WITH ranked_profiles AS (
+def build_profiles(engine, as_of: date, min_signup_date: date | None = None) -> pd.DataFrame:
+    min_signup_utc = utc_naive(local_midnight(min_signup_date)) if min_signup_date else None
+    if os.environ.get("DASHBOARD_SKIP_PROFILE_ENRICHMENT", "").lower() in {"1", "true", "yes"}:
+        sql = """
         SELECT
-            LOWER(BIN_TO_UUID(user_id)) AS user_id,
-            gender,
-            birth_datetime_utc,
-            occupation,
-            marital_status,
+            LOWER(BIN_TO_UUID(id)) AS user_id,
+            DATE(DATE_ADD(created_at, INTERVAL 330 MINUTE)) AS signup_date,
+            monetization_config_id AS config_id
+        FROM prod.users
+        WHERE (:min_signup_utc IS NULL OR created_at >= :min_signup_utc)
+        """
+        profiles = read_sql(engine, sql, {"min_signup_utc": min_signup_utc})
+        profiles["signup_date"] = pd.to_datetime(profiles["signup_date"]).dt.date
+        profiles["gender"] = "unknown"
+        profiles["platform"] = "unknown"
+        profiles["occupation"] = "Unknown"
+        profiles["marital_status"] = "Unknown"
+        profiles["birth_datetime_utc"] = None
+        profiles["app_version"] = "unknown"
+        profiles["age_bucket"] = "Unknown"
+        return profiles
+    profile_enrichment_days = int(os.environ.get("DASHBOARD_PROFILE_ENRICHMENT_DAYS", "45"))
+    profile_start_utc = utc_naive(local_midnight(as_of - timedelta(days=profile_enrichment_days)))
+    sql = """
+    WITH recent_users AS (
+        SELECT id
+        FROM prod.users
+        WHERE created_at >= :profile_start_utc
+    ),
+    ranked_profiles AS (
+        SELECT
+            LOWER(BIN_TO_UUID(up.user_id)) AS user_id,
+            up.gender,
+            up.birth_datetime_utc,
+            up.occupation,
+            up.marital_status,
             ROW_NUMBER() OVER (
-                PARTITION BY user_id
-                ORDER BY is_primary DESC, updated_at DESC, created_at DESC
+                PARTITION BY up.user_id
+                ORDER BY up.is_primary DESC, up.updated_at DESC, up.created_at DESC
             ) AS rn
-        FROM prod.user_profiles
+        FROM prod.user_profiles up
+        JOIN recent_users ru ON up.user_id = ru.id
     ),
     ranked_devices AS (
         SELECT
-            LOWER(BIN_TO_UUID(user_id)) AS user_id,
+            LOWER(BIN_TO_UUID(ud.user_id)) AS user_id,
             CASE
-                WHEN app_package_name LIKE '%ios%' THEN 'ios'
-                WHEN app_package_name LIKE '%android%' THEN 'android'
+                WHEN ud.app_package_name LIKE '%ios%' THEN 'ios'
+                WHEN ud.app_package_name LIKE '%android%' THEN 'android'
                 ELSE 'unknown'
             END AS platform,
-            CONCAT(COALESCE(app_version_major, ''), '.', COALESCE(app_version_minor, ''), '.', COALESCE(app_version_patch, '')) AS app_version,
+            CONCAT(COALESCE(ud.app_version_major, ''), '.', COALESCE(ud.app_version_minor, ''), '.', COALESCE(ud.app_version_patch, '')) AS app_version,
             ROW_NUMBER() OVER (
-                PARTITION BY user_id
-                ORDER BY updated_at DESC, created_at DESC
+                PARTITION BY ud.user_id
+                ORDER BY ud.updated_at DESC, ud.created_at DESC
             ) AS rn
-        FROM prod.user_devices
+        FROM prod.user_devices ud
+        JOIN recent_users ru ON ud.user_id = ru.id
     )
     SELECT
         LOWER(BIN_TO_UUID(u.id)) AS user_id,
@@ -2939,8 +2968,9 @@ def build_profiles(engine, as_of: date) -> pd.DataFrame:
     FROM prod.users u
     LEFT JOIN ranked_profiles rp ON LOWER(BIN_TO_UUID(u.id)) = rp.user_id AND rp.rn = 1
     LEFT JOIN ranked_devices rd ON LOWER(BIN_TO_UUID(u.id)) = rd.user_id AND rd.rn = 1
+    WHERE (:min_signup_utc IS NULL OR u.created_at >= :min_signup_utc)
     """
-    profiles = read_sql(engine, sql)
+    profiles = read_sql(engine, sql, {"profile_start_utc": profile_start_utc, "min_signup_utc": min_signup_utc})
     profiles["signup_date"] = pd.to_datetime(profiles["signup_date"]).dt.date
     profiles["gender"] = profiles["gender"].fillna("Unknown").astype(str).str.lower()
     profiles["platform"] = profiles["platform"].fillna("unknown").astype(str).str.lower()
@@ -4110,6 +4140,45 @@ def build_metric_coverage(period_dashboard: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def empty_retention(ranges: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "cohort_window": {
+            "start": ranges["current_start"].isoformat(),
+            "end": ranges["current_end"].isoformat(),
+        },
+        "curve": [],
+        "platform": [],
+        "segment_retention": [],
+        "bot": [],
+        "bot_segment": [],
+    }
+
+
+def empty_engagement() -> dict[str, Any]:
+    return {
+        "kpis": {
+            "active_users": 0,
+            "sessions": 0,
+            "avg_minutes_per_user": 0,
+            "avg_minutes_per_session": 0,
+            "bim_notification_opens": 0,
+            "bim_notification_users": 0,
+            "total_minutes": 0,
+        },
+        "session_daily": [],
+        "session_intensity": [],
+        "segments": [],
+        "notification_campaigns": [],
+        "notification_platform": [],
+        "subscriber_usage": [],
+        "plan_usage": [],
+        "stickiness_kpis": {},
+        "stickiness_daily": [],
+        "frequency_l7": [],
+        "frequency_l28": [],
+    }
+
+
 def build_period_dashboard(
     env: dict[str, str],
     engine,
@@ -4139,9 +4208,13 @@ def build_period_dashboard(
         mixpanel,
     )
     enrich_subscription_plan_followup(monetization, config_funnel)
-    retention = build_retention(engine, profiles, ranges)
-    engagement = build_engagement(mixpanel, profiles, ranges)
-    engagement = {**engagement, **build_stickiness(engine, profiles, ranges)}
+    if os.environ.get("DASHBOARD_FAST_CORE_ONLY", "").lower() in {"1", "true", "yes"}:
+        retention = empty_retention(ranges)
+        engagement = empty_engagement()
+    else:
+        retention = build_retention(engine, profiles, ranges)
+        engagement = build_engagement(mixpanel, profiles, ranges)
+        engagement = {**engagement, **build_stickiness(engine, profiles, ranges)}
     marketing = build_marketing(env, ranges, acquisition, monetization)
     period_dashboard = {
         "metadata": {
@@ -4195,7 +4268,7 @@ def build_periods(
     sql_lookup_start = min(ranges["prior_30_start"] for ranges in period_ranges.values())
     current_end = max(ranges["current_end"] for ranges in period_ranges.values())
     mixpanel_events = fetch_mixpanel_events(env, MIXPANEL_EVENTS, mixpanel_start, mixpanel_end)
-    profiles = build_profiles(engine, latest_complete_day)
+    profiles = build_profiles(engine, latest_complete_day, sql_lookup_start)
     bot_lookup = build_bot_lookup(engine, sql_lookup_start, current_end)
     return {
         period_id: build_period_dashboard(
@@ -4310,13 +4383,14 @@ def main() -> None:
 
     write_latest_dashboard(dashboard)
     print(f"WROTE {OUTPUT_PATH}")
+    retention_curve = dashboard["retention"].get("curve", [])
     print(
         "SUMMARY",
         json.dumps(
             {
                 "revenue": dashboard["monetization"]["kpis"]["current"]["revenue"],
                 "new_users": dashboard["acquisition"]["kpis"]["new_users"],
-                "retention_d1": dashboard["retention"]["curve"][1]["retention_pct"],
+                "retention_d1": retention_curve[1]["retention_pct"] if len(retention_curve) > 1 else None,
                 "engagement_sessions": dashboard["engagement"]["kpis"]["sessions"],
                 "periods": list(periods.keys()),
             },
