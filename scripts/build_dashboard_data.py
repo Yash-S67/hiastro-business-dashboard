@@ -16,7 +16,7 @@ from typing import Any
 import pandas as pd
 import requests
 from dotenv import dotenv_values
-from sqlalchemy import create_engine, text
+from sqlalchemy import bindparam, create_engine, text
 from sqlalchemy.exc import DBAPIError, OperationalError
 from sqlalchemy.engine import URL
 
@@ -346,11 +346,12 @@ def mysql_engine(env: dict[str, str]):
     return create_engine(url, connect_args={"connect_timeout": 20}, pool_pre_ping=True)
 
 
-def read_sql(engine, sql: str, params: dict[str, Any] | None = None) -> pd.DataFrame:
+def read_sql(engine, sql: Any, params: dict[str, Any] | None = None) -> pd.DataFrame:
+    statement = text(sql) if isinstance(sql, str) else sql
     for attempt in range(3):
         try:
             with engine.connect() as conn:
-                return pd.read_sql(text(sql), conn, params=params or {})
+                return pd.read_sql(statement, conn, params=params or {})
         except (OperationalError, DBAPIError):
             if attempt == 2:
                 raise
@@ -2896,18 +2897,95 @@ def build_marketing(env: dict[str, str], ranges: dict[str, Any], acquisition: di
     }
 
 
-def build_profiles(engine, as_of: date, min_signup_date: date | None = None) -> pd.DataFrame:
+def mixpanel_user_ids(mixpanel: dict[str, Any]) -> set[str]:
+    user_ids: set[str] = set()
+    if isinstance(mixpanel, list):
+        for event in mixpanel:
+            user_id = event_user_id(event.get("properties", {}))
+            if user_id:
+                user_ids.add(user_id)
+        return user_ids
+    for key in [
+        "session_user_daily",
+        "followup_users",
+        "subscription_paywall_user_daily",
+        "subscription_trial_cta_user_daily",
+        "bim_user_daily",
+    ]:
+        for row in mixpanel.get(key, []) or []:
+            user_id = normalize_user_id(row.get("user_id"))
+            if user_id:
+                user_ids.add(user_id)
+    for user_id in (mixpanel.get("primary_entity_by_user") or {}).keys():
+        normalized = normalize_user_id(user_id)
+        if normalized:
+            user_ids.add(normalized)
+    return user_ids
+
+
+def build_revenue_user_ids(engine, start_date: date, end_date: date) -> set[str]:
+    user_rows = read_sql(
+        engine,
+        """
+        SELECT DISTINCT user_id
+        FROM (
+            SELECT LOWER(BIN_TO_UUID(sle.user_id)) AS user_id
+            FROM prod.subscription_lifecycle_events sle
+            WHERE COALESCE(sle.event_created_at, sle.created_at, sle.charge_at, sle.current_start) >= :start_utc
+              AND COALESCE(sle.event_created_at, sle.created_at, sle.charge_at, sle.current_start) < :end_utc
+              AND sle.revenue_recorded = 1
+              AND sle.charge_amount IS NOT NULL
+              AND sle.charge_amount > 0
+
+            UNION
+
+            SELECT LOWER(BIN_TO_UUID(po.user_id)) AS user_id
+            FROM prod.payment_orders po
+            WHERE po.created_at >= :start_utc
+              AND po.created_at < :end_utc
+              AND po.status = 'PAID'
+              AND JSON_UNQUOTE(JSON_EXTRACT(po.notes, '$.type')) IN ('ADD_MONEY', 'DAY_PASS')
+
+            UNION
+
+            SELECT LOWER(BIN_TO_UUID(cdp.user_id)) AS user_id
+            FROM prod.customer_day_pass cdp
+            LEFT JOIN prod.day_pass_config dpc ON cdp.day_pass_config_id = dpc.id
+            WHERE COALESCE(cdp.starts_at, cdp.updated_at, cdp.created_at) >= :start_utc
+              AND COALESCE(cdp.starts_at, cdp.updated_at, cdp.created_at) < :end_utc
+              AND cdp.status IN ('ACTIVE', 'EXPIRED')
+              AND dpc.amount IS NOT NULL
+              AND dpc.amount > 0
+        ) revenue_users
+        WHERE user_id IS NOT NULL
+        """,
+        {
+            "start_utc": utc_naive(local_midnight(start_date)),
+            "end_utc": utc_naive(local_midnight(end_date + timedelta(days=1))),
+        },
+    )
+    return {str(user_id) for user_id in user_rows.get("user_id", []) if normalize_user_id(user_id)}
+
+
+def build_profiles(
+    engine,
+    as_of: date,
+    min_signup_date: date | None = None,
+    required_user_ids: set[str] | None = None,
+) -> pd.DataFrame:
     min_signup_utc = utc_naive(local_midnight(min_signup_date)) if min_signup_date else None
+    required_user_ids = {user_id for user_id in (required_user_ids or set()) if normalize_user_id(user_id)}
     if os.environ.get("DASHBOARD_SKIP_PROFILE_ENRICHMENT", "").lower() in {"1", "true", "yes"}:
-        sql = """
+        sql = text("""
         SELECT
             LOWER(BIN_TO_UUID(id)) AS user_id,
             DATE(DATE_ADD(created_at, INTERVAL 330 MINUTE)) AS signup_date,
             monetization_config_id AS config_id
         FROM prod.users
         WHERE (:min_signup_utc IS NULL OR created_at >= :min_signup_utc)
-        """
-        profiles = read_sql(engine, sql, {"min_signup_utc": min_signup_utc})
+           OR LOWER(BIN_TO_UUID(id)) IN :required_user_ids
+        """).bindparams(bindparam("required_user_ids", expanding=True))
+        profiles = read_sql(engine, sql, {"min_signup_utc": min_signup_utc, "required_user_ids": sorted(required_user_ids)})
         profiles["signup_date"] = pd.to_datetime(profiles["signup_date"]).dt.date
         profiles["gender"] = "unknown"
         profiles["platform"] = "unknown"
@@ -2919,11 +2997,12 @@ def build_profiles(engine, as_of: date, min_signup_date: date | None = None) -> 
         return profiles
     profile_enrichment_days = int(os.environ.get("DASHBOARD_PROFILE_ENRICHMENT_DAYS", "45"))
     profile_start_utc = utc_naive(local_midnight(as_of - timedelta(days=profile_enrichment_days)))
-    sql = """
+    sql = text("""
     WITH recent_users AS (
         SELECT id
         FROM prod.users
         WHERE created_at >= :profile_start_utc
+           OR LOWER(BIN_TO_UUID(id)) IN :required_user_ids
     ),
     ranked_profiles AS (
         SELECT
@@ -2969,8 +3048,17 @@ def build_profiles(engine, as_of: date, min_signup_date: date | None = None) -> 
     LEFT JOIN ranked_profiles rp ON LOWER(BIN_TO_UUID(u.id)) = rp.user_id AND rp.rn = 1
     LEFT JOIN ranked_devices rd ON LOWER(BIN_TO_UUID(u.id)) = rd.user_id AND rd.rn = 1
     WHERE (:min_signup_utc IS NULL OR u.created_at >= :min_signup_utc)
-    """
-    profiles = read_sql(engine, sql, {"profile_start_utc": profile_start_utc, "min_signup_utc": min_signup_utc})
+       OR LOWER(BIN_TO_UUID(u.id)) IN :required_user_ids
+    """).bindparams(bindparam("required_user_ids", expanding=True))
+    profiles = read_sql(
+        engine,
+        sql,
+        {
+            "profile_start_utc": profile_start_utc,
+            "min_signup_utc": min_signup_utc,
+            "required_user_ids": sorted(required_user_ids),
+        },
+    )
     profiles["signup_date"] = pd.to_datetime(profiles["signup_date"]).dt.date
     profiles["gender"] = profiles["gender"].fillna("Unknown").astype(str).str.lower()
     profiles["platform"] = profiles["platform"].fillna("unknown").astype(str).str.lower()
@@ -4257,6 +4345,15 @@ def write_latest_dashboard(dashboard: dict[str, Any]) -> None:
     os.replace(tmp_path, OUTPUT_PATH)
 
 
+def load_existing_dashboard() -> dict[str, Any]:
+    if not OUTPUT_PATH.exists():
+        return {}
+    try:
+        return json.loads(OUTPUT_PATH.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+
+
 def build_periods(
     env: dict[str, str],
     engine,
@@ -4268,7 +4365,8 @@ def build_periods(
     sql_lookup_start = min(ranges["prior_30_start"] for ranges in period_ranges.values())
     current_end = max(ranges["current_end"] for ranges in period_ranges.values())
     mixpanel_events = fetch_mixpanel_events(env, MIXPANEL_EVENTS, mixpanel_start, mixpanel_end)
-    profiles = build_profiles(engine, latest_complete_day, sql_lookup_start)
+    required_user_ids = mixpanel_user_ids(mixpanel_events) | build_revenue_user_ids(engine, sql_lookup_start, current_end)
+    profiles = build_profiles(engine, latest_complete_day, sql_lookup_start, required_user_ids)
     bot_lookup = build_bot_lookup(engine, sql_lookup_start, current_end)
     return {
         period_id: build_period_dashboard(
@@ -4331,25 +4429,45 @@ def main() -> None:
     weekly_start = current_end - timedelta(days=6)
     daily_history_days = max(3, min(31, int(env.get("DASHBOARD_DAILY_HISTORY_DAYS", "3"))))
     daily_start = current_end - timedelta(days=daily_history_days - 1)
+    full_rebuild = os.environ.get("DASHBOARD_FULL_REBUILD", "").lower() in {"1", "true", "yes"}
     period_ranges = {
         "daily": make_ranges("daily", current_end, current_end),
         "weekly": make_ranges("weekly", weekly_start, current_end),
     }
-    for day in day_range(daily_start, current_end):
-        day_value = date.fromisoformat(day)
-        period_ranges[f"daily_{day}"] = make_ranges("daily", day_value, day_value)
-    mixpanel_start = daily_start
+    if full_rebuild:
+        for day in day_range(daily_start, current_end):
+            day_value = date.fromisoformat(day)
+            period_ranges[f"daily_{day}"] = make_ranges("daily", day_value, day_value)
+    mixpanel_start = min(ranges["current_start"] for ranges in period_ranges.values())
     periods = build_periods(env, engine, period_ranges, latest_complete_day, mixpanel_start, current_end)
-    weekly = periods["weekly"]
-    daily_periods = [
-        {
-            "id": f"daily_{day}",
-            "date": day,
-            "label": datetime.fromisoformat(day).strftime("%d %b"),
-            **periods[f"daily_{day}"]["metadata"],
+    if full_rebuild:
+        merged_periods = periods
+    else:
+        existing_dashboard = load_existing_dashboard()
+        merged_periods = dict(existing_dashboard.get("periods") or {})
+        merged_periods["daily"] = periods["daily"]
+        merged_periods["weekly"] = periods["weekly"]
+        merged_periods[f"daily_{current_end.isoformat()}"] = periods["daily"]
+        keep_period_ids = {"daily", "weekly"} | {f"daily_{day}" for day in day_range(daily_start, current_end)}
+        merged_periods = {
+            period_id: period
+            for period_id, period in merged_periods.items()
+            if period_id in keep_period_ids
         }
-        for day in day_range(daily_start, current_end)
-    ]
+    weekly = periods["weekly"]
+    daily_periods = []
+    for day in day_range(daily_start, current_end):
+        period_id = f"daily_{day}"
+        if period_id not in merged_periods:
+            continue
+        daily_periods.append(
+            {
+                "id": period_id,
+                "date": day,
+                "label": datetime.fromisoformat(day).strftime("%d %b"),
+                **merged_periods[period_id]["metadata"],
+            }
+        )
 
     dashboard = {
         "metadata": {
@@ -4372,7 +4490,7 @@ def main() -> None:
             },
             "source_notes": dashboard_source_notes(),
         },
-        "periods": periods,
+        "periods": merged_periods,
         "monetization": weekly["monetization"],
         "acquisition": weekly["acquisition"],
         "retention": weekly["retention"],
