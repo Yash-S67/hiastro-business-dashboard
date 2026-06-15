@@ -37,6 +37,7 @@ REVENUE_FAMILIES = [
     ("pay_as_you_go", "Pay as you go"),
     ("day_pass", "Day pass"),
 ]
+TRIAL_MATURITY_DAYS = 3
 MIXPANEL_EVENTS = [
     "$ae_session",
     "Login Success",
@@ -3352,6 +3353,60 @@ def build_acquisition(
     }
 
 
+def config_trial_metrics(
+    follow_purchases: pd.DataFrame,
+    trial_amount: int,
+    current_end: date,
+) -> dict[str, Any]:
+    maturity_cutoff = current_end - timedelta(days=TRIAL_MATURITY_DAYS)
+    if follow_purchases.empty:
+        return {
+            "trial_ids": set(),
+            "matured_trial_ids": set(),
+            "immature_trial_ids": set(),
+            "main_ids": set(),
+            "main_199_ids": set(),
+            "main_499_ids": set(),
+            "maturity_cutoff": maturity_cutoff,
+        }
+
+    trial_events = follow_purchases[
+        follow_purchases["event_type"].eq("subscription.authenticated")
+        & follow_purchases["amount"].eq(trial_amount)
+    ][["user_id", "event_date"]].dropna().sort_values(["user_id", "event_date"])
+    trial_first = trial_events.drop_duplicates("user_id", keep="first")
+    trial_ids = set(trial_first["user_id"])
+    matured_trial_first = trial_first[trial_first["event_date"] <= maturity_cutoff].copy()
+    matured_trial_ids = set(matured_trial_first["user_id"])
+    immature_trial_ids = trial_ids - matured_trial_ids
+
+    main_events = follow_purchases[
+        follow_purchases["event_type"].eq("subscription.charged")
+        & follow_purchases["amount"].isin([199, 499])
+    ][["user_id", "event_date", "amount"]].dropna().sort_values(["user_id", "event_date", "amount"])
+    if matured_trial_first.empty or main_events.empty:
+        matched_main = pd.DataFrame(columns=["user_id", "event_date_trial", "event_date_main", "amount"])
+    else:
+        matched_main = matured_trial_first.merge(main_events, on="user_id", how="left", suffixes=("_trial", "_main"))
+        matched_main = matched_main[
+            matched_main["event_date_main"].notna()
+            & (matched_main["event_date_main"] >= matched_main["event_date_trial"])
+        ].sort_values(["user_id", "event_date_main", "amount"])
+        matched_main = matched_main.drop_duplicates("user_id", keep="first")
+
+    main_199_ids = set(matched_main.loc[matched_main["amount"].eq(199), "user_id"])
+    main_499_ids = set(matched_main.loc[matched_main["amount"].eq(499), "user_id"])
+    return {
+        "trial_ids": trial_ids,
+        "matured_trial_ids": matured_trial_ids,
+        "immature_trial_ids": immature_trial_ids,
+        "main_ids": main_199_ids | main_499_ids,
+        "main_199_ids": main_199_ids,
+        "main_499_ids": main_499_ids,
+        "maturity_cutoff": maturity_cutoff,
+    }
+
+
 def build_config_funnel(
     engine,
     ranges: dict[str, Any],
@@ -3371,6 +3426,7 @@ def build_config_funnel(
         """
         SELECT
             LOWER(BIN_TO_UUID(sle.user_id)) AS user_id,
+            DATE(DATE_ADD(COALESCE(sle.event_created_at, sle.created_at, sle.charge_at, sle.current_start), INTERVAL 330 MINUTE)) AS event_date,
             CASE
                 WHEN sle.revenue_type = 'subscription_authenticated'
                      OR sle.event_type = 'subscription.authenticated'
@@ -3393,6 +3449,9 @@ def build_config_funnel(
             "end_utc": utc_naive(local_midnight(ranges["current_end"] + timedelta(days=1))),
         },
     )
+    if purchases.empty:
+        purchases = pd.DataFrame(columns=["user_id", "event_date", "event_type", "amount"])
+    purchases["event_date"] = pd.to_datetime(purchases["event_date"], errors="coerce").dt.date
     purchases["amount"] = pd.to_numeric(purchases["amount"], errors="coerce").round(0)
     paywall_events = pd.DataFrame(mixpanel.get("subscription_paywall_user_daily", []))
     trial_cta_events = pd.DataFrame(mixpanel.get("subscription_trial_cta_user_daily", []))
@@ -3415,29 +3474,14 @@ def build_config_funnel(
         trial_cta_ids = set(config_trial_cta["user_id"])
         trial_cta_199_ids = set(config_trial_cta.loc[config_trial_cta["main_pack_amount"].eq(199), "user_id"])
         trial_cta_499_ids = set(config_trial_cta.loc[config_trial_cta["main_pack_amount"].eq(499), "user_id"])
-        follow_purchases = purchases[purchases["user_id"].isin(follow_ids)]
-        trial_ids = set(
-            follow_purchases.loc[
-                follow_purchases["event_type"].eq("subscription.authenticated")
-                & follow_purchases["amount"].eq(trial_amount),
-                "user_id",
-            ]
-        )
-        main_199_ids = set(
-            follow_purchases.loc[
-                follow_purchases["event_type"].eq("subscription.charged")
-                & follow_purchases["amount"].eq(199),
-                "user_id",
-            ]
-        )
-        main_499_ids = set(
-            follow_purchases.loc[
-                follow_purchases["event_type"].eq("subscription.charged")
-                & follow_purchases["amount"].eq(499),
-                "user_id",
-            ]
-        )
-        main_ids = main_199_ids | main_499_ids
+        follow_purchases = purchases[purchases["user_id"].isin(follow_ids)].copy()
+        trial_metrics = config_trial_metrics(follow_purchases, trial_amount, ranges["current_end"])
+        trial_ids = trial_metrics["trial_ids"]
+        matured_trial_ids = trial_metrics["matured_trial_ids"]
+        immature_trial_ids = trial_metrics["immature_trial_ids"]
+        main_ids = trial_metrics["main_ids"]
+        main_199_ids = trial_metrics["main_199_ids"]
+        main_499_ids = trial_metrics["main_499_ids"]
         rows.append(
             {
                 "config_id": config_id,
@@ -3448,18 +3492,28 @@ def build_config_funnel(
                 "paywall_shown_users": len(paywall_ids),
                 "trial_cta_users": len(trial_cta_ids),
                 "trial_buyers": len(trial_ids),
+                "matured_trial_buyers": len(matured_trial_ids),
+                "immature_trial_buyers": len(immature_trial_ids),
                 "main_plan_buyers": len(main_ids),
+                "matured_main_plan_buyers": len(main_ids),
                 "trial_cta_199_pack_users": len(trial_cta_199_ids),
                 "trial_cta_499_pack_users": len(trial_cta_499_ids),
                 "main_199_buyers": len(main_199_ids),
                 "main_499_buyers": len(main_499_ids),
+                "matured_main_199_buyers": len(main_199_ids),
+                "matured_main_499_buyers": len(main_499_ids),
+                "trial_maturity_days": TRIAL_MATURITY_DAYS,
+                "maturity_cutoff_date": trial_metrics["maturity_cutoff"].isoformat(),
                 "assigned_to_followup_pct": safe_div(len(follow_ids), len(cohort_ids)),
                 "followup_to_paywall_pct": safe_div(len(paywall_ids), len(follow_ids)),
                 "paywall_to_trial_cta_pct": safe_div(len(trial_cta_ids), len(paywall_ids)),
                 "trial_cta_to_trial_purchase_pct": safe_div(len(trial_ids), len(trial_cta_ids)),
                 "followup_to_trial_pct": safe_div(len(trial_ids), len(follow_ids)),
-                "trial_to_main_pct": safe_div(len(main_ids), len(trial_ids)),
+                "trial_to_main_pct": safe_div(len(main_ids), len(matured_trial_ids)),
                 "followup_to_main_pct": safe_div(len(main_ids), len(follow_ids)),
+                "matured_trial_to_main_pct": safe_div(len(main_ids), len(matured_trial_ids)),
+                "matured_followup_to_main_pct": safe_div(len(main_ids), len(follow_ids)),
+                "maturity_status": "Matured only" if len(matured_trial_ids) == len(trial_ids) else "Partially matured",
             }
         )
     return rows
@@ -3491,6 +3545,7 @@ def build_config_funnel_by_user_cohort(
         """
         SELECT
             LOWER(BIN_TO_UUID(sle.user_id)) AS user_id,
+            DATE(DATE_ADD(COALESCE(sle.event_created_at, sle.created_at, sle.charge_at, sle.current_start), INTERVAL 330 MINUTE)) AS event_date,
             CASE
                 WHEN sle.revenue_type = 'subscription_authenticated'
                      OR sle.event_type = 'subscription.authenticated'
@@ -3514,7 +3569,8 @@ def build_config_funnel_by_user_cohort(
         },
     )
     if purchases.empty:
-        purchases = pd.DataFrame(columns=["user_id", "event_type", "amount"])
+        purchases = pd.DataFrame(columns=["user_id", "event_date", "event_type", "amount"])
+    purchases["event_date"] = pd.to_datetime(purchases["event_date"], errors="coerce").dt.date
     purchases["amount"] = pd.to_numeric(purchases["amount"], errors="coerce").round(0)
 
     paywall_events = pd.DataFrame(mixpanel.get("subscription_paywall_user_daily", []))
@@ -3542,29 +3598,14 @@ def build_config_funnel_by_user_cohort(
             trial_cta_ids = set(config_trial_cta["user_id"])
             trial_cta_199_ids = set(config_trial_cta.loc[config_trial_cta["main_pack_amount"].eq(199), "user_id"])
             trial_cta_499_ids = set(config_trial_cta.loc[config_trial_cta["main_pack_amount"].eq(499), "user_id"])
-            follow_purchases = purchases[purchases["user_id"].isin(follow_ids)]
-            trial_ids = set(
-                follow_purchases.loc[
-                    follow_purchases["event_type"].eq("subscription.authenticated")
-                    & follow_purchases["amount"].eq(trial_amount),
-                    "user_id",
-                ]
-            )
-            main_199_ids = set(
-                follow_purchases.loc[
-                    follow_purchases["event_type"].eq("subscription.charged")
-                    & follow_purchases["amount"].eq(199),
-                    "user_id",
-                ]
-            )
-            main_499_ids = set(
-                follow_purchases.loc[
-                    follow_purchases["event_type"].eq("subscription.charged")
-                    & follow_purchases["amount"].eq(499),
-                    "user_id",
-                ]
-            )
-            main_ids = main_199_ids | main_499_ids
+            follow_purchases = purchases[purchases["user_id"].isin(follow_ids)].copy()
+            trial_metrics = config_trial_metrics(follow_purchases, trial_amount, ranges["current_end"])
+            trial_ids = trial_metrics["trial_ids"]
+            matured_trial_ids = trial_metrics["matured_trial_ids"]
+            immature_trial_ids = trial_metrics["immature_trial_ids"]
+            main_ids = trial_metrics["main_ids"]
+            main_199_ids = trial_metrics["main_199_ids"]
+            main_499_ids = trial_metrics["main_499_ids"]
             rows.append(
                 {
                     "config_id": config_id,
@@ -3577,18 +3618,28 @@ def build_config_funnel_by_user_cohort(
                     "paywall_shown_users": len(paywall_ids),
                     "trial_cta_users": len(trial_cta_ids),
                     "trial_buyers": len(trial_ids),
+                    "matured_trial_buyers": len(matured_trial_ids),
+                    "immature_trial_buyers": len(immature_trial_ids),
                     "main_plan_buyers": len(main_ids),
+                    "matured_main_plan_buyers": len(main_ids),
                     "trial_cta_199_pack_users": len(trial_cta_199_ids),
                     "trial_cta_499_pack_users": len(trial_cta_499_ids),
                     "main_199_buyers": len(main_199_ids),
                     "main_499_buyers": len(main_499_ids),
+                    "matured_main_199_buyers": len(main_199_ids),
+                    "matured_main_499_buyers": len(main_499_ids),
+                    "trial_maturity_days": TRIAL_MATURITY_DAYS,
+                    "maturity_cutoff_date": trial_metrics["maturity_cutoff"].isoformat(),
                     "assigned_to_followup_pct": safe_div(len(follow_ids), len(cohort_ids)),
                     "followup_to_paywall_pct": safe_div(len(paywall_ids), len(follow_ids)),
                     "paywall_to_trial_cta_pct": safe_div(len(trial_cta_ids), len(paywall_ids)),
                     "trial_cta_to_trial_purchase_pct": safe_div(len(trial_ids), len(trial_cta_ids)),
                     "followup_to_trial_pct": safe_div(len(trial_ids), len(follow_ids)),
-                    "trial_to_main_pct": safe_div(len(main_ids), len(trial_ids)),
+                    "trial_to_main_pct": safe_div(len(main_ids), len(matured_trial_ids)),
                     "followup_to_main_pct": safe_div(len(main_ids), len(follow_ids)),
+                    "matured_trial_to_main_pct": safe_div(len(main_ids), len(matured_trial_ids)),
+                    "matured_followup_to_main_pct": safe_div(len(main_ids), len(follow_ids)),
+                    "maturity_status": "Matured only" if len(matured_trial_ids) == len(trial_ids) else "Partially matured",
                     "main_499_share_pct": safe_div(len(main_499_ids), len(main_ids)),
                     "main_199_share_pct": safe_div(len(main_199_ids), len(main_ids)),
                 }

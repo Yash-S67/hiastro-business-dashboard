@@ -2324,14 +2324,15 @@ function renderMonetization(data) {
     return acc;
   }, {});
   const bestTrialConfig = [...configRows].sort((a, b) => Number(b.followup_to_trial_pct || 0) - Number(a.followup_to_trial_pct || 0))[0] || {};
-  const bestMainConfig = [...configRows].sort((a, b) => Number(b.trial_to_main_pct || 0) - Number(a.trial_to_main_pct || 0))[0] || {};
+  const bestMainConfig = [...configRows].sort((a, b) => Number(b.matured_trial_to_main_pct || b.trial_to_main_pct || 0) - Number(a.matured_trial_to_main_pct || a.trial_to_main_pct || 0))[0] || {};
   const mainPackFollowupRows = configRows.map((row) => ({
     trial_type: row.trial_type,
     followup_users: row.followup_users,
     main_199_buyers: row.main_199_buyers,
     main_499_buyers: row.main_499_buyers,
-    followup_to_199_main_pct: safePercent(row.main_199_buyers, row.followup_users),
-    followup_to_499_main_pct: safePercent(row.main_499_buyers, row.followup_users),
+    matured_trial_buyers: row.matured_trial_buyers,
+    followup_to_199_main_pct: safePercent(row.matured_main_199_buyers || row.main_199_buyers, row.followup_users),
+    followup_to_499_main_pct: safePercent(row.matured_main_499_buyers || row.main_499_buyers, row.followup_users),
     main_199_share_pct: safePercent(row.main_199_buyers, Number(row.main_199_buyers || 0) + Number(row.main_499_buyers || 0)),
     main_499_share_pct: safePercent(row.main_499_buyers, Number(row.main_199_buyers || 0) + Number(row.main_499_buyers || 0)),
   }));
@@ -2342,7 +2343,8 @@ function renderMonetization(data) {
     miniMetric("Paywall", number(row.paywall_shown_users), `${pct(row.followup_to_paywall_pct)} of follow-up`),
     miniMetric("Trial CTA", number(row.trial_cta_users), `${pct(row.paywall_to_trial_cta_pct)} of paywall users`),
     miniMetric("Trial Buyers", number(row.trial_buyers), `${pct(row.trial_cta_to_trial_purchase_pct)} of CTA users`),
-    miniMetric("Main Buyers", number(row.main_plan_buyers), `${pct(row.trial_to_main_pct)} of trial buyers`),
+    miniMetric("Matured Trials", number(row.matured_trial_buyers), `${number(row.immature_trial_buyers)} still inside ${number(row.trial_maturity_days)}-day trial`),
+    miniMetric("Main Buyers", number(row.main_plan_buyers), `${pct(row.matured_trial_to_main_pct || row.trial_to_main_pct)} of matured trial buyers`),
     miniMetric("Main Split", `${number(row.main_499_buyers)} / ${number(row.main_199_buyers)}`, "Rs 499 / Rs 199 buyers"),
   ].join("");
   document.getElementById("monetizationFunnelSummary").innerHTML = [
@@ -2350,11 +2352,11 @@ function renderMonetization(data) {
     funnelStep("Follow-up", number(funnelTotals.followup_users), `${pct(safePercent(funnelTotals.followup_users, funnelTotals.assigned_users))} of assigned`),
     funnelStep("Paywall", number(funnelTotals.paywall_shown_users), `${pct(safePercent(funnelTotals.paywall_shown_users, funnelTotals.followup_users))} of follow-up`),
     funnelStep("Trial Buyers", number(funnelTotals.trial_buyers), `${pct(safePercent(funnelTotals.trial_buyers, funnelTotals.followup_users))} of follow-up`),
-    funnelStep("Main Buyers", number(funnelTotals.main_plan_buyers), `${pct(safePercent(funnelTotals.main_plan_buyers, funnelTotals.trial_buyers))} of trials`),
+    funnelStep("Main Buyers", number(funnelTotals.main_plan_buyers), `${pct(safePercent(funnelTotals.main_plan_buyers, funnelTotals.matured_trial_buyers))} of matured trials`),
   ].join("");
   document.getElementById("monetizationFunnelCards").innerHTML = [
     actionCard("Best Trial Flow", bestTrialConfig.trial_type || "-", `${pct(bestTrialConfig.followup_to_trial_pct)} follow-up to trial`, "good"),
-    actionCard("Best Main Conversion", bestMainConfig.trial_type || "-", `${pct(bestMainConfig.trial_to_main_pct)} trial to main`, "good"),
+    actionCard("Best Main Conversion", bestMainConfig.trial_type || "-", `${pct(bestMainConfig.matured_trial_to_main_pct || bestMainConfig.trial_to_main_pct)} matured trial to main`, "good"),
     actionCard("Main Pack Split", `${number(funnelTotals.main_499_buyers)} / ${number(funnelTotals.main_199_buyers)}`, "Rs 499 buyers / Rs 199 buyers", "neutral"),
   ].join("");
   document.getElementById("mainPackFollowupCards").innerHTML = [
@@ -2372,7 +2374,7 @@ function renderMonetization(data) {
       { label: "Follow-up to paywall %", data: m.config_funnel.map((r) => r.followup_to_paywall_pct), backgroundColor: COLORS.teal },
       { label: "Paywall to trial CTA %", data: m.config_funnel.map((r) => r.paywall_to_trial_cta_pct), backgroundColor: COLORS.gold },
       { label: "CTA to trial buy %", data: m.config_funnel.map((r) => r.trial_cta_to_trial_purchase_pct), backgroundColor: COLORS.rose },
-      { label: "Trial to main %", data: m.config_funnel.map((r) => r.trial_to_main_pct), backgroundColor: COLORS.green },
+      { label: "Matured trial to main %", data: m.config_funnel.map((r) => r.matured_trial_to_main_pct || r.trial_to_main_pct), backgroundColor: COLORS.green },
     ],
   }, {
     plugins: { title: { display: true, text: "Config Funnel: Follow-up, Paywall, CTA, Purchase" } },
@@ -2394,11 +2396,11 @@ function renderMonetization(data) {
     labels: configRows.map((row) => row.trial_type),
     datasets: [
       { label: "Follow-up to trial %", data: configRows.map((row) => row.followup_to_trial_pct), backgroundColor: COLORS.teal },
-      { label: "Trial to main %", data: configRows.map((row) => row.trial_to_main_pct), backgroundColor: COLORS.green },
-      { label: "Follow-up to main %", data: configRows.map((row) => row.followup_to_main_pct), backgroundColor: COLORS.rose },
+      { label: "Matured trial to main %", data: configRows.map((row) => row.matured_trial_to_main_pct || row.trial_to_main_pct), backgroundColor: COLORS.green },
+      { label: "Matured follow-up to main %", data: configRows.map((row) => row.matured_followup_to_main_pct || row.followup_to_main_pct), backgroundColor: COLORS.rose },
     ],
   }, {
-    plugins: { title: { display: true, text: "Rs 1 vs Rs 49 Conversion Comparison" }, legend: { position: "bottom" } },
+    plugins: { title: { display: true, text: "Rs 1 vs Rs 49 Conversion Comparison (3-day matured trials)" }, legend: { position: "bottom" } },
     scales: { x: { grid: { display: false } }, y: { beginAtZero: true, max: 100, grid: { color: "rgba(255,255,255,0.10)" } } },
   });
 
@@ -2433,6 +2435,8 @@ function renderMonetization(data) {
     { key: "paywall_shown_users", label: "Paywall", format: number },
     { key: "trial_cta_users", label: "Trial CTA", format: number },
     { key: "trial_buyers", label: "Trial Buyers", format: number },
+    { key: "matured_trial_buyers", label: "Matured Trials", format: number },
+    { key: "immature_trial_buyers", label: "Immature Trials", format: number },
     { key: "main_plan_buyers", label: "Main Buyers", format: number },
     { key: "trial_cta_199_pack_users", label: "CTA Rs 199", format: number },
     { key: "trial_cta_499_pack_users", label: "CTA Rs 499", format: number },
@@ -2443,8 +2447,8 @@ function renderMonetization(data) {
     { key: "paywall_to_trial_cta_pct", label: "Paywall to CTA", format: pct },
     { key: "trial_cta_to_trial_purchase_pct", label: "CTA to Trial", format: pct },
     { key: "followup_to_trial_pct", label: "Follow-up to Trial", format: pct },
-    { key: "trial_to_main_pct", label: "Trial to Main", format: pct },
-    { key: "followup_to_main_pct", label: "Follow-up to Main", format: pct },
+    { key: "matured_trial_to_main_pct", label: "Matured Trial to Main", format: pct },
+    { key: "matured_followup_to_main_pct", label: "Matured F to Main", format: pct },
   ]);
 
   chart("newOldSubscriberFunnelChart", "bar", {
@@ -2452,12 +2456,13 @@ function renderMonetization(data) {
     datasets: [
       { label: "Follow-up", data: configCohortRows.map((row) => row.followup_users), backgroundColor: COLORS.teal },
       { label: "Trial buyers", data: configCohortRows.map((row) => row.trial_buyers), backgroundColor: COLORS.rose },
+      { label: "Matured trial buyers", data: configCohortRows.map((row) => row.matured_trial_buyers), backgroundColor: COLORS.gold },
       { label: "Main buyers", data: configCohortRows.map((row) => row.main_plan_buyers), backgroundColor: COLORS.green },
-      { label: "Follow-up to main %", data: configCohortRows.map((row) => row.followup_to_main_pct), backgroundColor: COLORS.gold, yAxisID: "y1" },
+      { label: "Matured F to Main %", data: configCohortRows.map((row) => row.matured_followup_to_main_pct || row.followup_to_main_pct), backgroundColor: COLORS.blue, yAxisID: "y1" },
     ],
   }, {
     indexAxis: "y",
-    plugins: { title: { display: true, text: "New vs Old Subscriber Funnel by Trial Pack" }, legend: { position: "bottom" } },
+    plugins: { title: { display: true, text: "New vs Old Subscriber Funnel by Trial Pack (3-day matured trials)" }, legend: { position: "bottom" } },
     scales: {
       x: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Users" } },
       y1: { beginAtZero: true, max: 100, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Conversion %" } },
@@ -2472,13 +2477,16 @@ function renderMonetization(data) {
     { key: "paywall_shown_users", label: "Paywall", format: number },
     { key: "trial_cta_users", label: "Trial CTA", format: number },
     { key: "trial_buyers", label: "Trial Buyers", format: number },
+    { key: "matured_trial_buyers", label: "Matured Trials", format: number },
+    { key: "immature_trial_buyers", label: "Immature Trials", format: number },
     { key: "main_plan_buyers", label: "Main Buyers", format: number },
     { key: "main_499_buyers", label: "Main Rs 499", format: number },
     { key: "main_199_buyers", label: "Main Rs 199", format: number },
     { key: "followup_to_trial_pct", label: "Follow-up to Trial", format: pct },
-    { key: "trial_to_main_pct", label: "Trial to Main", format: pct },
-    { key: "followup_to_main_pct", label: "Follow-up to Main", format: pct },
+    { key: "matured_trial_to_main_pct", label: "Matured Trial to Main", format: pct },
+    { key: "matured_followup_to_main_pct", label: "Matured F to Main", format: pct },
     { key: "main_499_share_pct", label: "Rs 499 Main Share", format: pct },
+    { key: "maturity_status", label: "Maturity", text: true },
   ], 12);
 
   const dailyFunnelRows = dailyConfigFunnelRows();
@@ -3701,12 +3709,15 @@ function subscriptionNewOldTables(m) {
       { key: "paywall_shown_users", label: "Paywall", format: number },
       { key: "trial_cta_users", label: "Trial CTA", format: number },
       { key: "trial_buyers", label: "Trial Buyers", format: number },
+      { key: "matured_trial_buyers", label: "Matured Trials", format: number },
+      { key: "immature_trial_buyers", label: "Immature Trials", format: number },
       { key: "main_plan_buyers", label: "Main Buyers", format: number },
       { key: "main_499_buyers", label: "Rs 499", format: number },
       { key: "main_199_buyers", label: "Rs 199", format: number },
       { key: "followup_to_trial_pct", label: "F to Trial", format: pct },
-      { key: "trial_to_main_pct", label: "Trial to Main", format: pct },
-      { key: "followup_to_main_pct", label: "F to Main", format: pct },
+      { key: "matured_trial_to_main_pct", label: "Matured Trial to Main", format: pct },
+      { key: "matured_followup_to_main_pct", label: "Matured F to Main", format: pct },
+      { key: "maturity_status", label: "Maturity", text: true },
     ], 8)}
   `;
 }
@@ -3777,7 +3788,12 @@ function subscriptionDetail(data) {
       { key: "assigned_users", label: "Assigned", format: number },
       { key: "followup_users", label: "Follow-up", format: number },
       { key: "trial_buyers", label: "Trial Buyers", format: number },
+      { key: "matured_trial_buyers", label: "Matured Trials", format: number },
+      { key: "immature_trial_buyers", label: "Immature Trials", format: number },
       { key: "main_plan_buyers", label: "Main Buyers", format: number },
+      { key: "matured_trial_to_main_pct", label: "Matured Trial to Main", format: pct },
+      { key: "matured_followup_to_main_pct", label: "Matured F to Main", format: pct },
+      { key: "maturity_status", label: "Maturity", text: true },
     ], 5)}
     ${detailTable("Trial Cohort Conversion by Main Price", trialCohorts, [
       { key: "trial_start_date", label: "Date", text: true, format: shortDate },
