@@ -61,7 +61,12 @@ CSV and tab-separated exports are both accepted.
 
 This folder is ready to push as a static GitHub Pages site. Do not commit credentials; the dashboard only includes aggregated JSON.
 
-GitHub Pages can switch across dates already present in `data/dashboard_data.json`. The GitHub workflow is scheduled daily at **03:15 UTC / 08:45 IST** and can refresh this aggregate file when GitHub can reach the database and repository secrets are configured.
+GitHub Pages can switch across dates already present in `data/dashboard_data.json`. The publishing setup now has two scheduled refresh paths:
+
+- Daily incremental refresh at **03:15 UTC / 08:45 IST** via `.github/workflows/refresh-data.yml`
+- Weekly full rebuild at **03:45 UTC / 09:15 IST Sunday** via `.github/workflows/refresh-full-rebuild.yml`
+
+The daily job keeps the dashboard date moving forward quickly. The weekly full rebuild refreshes the heavier historical slices and diagnostic sections.
 
 Arbitrary dynamic date selection on GitHub Pages needs a separate API service, because GitHub Pages cannot safely hold MySQL or Mixpanel credentials. This repo includes `scripts/serve_dashboard.py` plus `render.yaml` so the same live API can be deployed as a small web service. After deployment, set this public, non-secret value in `assets/config.js`:
 
@@ -73,13 +78,15 @@ Keep all MySQL and Mixpanel credentials only as API-service environment variable
 
 ## Daily update
 
-The dashboard refresh is installed as a Mac LaunchAgent because GitHub-hosted runners cannot reach the MySQL server. It runs every day at **08:30 IST**, refreshes `data/dashboard_data.json`, commits the updated aggregate data, and pushes it to GitHub. GitHub Pages redeploys after that push.
+Primary path:
 
-Installed LaunchAgent:
+- GitHub Actions refreshes and pushes `data/dashboard_data.json`
+- GitHub Pages redeploys automatically after that push
 
-```text
-~/Library/LaunchAgents/com.hiastro.business-dashboard-refresh.plist
-```
+Backup path:
+
+- Codex cron automation `hiastro-dashboard-daily-refresh` runs locally at **09:15 IST**
+- It checks freshness first, then runs `scripts/refresh_and_push.sh` only if the latest complete IST day is missing
 
 Manual refresh:
 
@@ -87,7 +94,12 @@ Manual refresh:
 /Users/yashs/Documents/WorkDirectory/hiastro-business-dashboard/scripts/refresh_and_push.sh
 ```
 
-The workflow `.github/workflows/refresh-data.yml` also runs daily and remains available for manual runs. If GitHub runners cannot reach MySQL, the Mac LaunchAgent is the reliable refresh path; if the DB is opened to GitHub runners or moved behind a reachable analytics endpoint, GitHub can refresh without your Mac.
+Live dynamic fetch options:
+
+- Local: run `scripts/serve_dashboard.py` and the browser can fetch any selected date through `/api/dashboard?date=YYYY-MM-DD`
+- Hosted: deploy `render.yaml`, set `window.HIASTRO_DASHBOARD_API_BASE_URL`, and GitHub Pages can fetch selected dates dynamically from the API service
+
+The old Mac LaunchAgent plist is left in the repo as reference only. The scheduled GitHub workflows plus the Codex backup automation are the intended refresh system now.
 
 Add these repository secrets in GitHub before enabling the hosted refresh:
 
