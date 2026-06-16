@@ -6,17 +6,17 @@ const INR = new Intl.NumberFormat("en-IN", {
 const NUM = new Intl.NumberFormat("en-IN");
 
 const COLORS = {
-  blue: "#2563eb",
-  teal: "#0f766e",
-  gold: "#c78118",
-  rose: "#be3455",
-  green: "#15803d",
-  slate: "#334155",
-  subscription: "#2563eb",
-  pay_as_you_go: "#0f766e",
-  day_pass: "#c78118",
-  accent: "#be3455",
-  muted: "#94a3b8",
+  blue: "#1c4e80",
+  teal: "#3c7d77",
+  gold: "#b07d28",
+  rose: "#9e4759",
+  green: "#2c7a55",
+  slate: "#5b6c82",
+  subscription: "#1c4e80",
+  pay_as_you_go: "#3c7d77",
+  day_pass: "#b07d28",
+  accent: "#1c4e80",
+  muted: "#9aa6b4",
 };
 
 Chart.defaults.font.family = 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
@@ -64,8 +64,7 @@ let SELECTED_DAY = null;
 let DATE_STATUS_MESSAGE = "";
 let LIVE_API_STATUS = null;
 let ACTIVE_SECTION = "monetization";
-let THEME = localStorage.getItem("hiastro-dashboard-theme")
-  || (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "day" : "night");
+let THEME = localStorage.getItem("hiastro-dashboard-theme") || "day";
 let MARKETING_UPLOAD_STATE = null;
 const MARKETING_UPLOAD_STORAGE_KEY = "hiastro-marketing-upload-v1";
 const MARKETING_TEMPLATE_COLUMNS = [
@@ -3527,7 +3526,9 @@ function renderSevenDayTrends(data) {
         tension: 0.35,
       }],
     }, {
-      plugins: { legend: { display: false }, tooltip: { enabled: true } },
+      maintainAspectRatio: true,
+      aspectRatio: 6,
+      plugins: { legend: { display: false }, title: { display: false }, tooltip: { enabled: true } },
       scales: { x: { display: false }, y: { display: false } },
       elements: { point: { radius: 0 } },
     });
