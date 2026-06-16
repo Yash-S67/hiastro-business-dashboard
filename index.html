@@ -20,7 +20,7 @@
         </div>
         <button type="button" class="theme-toggle" id="themeToggle" aria-label="Switch dashboard theme">Night</button>
         <div class="download-controls" id="dayDownloadControls" aria-label="Download daily data"></div>
-        <div class="freshness" id="freshness">Loading data...</div>
+        <div class="freshness" id="freshness" role="status" aria-live="polite">Loading data...</div>
       </div>
     </header>
 
@@ -761,7 +761,7 @@
     </main>
 
     <div class="drilldown-backdrop" id="drilldownBackdrop" hidden></div>
-    <aside class="drilldown-panel" id="drilldownPanel" aria-hidden="true" aria-label="Metric detail">
+    <aside class="drilldown-panel" id="drilldownPanel" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="drilldownTitle">
       <div class="drilldown-header">
         <div>
           <p class="eyebrow">Metric Detail</p>

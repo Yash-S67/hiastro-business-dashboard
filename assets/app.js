@@ -62,7 +62,8 @@ let SELECTED_DAY = null;
 let DATE_STATUS_MESSAGE = "";
 let LIVE_API_STATUS = null;
 let ACTIVE_SECTION = "monetization";
-let THEME = localStorage.getItem("hiastro-dashboard-theme") || "night";
+let THEME = localStorage.getItem("hiastro-dashboard-theme")
+  || (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "day" : "night");
 let MARKETING_UPLOAD_STATE = null;
 const MARKETING_UPLOAD_STORAGE_KEY = "hiastro-marketing-upload-v1";
 const MARKETING_TEMPLATE_COLUMNS = [
@@ -547,13 +548,13 @@ function buildMarketingFromRows(rows, data) {
       trial_revenue: total.trial_revenue || 0,
       sub_revenue: total.sub_revenue || 0,
       mix_499_pct: safePercent(total.paid_subs_499, total.subscribers),
-      latest_499_mix_pct: latestDaily.mix_499 || safePercent(latestDaily.paid_subs_499, latestDaily.subscribers),
+      latest_499_mix_pct: latestDaily.mix_499 ?? safePercent(latestDaily.paid_subs_499, latestDaily.subscribers),
       avg_arpu_subs: safeRatioValue(total.revenue, total.subscribers),
       avg_arpu_subs_excl_trials: safeRatioValue(total.sub_revenue, total.subscribers),
-      latest_arpu_subs: latestDaily.arpu_subs || null,
-      latest_arpu_subs_excl_trials: latestDaily.arpu_subs_excl_trials || null,
-      latest_all_d1_retention: latestDaily.all_d1_retention || null,
-      latest_sub_d1_retention: latestDaily.sub_d1_retention || null,
+      latest_arpu_subs: latestDaily.arpu_subs ?? null,
+      latest_arpu_subs_excl_trials: latestDaily.arpu_subs_excl_trials ?? null,
+      latest_all_d1_retention: latestDaily.all_d1_retention ?? null,
+      latest_sub_d1_retention: latestDaily.sub_d1_retention ?? null,
       mapped_fields: mappedCount,
       overview_required_fields: requiredOverviewCount,
       roas_pct: safePercent(total.revenue, total.spend),
@@ -634,12 +635,13 @@ function hideUnknownRows(value) {
 }
 
 function shortDate(value) {
+  if (!value) return "-";
   const d = new Date(`${value}T00:00:00`);
-  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+  return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
 }
 
 function trend(value) {
-  if (value === null || value === undefined) return "";
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return "";
   const direction = Number(value) >= 0 ? "up" : "down";
   const sign = Number(value) >= 0 ? "+" : "";
   return `<span class="trend ${direction}">${sign}${Number(value).toFixed(1)}%</span>`;
@@ -652,7 +654,7 @@ function drilldownAttrs(label) {
 function card(label, value, sub = "") {
   return `
     <article class="kpi-card" ${drilldownAttrs(label)}>
-      <div class="kpi-label">${label}</div>
+      <div class="kpi-label">${escapeHtml(label)}</div>
       <div class="kpi-value">${value}</div>
       <div class="kpi-sub">${sub}</div>
     </article>
@@ -2641,6 +2643,7 @@ function renderMonetization(data) {
 
 function renderAcquisition(data) {
   const a = data.acquisition;
+  if (!a.funnel) a.funnel = [];
   const aTrend = trendSection("acquisition");
   const chartLabel = trendWindowLabel();
   const paymentRows = a.payment_type_funnel || [];
@@ -2649,6 +2652,7 @@ function renderAcquisition(data) {
   const paygPayment = paymentMetric("pay_as_you_go");
   const dayPassPayment = paymentMetric("day_pass");
   document.getElementById("acquisitionNote").textContent = "New users are from SQL signups; Login Success is shown from Mixpanel for cross-check.";
+  const paymentFunnelRow = a.funnel?.[2] || {};
   document.getElementById("acquisitionCards").innerHTML = [
     card("New Users", number(a.kpis.new_users), `${number(a.kpis.login_success_users)} Login Success users`),
     card("Follow-up Rate", pct(a.kpis.new_user_to_followup_pct), "New user to Follow up Query"),
@@ -2656,7 +2660,7 @@ function renderAcquisition(data) {
     card("Sub Payers", number(subPayment.payers), `${pct(subPayment.new_to_payment_pct)} of new users | ${money(subPayment.revenue)}`),
     card("PayG Payers", number(paygPayment.payers), `${pct(paygPayment.new_to_payment_pct)} of new users | ${money(paygPayment.revenue)}`),
     card("Day Pass Payers", number(dayPassPayment.payers), `${pct(dayPassPayment.new_to_payment_pct)} of new users | ${money(dayPassPayment.revenue)}`),
-    card("Payment Users", number(a.funnel[2].users), `${pct(a.funnel[2].conversion_from_previous_pct)} from follow-up`),
+    card("Payment Users", number(paymentFunnelRow.users), `${pct(paymentFunnelRow.conversion_from_previous_pct)} from follow-up`),
   ].join("");
 
   const followupStage = a.funnel.find((row) => row.stage.toLowerCase().includes("follow")) || a.funnel[1] || {};
@@ -3457,7 +3461,7 @@ async function main() {
     renderDashboard();
   } catch (error) {
     document.getElementById("freshness").textContent = "Could not load dashboard data.";
-    document.body.insertAdjacentHTML("afterbegin", `<div class="panel" style="margin:16px">Data load failed: ${error.message}</div>`);
+    document.body.insertAdjacentHTML("afterbegin", `<div class="panel" style="margin:16px">Data load failed: ${escapeHtml(error.message)}</div>`);
   }
 }
 
@@ -4034,24 +4038,34 @@ function drilldownHtmlFor(label) {
   `;
 }
 
+let DRILLDOWN_RETURN_FOCUS = null;
+
 function openDrilldown(label) {
   const panel = document.getElementById("drilldownPanel");
   const backdrop = document.getElementById("drilldownBackdrop");
+  DRILLDOWN_RETURN_FOCUS = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   document.getElementById("drilldownTitle").textContent = label || "Metric Detail";
   document.getElementById("drilldownBody").innerHTML = drilldownHtmlFor(label);
   backdrop.hidden = false;
   panel.classList.add("open");
   panel.setAttribute("aria-hidden", "false");
   document.body.classList.add("drilldown-open");
+  const closeButton = document.getElementById("drilldownClose");
+  if (closeButton) closeButton.focus();
 }
 
 function closeDrilldown() {
   const panel = document.getElementById("drilldownPanel");
   const backdrop = document.getElementById("drilldownBackdrop");
+  if (!panel.classList.contains("open")) return;
   panel.classList.remove("open");
   panel.setAttribute("aria-hidden", "true");
   backdrop.hidden = true;
   document.body.classList.remove("drilldown-open");
+  if (DRILLDOWN_RETURN_FOCUS && document.contains(DRILLDOWN_RETURN_FOCUS)) {
+    DRILLDOWN_RETURN_FOCUS.focus();
+  }
+  DRILLDOWN_RETURN_FOCUS = null;
 }
 
 function setupDrilldowns() {

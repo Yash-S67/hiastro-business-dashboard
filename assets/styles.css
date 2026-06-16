@@ -15,10 +15,38 @@
   --shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
   --soft-shadow: 0 8px 22px rgba(0, 0, 0, 0.16);
   --topbar-clearance: 244px;
+  color-scheme: dark light;
 }
 
 * {
   box-sizing: border-box;
+}
+
+:where(a, button, select, input, summary, [tabindex], [role="button"]):focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+  .kpi-card:hover,
+  .guide-card:hover,
+  .insight-card:hover,
+  .action-card:hover,
+  .funnel-step:hover,
+  .stream-card:hover,
+  .mini-metric:hover,
+  .flow-card:hover {
+    transform: none;
+  }
 }
 
 body {
