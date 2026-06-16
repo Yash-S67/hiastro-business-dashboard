@@ -1430,22 +1430,8 @@ function renderDashboardGuide(data) {
       subRet.active_paid_subscriptions ? `${number(subRet.active_paid_subscriptions)} active | ${number(subRet.cancel_scheduled_users)} at churn risk` : `${money(sub.revenue)} subscription revenue`,
       subRet.active_paid_subscriptions ? (retentionPct >= 85 ? "good" : "risk") : "good"),
     guideCard("New User → Paid", pct(a.new_user_to_payment_pct), `${number(a.new_users)} new users | ${pct(a.new_user_to_followup_pct)} reached follow-up`, Number(a.new_user_to_payment_pct || 0) >= 8 ? "good" : "risk"),
-    guideCard("D1 Retention", pct(r.retention_pct || 0), `D7 ${pct(r7.retention_pct || 0)} | ${number(e.sessions)} sessions`, Number(r.retention_pct || 0) >= 8 ? "good" : "risk"),
+    guideCard("D1 Retention", pct(r.retention_pct || 0), `D7 retention ${pct(r7.retention_pct || 0)} | ${number(e.active_users)} active users`, Number(r.retention_pct || 0) >= 8 ? "good" : "risk"),
   ].join("");
-
-  const flowCards = [
-    flowCard("#monetization", "Monetization", money(m.revenue), `Subscription ${pct(sub.revenue_share_pct)} | PayG ${pct(payg.revenue_share_pct)}`, Number(g7.revenue || 0) >= 0 ? "good" : "risk"),
-    flowCard("#acquisition", "Acquisition", number(a.new_users), `${pct(a.new_user_to_payment_pct)} new-user payment`),
-    flowCard("#retention", "Retention", pct(r.retention_pct || 0), "Day-1 returning users", Number(r.retention_pct || 0) >= 8 ? "good" : "risk"),
-    flowCard("#engagement", "Engagement", `${e.avg_minutes_per_user || 0}m`, `${number(e.sessions)} sessions`),
-  ];
-  if (!EXEC_MODE) {
-    flowCards.push(
-      flowCard("#marketing", "Marketing", money(marketingKpis.spend || 0), marketingSubtext, marketingFreshness?.stale ? "risk" : (marketingReady ? "good" : "neutral")),
-      flowCard("#coverage", "Data Quality", `${number(availableMetrics)}/${number(coverageRows.length)}`, "metric families ready"),
-    );
-  }
-  document.getElementById("businessFlow").innerHTML = flowCards.join("");
 }
 
 function renderOverview(data) {
@@ -1459,23 +1445,28 @@ function renderOverview(data) {
   const bestFamily = topRows(materialFamilies.length ? materialFamilies : familyRows(data.monetization), "revenue_growth_vs_prior_7_pct", 1)[0] || sub;
   const weakestFamily = [...familyRows(data.monetization)].sort((x, y) => Number(x.revenue_growth_vs_prior_7_pct || 0) - Number(y.revenue_growth_vs_prior_7_pct || 0))[0] || payg;
   const bestFamilyGrowth = Number(bestFamily.revenue_growth_vs_prior_7_pct || 0);
-  const bestFamilyLabel = bestFamilyGrowth > 0 ? "Growing Stream" : "Least Decline";
-  const paymentGap = Number(a.new_user_to_followup_pct || 0) - Number(a.new_user_to_payment_pct || 0);
-  const subRet = data.monetization?.subscription_retention?.point_in_time || {};
-  const churnRisk = Number(subRet.churn_risk_pct ?? 0);
+  const bestFamilyLabel = bestFamilyGrowth > 0 ? "Growing Stream" : "Most Resilient Stream";
+  const cohort = data.monetization?.subscription_retention?.cohort_m1 || {};
+  const arpp = Number(m.avg_revenue_per_payer ?? m.avg_transaction ?? 0);
+
+  // These insights are deliberately distinct from the headline KPI cards and the
+  // 7-day trend strip — they answer "what needs attention", not restate top-line.
   const insights = [
-    insightCard("Revenue Momentum", `${trend(g7.revenue)} vs prior`, `${money(m.revenue)} total revenue`, Number(g7.revenue || 0) >= 0 ? "good" : "risk"),
+    insightCard(bestFamilyLabel, bestFamily.family_label || familyLabel(bestFamily.family),
+      `${trend(bestFamily.revenue_growth_vs_prior_7_pct)} vs prior | ${money(bestFamily.revenue)}`,
+      bestFamilyGrowth > 0 ? "good" : "neutral"),
+    insightCard("Watch Area", weakestFamily.family_label || familyLabel(weakestFamily.family),
+      `${trend(weakestFamily.revenue_growth_vs_prior_7_pct)} vs prior | ${number(weakestFamily.payers)} payers`,
+      Number(weakestFamily.revenue_growth_vs_prior_7_pct || 0) < 0 ? "risk" : "neutral"),
   ];
-  if (subRet.active_paid_subscriptions) {
-    insights.push(insightCard("Subscriber Churn Risk", pct(churnRisk),
-      `${number(subRet.cancel_scheduled_users)} of ${number(subRet.active_paid_subscriptions)} active set to cancel`,
-      churnRisk >= 10 ? "risk" : "good"));
-  } else {
-    insights.push(insightCard(bestFamilyLabel, bestFamily.family_label || familyLabel(bestFamily.family), `${trend(bestFamily.revenue_growth_vs_prior_7_pct)} revenue growth | ${money(bestFamily.revenue)}`, bestFamilyGrowth > 0 ? "good" : "risk"));
+  if (cohort.matured) {
+    insights.push(insightCard("First-Month Renewal", pct(cohort.renewal_rate_pct),
+      `${number(cohort.renewed_users)} renewed | ${number(cohort.churned_users)} churned`,
+      Number(cohort.renewal_rate_pct || 0) >= 30 ? "good" : "risk"));
   }
   insights.push(
-    insightCard("Watch Area", weakestFamily.family_label || familyLabel(weakestFamily.family), `${trend(weakestFamily.revenue_growth_vs_prior_7_pct)} revenue growth | ${number(weakestFamily.payers)} payers`, Number(weakestFamily.revenue_growth_vs_prior_7_pct || 0) < 0 ? "risk" : "neutral"),
-    insightCard("New User → Paid Gap", `${paymentGap.toFixed(1)} pts`, `${pct(a.new_user_to_followup_pct)} follow-up vs ${pct(a.new_user_to_payment_pct)} payment`, paymentGap > 30 ? "risk" : "neutral"),
+    insightCard("Avg Revenue / Payer", money(arpp), `${trend(g7.avg_revenue_per_payer)} vs prior period`,
+      Number(g7.avg_revenue_per_payer || 0) >= 0 ? "good" : "risk"),
   );
   document.getElementById("decisionInsights").innerHTML = insights.join("");
 }
