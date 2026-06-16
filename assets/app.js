@@ -65,6 +65,7 @@ let DATE_STATUS_MESSAGE = "";
 let LIVE_API_STATUS = null;
 let ACTIVE_SECTION = "monetization";
 let THEME = localStorage.getItem("hiastro-dashboard-theme") || "day";
+let EXEC_MODE = (localStorage.getItem("hiastro-dashboard-view") || "exec") === "exec";
 let MARKETING_UPLOAD_STATE = null;
 const MARKETING_UPLOAD_STORAGE_KEY = "hiastro-marketing-upload-v1";
 const MARKETING_TEMPLATE_COLUMNS = [
@@ -1421,21 +1422,30 @@ function renderDashboardGuide(data) {
     executivePeriod.textContent = `${viewLabel} | ${formalWindowLabel(selectedWindow)}`;
   }
 
+  const subRet = data.monetization?.subscription_retention?.point_in_time || {};
+  const retentionPct = Number(subRet.retention_pct ?? 0);
   document.getElementById("dashboardGuide").innerHTML = [
     guideCard("Operating Revenue", money(m.revenue), `${trend(g7.revenue)} vs prior period | ${number(m.payers)} payers`, Number(g7.revenue || 0) >= 0 ? "good" : "risk"),
-    guideCard("Subscription Mix", pct(sub.revenue_share_pct), `${money(sub.revenue)} revenue | ${number(sub.payers)} payers`, "good"),
-    guideCard("New User Payment", pct(a.new_user_to_payment_pct), `${number(a.new_users)} new users | ${pct(a.new_user_to_followup_pct)} reached follow-up`, Number(a.new_user_to_payment_pct || 0) >= 8 ? "good" : "risk"),
+    guideCard("Subscriber Retention", subRet.active_paid_subscriptions ? pct(retentionPct) : pct(sub.revenue_share_pct),
+      subRet.active_paid_subscriptions ? `${number(subRet.active_paid_subscriptions)} active | ${number(subRet.cancel_scheduled_users)} at churn risk` : `${money(sub.revenue)} subscription revenue`,
+      subRet.active_paid_subscriptions ? (retentionPct >= 85 ? "good" : "risk") : "good"),
+    guideCard("New User → Paid", pct(a.new_user_to_payment_pct), `${number(a.new_users)} new users | ${pct(a.new_user_to_followup_pct)} reached follow-up`, Number(a.new_user_to_payment_pct || 0) >= 8 ? "good" : "risk"),
     guideCard("D1 Retention", pct(r.retention_pct || 0), `D7 ${pct(r7.retention_pct || 0)} | ${number(e.sessions)} sessions`, Number(r.retention_pct || 0) >= 8 ? "good" : "risk"),
   ].join("");
 
-  document.getElementById("businessFlow").innerHTML = [
-    flowCard("#monetization", "Monetization", money(m.revenue), `Subscription ${pct(sub.revenue_share_pct)} | PayG ${pct(payg.revenue_share_pct)}`, "good"),
+  const flowCards = [
+    flowCard("#monetization", "Monetization", money(m.revenue), `Subscription ${pct(sub.revenue_share_pct)} | PayG ${pct(payg.revenue_share_pct)}`, Number(g7.revenue || 0) >= 0 ? "good" : "risk"),
     flowCard("#acquisition", "Acquisition", number(a.new_users), `${pct(a.new_user_to_payment_pct)} new-user payment`),
-    flowCard("#marketing", "Marketing", money(marketingKpis.spend || 0), marketingSubtext, marketingFreshness?.stale ? "risk" : (marketingReady ? "good" : "neutral")),
     flowCard("#retention", "Retention", pct(r.retention_pct || 0), "Day-1 returning users", Number(r.retention_pct || 0) >= 8 ? "good" : "risk"),
     flowCard("#engagement", "Engagement", `${e.avg_minutes_per_user || 0}m`, `${number(e.sessions)} sessions`),
-    flowCard("#coverage", "Data Quality", `${number(availableMetrics)}/${number(coverageRows.length)}`, "metric families ready"),
-  ].join("");
+  ];
+  if (!EXEC_MODE) {
+    flowCards.push(
+      flowCard("#marketing", "Marketing", money(marketingKpis.spend || 0), marketingSubtext, marketingFreshness?.stale ? "risk" : (marketingReady ? "good" : "neutral")),
+      flowCard("#coverage", "Data Quality", `${number(availableMetrics)}/${number(coverageRows.length)}`, "metric families ready"),
+    );
+  }
+  document.getElementById("businessFlow").innerHTML = flowCards.join("");
 }
 
 function renderOverview(data) {
@@ -1451,12 +1461,23 @@ function renderOverview(data) {
   const bestFamilyGrowth = Number(bestFamily.revenue_growth_vs_prior_7_pct || 0);
   const bestFamilyLabel = bestFamilyGrowth > 0 ? "Growing Stream" : "Least Decline";
   const paymentGap = Number(a.new_user_to_followup_pct || 0) - Number(a.new_user_to_payment_pct || 0);
-  document.getElementById("decisionInsights").innerHTML = [
+  const subRet = data.monetization?.subscription_retention?.point_in_time || {};
+  const churnRisk = Number(subRet.churn_risk_pct ?? 0);
+  const insights = [
     insightCard("Revenue Momentum", `${trend(g7.revenue)} vs prior`, `${money(m.revenue)} total revenue`, Number(g7.revenue || 0) >= 0 ? "good" : "risk"),
-    insightCard(bestFamilyLabel, bestFamily.family_label || familyLabel(bestFamily.family), `${trend(bestFamily.revenue_growth_vs_prior_7_pct)} revenue growth | ${money(bestFamily.revenue)}`, bestFamilyGrowth > 0 ? "good" : "risk"),
+  ];
+  if (subRet.active_paid_subscriptions) {
+    insights.push(insightCard("Subscriber Churn Risk", pct(churnRisk),
+      `${number(subRet.cancel_scheduled_users)} of ${number(subRet.active_paid_subscriptions)} active set to cancel`,
+      churnRisk >= 10 ? "risk" : "good"));
+  } else {
+    insights.push(insightCard(bestFamilyLabel, bestFamily.family_label || familyLabel(bestFamily.family), `${trend(bestFamily.revenue_growth_vs_prior_7_pct)} revenue growth | ${money(bestFamily.revenue)}`, bestFamilyGrowth > 0 ? "good" : "risk"));
+  }
+  insights.push(
     insightCard("Watch Area", weakestFamily.family_label || familyLabel(weakestFamily.family), `${trend(weakestFamily.revenue_growth_vs_prior_7_pct)} revenue growth | ${number(weakestFamily.payers)} payers`, Number(weakestFamily.revenue_growth_vs_prior_7_pct || 0) < 0 ? "risk" : "neutral"),
-    insightCard("Conversion Gap", `${paymentGap.toFixed(1)} pts`, `${pct(a.new_user_to_followup_pct)} follow-up vs ${pct(a.new_user_to_payment_pct)} payment`, paymentGap > 30 ? "risk" : "neutral"),
-  ].join("");
+    insightCard("New User → Paid Gap", `${paymentGap.toFixed(1)} pts`, `${pct(a.new_user_to_followup_pct)} follow-up vs ${pct(a.new_user_to_payment_pct)} payment`, paymentGap > 30 ? "risk" : "neutral"),
+  );
+  document.getElementById("decisionInsights").innerHTML = insights.join("");
 }
 
 function renderMonetization(data) {
@@ -3588,9 +3609,10 @@ function renderSubscriptionRetention(data) {
 }
 
 const ASK_EXAMPLES = [
-  "How many new users signed up each day in the last 7 days?",
-  "Total subscription revenue in the last 30 days by plan code",
-  "Count of active subscriptions scheduled to cancel at period end",
+  "Subscription revenue and active paid subscribers, this month vs last month",
+  "How many active subscribers are scheduled to cancel, by plan?",
+  "Daily new users and how many converted to a paid plan, last 14 days",
+  "Top 10 plans by revenue in the last 30 days",
 ];
 
 function setupQueryAssistant() {
@@ -3730,6 +3752,37 @@ function setupAutoRefresh() {
   }, DATA_REFRESH_INTERVAL_MS);
 }
 
+function applyExecMode() {
+  document.body.classList.toggle("is-exec", EXEC_MODE);
+  const btn = document.getElementById("detailToggle");
+  if (btn) {
+    btn.textContent = EXEC_MODE ? "Executive view" : "Full detail";
+    btn.setAttribute("aria-pressed", EXEC_MODE ? "true" : "false");
+  }
+  if (EXEC_MODE) {
+    // If a hidden (detail-only) tab was active, fall back to the first visible tab.
+    document.querySelectorAll(".section-tabs").forEach((group) => {
+      const active = group.querySelector("button.active");
+      if (active && active.hasAttribute("data-detail")) {
+        const visible = group.querySelector("button:not([data-detail])");
+        if (visible) visible.click();
+      }
+    });
+  }
+}
+
+function setupDetailToggle() {
+  const btn = document.getElementById("detailToggle");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    EXEC_MODE = !EXEC_MODE;
+    localStorage.setItem("hiastro-dashboard-view", EXEC_MODE ? "exec" : "full");
+    applyExecMode();
+    renderDashboard();
+    resizeVisibleCharts();
+  });
+}
+
 async function main() {
   try {
     const response = await fetch(`data/dashboard_data.json?ts=${Date.now()}`, { cache: "no-store" });
@@ -3745,6 +3798,8 @@ async function main() {
     setupDrilldowns();
     setupSectionNav();
     setupQueryAssistant();
+    setupDetailToggle();
+    applyExecMode();
     renderDashboard();
     setupAutoRefresh();
   } catch (error) {

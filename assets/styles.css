@@ -244,6 +244,36 @@ body[data-theme="day"] .theme-toggle {
   border-color: var(--line);
 }
 
+.view-toggle {
+  appearance: none;
+  min-width: 110px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+body[data-theme="day"] .view-toggle {
+  color: var(--ink);
+  background: #ffffff;
+  border-color: var(--line);
+}
+
+body.is-exec .view-toggle {
+  color: #ffffff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+body.is-exec [data-detail] {
+  display: none !important;
+}
+
 .download-controls {
   display: inline-flex;
   align-items: center;

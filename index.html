@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HiAstro Business Dashboard</title>
-    <link rel="stylesheet" href="assets/styles.css?v=20260616-exec3" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260616-exec4" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -18,6 +18,7 @@
           <button type="button" data-period="daily">Daily</button>
           <button type="button" data-period="weekly">Weekly</button>
         </div>
+        <button type="button" class="view-toggle" id="detailToggle" aria-pressed="false" aria-label="Toggle executive or full-detail view">Executive view</button>
         <button type="button" class="theme-toggle" id="themeToggle" aria-label="Switch dashboard theme">Night</button>
         <div class="download-controls" id="dayDownloadControls" aria-label="Download daily data"></div>
         <div class="freshness" id="freshness" role="status" aria-live="polite">Loading data...</div>
@@ -28,10 +29,10 @@
       <a href="#ask">Ask Data</a>
       <a href="#monetization">Monetization</a>
       <a href="#acquisition">Acquisition</a>
-      <a href="#marketing">Marketing</a>
+      <a href="#marketing" data-detail>Marketing</a>
       <a href="#retention">Retention</a>
       <a href="#engagement">Engagement</a>
-      <a href="#coverage">Data Quality</a>
+      <a href="#coverage" data-detail>Data Quality</a>
     </nav>
 
     <main>
@@ -86,12 +87,12 @@
           <button type="button" data-tab-target="monetization-subscription">Subscription</button>
           <button type="button" data-tab-target="monetization-renewal">Renewal</button>
           <button type="button" data-tab-target="monetization-retention">Sub Retention</button>
-          <button type="button" data-tab-target="monetization-payg">PayG</button>
-          <button type="button" data-tab-target="monetization-payments">Payments</button>
-          <button type="button" data-tab-target="monetization-packs">Pack Comparison</button>
-          <button type="button" data-tab-target="monetization-funnels">Funnels</button>
-          <button type="button" data-tab-target="monetization-funnel-graphs">Funnel Graphs</button>
-          <button type="button" data-tab-target="monetization-diagnostics">Segments</button>
+          <button type="button" data-detail data-tab-target="monetization-payg">PayG</button>
+          <button type="button" data-detail data-tab-target="monetization-payments">Payments</button>
+          <button type="button" data-detail data-tab-target="monetization-packs">Pack Comparison</button>
+          <button type="button" data-detail data-tab-target="monetization-funnels">Funnels</button>
+          <button type="button" data-detail data-tab-target="monetization-funnel-graphs">Funnel Graphs</button>
+          <button type="button" data-detail data-tab-target="monetization-diagnostics">Segments</button>
         </div>
         <div class="tab-panel active" id="monetization-streams">
           <div class="split-heading">
@@ -499,8 +500,8 @@
         <div class="kpi-grid compact" id="acquisitionCards"></div>
         <div class="section-tabs" data-tab-group="acquisition">
           <button type="button" class="active" data-tab-target="acquisition-overview">Overview</button>
-          <button type="button" data-tab-target="acquisition-segments">Segments</button>
-          <button type="button" data-tab-target="acquisition-followup">Follow-up Query</button>
+          <button type="button" data-detail data-tab-target="acquisition-segments">Segments</button>
+          <button type="button" data-detail data-tab-target="acquisition-followup">Follow-up Query</button>
         </div>
         <div class="tab-panel active" id="acquisition-overview">
           <div class="funnel-strip" id="acquisitionFunnelStrip"></div>
@@ -569,7 +570,7 @@
         </div>
       </section>
 
-      <section class="band" id="marketing">
+      <section class="band" id="marketing" data-detail>
         <div class="section-heading">
           <div>
             <p class="eyebrow">Spend, CAC, ROAS, Payback</p>
@@ -631,7 +632,7 @@
         </div>
         <div class="section-tabs" data-tab-group="retention">
           <button type="button" class="active" data-tab-target="retention-cohort">Cohort</button>
-          <button type="button" data-tab-target="retention-bots">Bots</button>
+          <button type="button" data-detail data-tab-target="retention-bots">Bots</button>
         </div>
         <div class="tab-panel active" id="retention-cohort">
           <div class="grid two">
@@ -688,7 +689,7 @@
         <div class="section-tabs" data-tab-group="engagement">
           <button type="button" class="active" data-tab-target="engagement-sessions">Sessions</button>
           <button type="button" data-tab-target="engagement-stickiness">Stickiness</button>
-          <button type="button" data-tab-target="engagement-notifications">Notifications</button>
+          <button type="button" data-detail data-tab-target="engagement-notifications">Notifications</button>
         </div>
         <div class="tab-panel active" id="engagement-sessions">
           <div class="grid two">
@@ -775,7 +776,7 @@
         </div>
       </section>
 
-      <section class="band" id="coverage">
+      <section class="band" id="coverage" data-detail>
         <div class="section-heading">
           <div>
             <p class="eyebrow">Confidence and Readiness</p>
@@ -816,7 +817,7 @@
       <div class="drilldown-body" id="drilldownBody"></div>
     </aside>
 
-    <script src="assets/config.js?v=20260616-exec3"></script>
-    <script src="assets/app.js?v=20260616-exec3"></script>
+    <script src="assets/config.js?v=20260616-exec4"></script>
+    <script src="assets/app.js?v=20260616-exec4"></script>
   </body>
 </html>
