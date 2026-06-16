@@ -3504,10 +3504,11 @@ function renderSevenDayTrends(data) {
   if (!container) return;
   const weekly = DASHBOARD_DATA.periods?.weekly || data;
   const m = weekly.monetization || {};
+  const g7 = m.kpis?.growth_vs_prior_7 || {};
   const cards = [
-    { key: "rev", label: "Revenue", series: dailySeries(m.daily, "day", "revenue"), format: money, color: COLORS.blue },
+    { key: "rev", label: "Revenue", series: dailySeries(m.daily, "day", "revenue"), format: money, color: COLORS.blue, delta: g7.revenue },
     { key: "users", label: "New Users", series: dailySeries(weekly.acquisition?.daily, "signup_date", "new_users"), format: number, color: COLORS.teal },
-    { key: "subs", label: "Subscribers", series: subscribersDailySeries(m), format: number, color: COLORS.gold },
+    { key: "subs", label: "New Subscribers", series: subscribersDailySeries(m), format: number, color: COLORS.gold },
     { key: "sessions", label: "Sessions", series: dailySeries(weekly.engagement?.session_daily, "date", "sessions"), format: number, color: COLORS.rose },
   ].filter((card) => card.series.length);
 
@@ -3519,16 +3520,17 @@ function renderSevenDayTrends(data) {
   container.innerHTML = cards
     .map((card) => {
       const values = card.series.map((point) => point.value);
-      const latest = values[values.length - 1] || 0;
-      const first = values[0] || 0;
-      const delta = first ? ((latest - first) / first) * 100 : null;
+      const total = values.reduce((sum, value) => sum + value, 0);
+      const avg = values.length ? total / values.length : 0;
+      const hasDelta = Number.isFinite(Number(card.delta));
       return `
         <article class="trend-card" ${drilldownAttrs(card.label)}>
           <div class="trend-head">
             <span class="trend-card-label">${escapeHtml(card.label)}</span>
-            ${delta === null ? "" : trend(delta)}
+            ${hasDelta ? trend(card.delta) : ""}
           </div>
-          <div class="trend-card-value">${card.format(latest)}</div>
+          <div class="trend-card-value">${card.format(total)}</div>
+          <div class="trend-card-meta">7-day total · ${card.format(Math.round(avg))}/day</div>
           <div class="trend-spark"><canvas id="spark-${card.key}"></canvas></div>
         </article>
       `;
