@@ -63,7 +63,7 @@ This folder is ready to push as a static GitHub Pages site. Do not commit creden
 
 GitHub Pages can switch across dates already present in `data/dashboard_data.json`. The publishing setup now has two scheduled refresh paths:
 
-- Daily incremental refresh at **03:15 UTC / 08:45 IST** via `.github/workflows/refresh-data.yml`
+- Daily incremental refresh at **06:35 UTC / 12:05 IST** via `.github/workflows/refresh-data.yml`
 - Weekly full rebuild at **03:45 UTC / 09:15 IST Sunday** via `.github/workflows/refresh-full-rebuild.yml`
 
 The daily job keeps the dashboard date moving forward quickly. The weekly full rebuild refreshes the heavier historical slices and diagnostic sections.
@@ -85,7 +85,7 @@ Primary path:
 
 Backup path:
 
-- Codex cron automation `hiastro-dashboard-daily-refresh` runs locally at **09:15 IST**
+- Codex cron automation `hiastro-dashboard-daily-refresh` runs locally at **12:05 IST**
 - It checks freshness first, then runs `scripts/refresh_and_push.sh` only if the latest complete IST day is missing
 
 Manual refresh:
