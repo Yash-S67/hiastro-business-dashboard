@@ -21,5 +21,15 @@ services:
         sync: false
       - key: MIXPANEL_SERVICE_ACCOUNT_SECRET
         sync: false
+      # Enables the natural-language query box (NL -> read-only SQL via Claude).
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # Shared token gating /api/dashboard and /api/query. Set the same value in
+      # assets/config.js (window.HIASTRO_DASHBOARD_API_TOKEN) so the published site can call the API.
+      - key: DASHBOARD_API_TOKEN
+        sync: false
+      # Daily auto-refresh of dashboard_data.json while the service is running.
+      - key: DASHBOARD_AUTO_REFRESH
+        value: "1"
       - key: DASHBOARD_ALLOWED_ORIGIN
         value: https://yash-s67.github.io

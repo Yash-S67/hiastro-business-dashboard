@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HiAstro Business Dashboard</title>
-    <link rel="stylesheet" href="assets/styles.css?v=20260612-sidebar-offset-2" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260616-dynamic" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -25,6 +25,7 @@
     </header>
 
     <nav class="section-nav" aria-label="Dashboard sections">
+      <a href="#ask">Ask Data</a>
       <a href="#monetization">Monetization</a>
       <a href="#acquisition">Acquisition</a>
       <a href="#marketing">Marketing</a>
@@ -44,8 +45,32 @@
         </div>
         <div class="guide-grid" id="dashboardGuide"></div>
         <div class="workflow-strip" id="businessFlow"></div>
+        <div class="trend-section">
+          <p class="eyebrow">Rolling last 7 days</p>
+          <div class="trend-strip" id="sevenDayTrends"></div>
+        </div>
       </section>
       <section class="insight-strip" id="decisionInsights"></section>
+
+      <section class="band" id="ask">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Natural-language query</p>
+            <h2>Ask the Data</h2>
+          </div>
+          <p id="askNote">Ask a question in plain English. Claude writes a read-only SQL query, runs it, and shows the result.</p>
+        </div>
+        <div class="panel ask-panel">
+          <div class="ask-controls">
+            <textarea id="askInput" rows="2" placeholder="e.g. How many paid subscribers signed up in the last 7 days, by plan?"></textarea>
+            <button type="button" id="askRun">Run query</button>
+          </div>
+          <div class="ask-examples" id="askExamples"></div>
+          <div class="ask-status" id="askStatus"></div>
+          <div class="ask-sql" id="askSql"></div>
+          <div class="ask-result" id="askResult"></div>
+        </div>
+      </section>
 
       <section class="band" id="monetization">
         <div class="section-heading">
@@ -60,6 +85,7 @@
           <button type="button" class="active" data-tab-target="monetization-streams">Revenue Streams</button>
           <button type="button" data-tab-target="monetization-subscription">Subscription</button>
           <button type="button" data-tab-target="monetization-renewal">Renewal</button>
+          <button type="button" data-tab-target="monetization-retention">Sub Retention</button>
           <button type="button" data-tab-target="monetization-payg">PayG</button>
           <button type="button" data-tab-target="monetization-payments">Payments</button>
           <button type="button" data-tab-target="monetization-packs">Pack Comparison</button>
@@ -244,6 +270,24 @@
               <h3>Trial Cancel by Plan</h3>
               <div id="trialCancelPlanTable"></div>
             </div>
+          </div>
+        </div>
+        <div class="tab-panel" id="monetization-retention">
+          <div class="split-heading">
+            <div>
+              <p class="eyebrow">Who is staying subscribed</p>
+              <h3>Subscription Retention</h3>
+            </div>
+            <p>Two views: a point-in-time look at active subscribers who are not scheduled to cancel, and a realized first-month renewal cohort.</p>
+          </div>
+          <div class="kpi-grid compact" id="subRetentionCards"></div>
+          <div class="grid two">
+            <div class="panel"><canvas id="subRetentionSplitChart"></canvas></div>
+            <div class="panel"><canvas id="subRetentionCohortChart"></canvas></div>
+          </div>
+          <div class="panel">
+            <h3>First-Month Renewal Cohorts</h3>
+            <div id="subRetentionCohortTable"></div>
           </div>
         </div>
         <div class="tab-panel" id="monetization-payg">
@@ -772,7 +816,7 @@
       <div class="drilldown-body" id="drilldownBody"></div>
     </aside>
 
-    <script src="assets/config.js?v=20260612-sidebar-offset-2"></script>
-    <script src="assets/app.js?v=20260612-marketing-summary-sync"></script>
+    <script src="assets/config.js?v=20260616-dynamic"></script>
+    <script src="assets/app.js?v=20260616-dynamic"></script>
   </body>
 </html>

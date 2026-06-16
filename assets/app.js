@@ -55,7 +55,9 @@ function setupThemeToggle() {
 
 const CHARTS = {};
 const API_BASE_URL = String(window.HIASTRO_DASHBOARD_API_BASE_URL || "").replace(/\/$/, "");
-const SECTION_IDS = ["monetization", "acquisition", "marketing", "retention", "engagement", "coverage"];
+const API_TOKEN = String(window.HIASTRO_DASHBOARD_API_TOKEN || "");
+const SECTION_IDS = ["ask", "monetization", "acquisition", "marketing", "retention", "engagement", "coverage"];
+const DATA_REFRESH_INTERVAL_MS = 30 * 60 * 1000;
 let DASHBOARD_DATA = null;
 let SELECTED_PERIOD = "weekly";
 let SELECTED_DAY = null;
@@ -953,9 +955,15 @@ function apiUrl(path) {
   return `${API_BASE_URL}${path}`;
 }
 
+function apiFetch(path, options = {}) {
+  const headers = { ...(options.headers || {}) };
+  if (API_TOKEN) headers["X-Dashboard-Token"] = API_TOKEN;
+  return fetch(apiUrl(path), { cache: "no-store", ...options, headers });
+}
+
 async function fetchLiveStatus() {
   try {
-    const response = await fetch(apiUrl("/api/status"), { cache: "no-store" });
+    const response = await apiFetch("/api/status");
     if (!response.ok) return null;
     LIVE_API_STATUS = await response.json();
     return LIVE_API_STATUS;
@@ -1009,7 +1017,7 @@ async function ensureDailyPeriod(day) {
   }
   setDateStatus(`Loading ${shortDate(day)}...`);
   try {
-    const response = await fetch(apiUrl(`/api/dashboard?date=${encodeURIComponent(day)}`), { cache: "no-store" });
+    const response = await apiFetch(`/api/dashboard?date=${encodeURIComponent(day)}`);
     const payload = await response.json();
     if (!response.ok) {
       throw new Error(payload.error || "Live data fetch failed.");
@@ -3444,6 +3452,283 @@ function renderMetricCoverage(data) {
   ], 20);
 }
 
+function dailySeries(rows, dayKey, valueKey, limit = 7) {
+  const map = {};
+  (rows || []).forEach((row) => {
+    const day = row[dayKey];
+    if (!day) return;
+    map[day] = (map[day] || 0) + Number(row[valueKey] || 0);
+  });
+  return Object.keys(map)
+    .sort()
+    .slice(-limit)
+    .map((day) => ({ day, value: map[day] }));
+}
+
+function subscribersDailySeries(monetization) {
+  const rows = monetization?.daily_pack_merged || monetization?.daily_pack || [];
+  const map = {};
+  rows.forEach((row) => {
+    if (row.family !== "subscription") return;
+    if (!row.day) return;
+    map[row.day] = (map[row.day] || 0) + Number(row.payers || row.transactions || 0);
+  });
+  return Object.keys(map)
+    .sort()
+    .slice(-7)
+    .map((day) => ({ day, value: map[day] }));
+}
+
+function renderSevenDayTrends(data) {
+  const container = document.getElementById("sevenDayTrends");
+  if (!container) return;
+  const weekly = DASHBOARD_DATA.periods?.weekly || data;
+  const m = weekly.monetization || {};
+  const cards = [
+    { key: "rev", label: "Revenue", series: dailySeries(m.daily, "day", "revenue"), format: money, color: COLORS.blue },
+    { key: "users", label: "New Users", series: dailySeries(weekly.acquisition?.daily, "signup_date", "new_users"), format: number, color: COLORS.teal },
+    { key: "subs", label: "Subscribers", series: subscribersDailySeries(m), format: number, color: COLORS.gold },
+    { key: "sessions", label: "Sessions", series: dailySeries(weekly.engagement?.session_daily, "date", "sessions"), format: number, color: COLORS.rose },
+  ].filter((card) => card.series.length);
+
+  if (!cards.length) {
+    container.innerHTML = `<div class="kpi-sub">No daily history available.</div>`;
+    return;
+  }
+
+  container.innerHTML = cards
+    .map((card) => {
+      const values = card.series.map((point) => point.value);
+      const latest = values[values.length - 1] || 0;
+      const first = values[0] || 0;
+      const delta = first ? ((latest - first) / first) * 100 : null;
+      return `
+        <article class="trend-card" ${drilldownAttrs(card.label)}>
+          <div class="trend-head">
+            <span class="trend-card-label">${escapeHtml(card.label)}</span>
+            ${delta === null ? "" : trend(delta)}
+          </div>
+          <div class="trend-card-value">${card.format(latest)}</div>
+          <div class="trend-spark"><canvas id="spark-${card.key}"></canvas></div>
+        </article>
+      `;
+    })
+    .join("");
+
+  cards.forEach((card) => {
+    chart(`spark-${card.key}`, "line", {
+      labels: card.series.map((point) => shortDate(point.day)),
+      datasets: [{
+        data: card.series.map((point) => point.value),
+        borderColor: card.color,
+        backgroundColor: "transparent",
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.35,
+      }],
+    }, {
+      plugins: { legend: { display: false }, tooltip: { enabled: true } },
+      scales: { x: { display: false }, y: { display: false } },
+      elements: { point: { radius: 0 } },
+    });
+  });
+}
+
+function renderSubscriptionRetention(data) {
+  const cardsEl = document.getElementById("subRetentionCards");
+  if (!cardsEl) return;
+  const ret = data.monetization?.subscription_retention;
+  if (!ret) {
+    cardsEl.innerHTML = `<div class="kpi-sub">No subscription retention data in this window.</div>`;
+    return;
+  }
+  const pit = ret.point_in_time || {};
+  const cohort = ret.cohort_m1 || {};
+  cardsEl.innerHTML = [
+    card("Active Paid Subs", number(pit.active_paid_subscriptions), "Currently active paid subscribers"),
+    card("Retained (not cancelling)", number(pit.retained_subscribers), `${pct(pit.retention_pct)} of active`),
+    card("Churn Risk", number(pit.cancel_scheduled_users), `${pct(pit.churn_risk_pct)} scheduled to cancel`),
+    card("Revenue at Risk", money(pit.revenue_at_risk), "From scheduled cancels"),
+    card("M1 Renewed", number(cohort.renewed_users), `${pct(cohort.renewal_rate_pct)} renewal rate`),
+    card("M1 Churned", number(cohort.churned_users), `${pct(cohort.churn_rate_pct)} of matured cohort`),
+  ].join("");
+
+  chart("subRetentionSplitChart", "doughnut", {
+    labels: ["Retained", "Churn risk"],
+    datasets: [{
+      data: [Number(pit.retained_subscribers || 0), Number(pit.cancel_scheduled_users || 0)],
+      backgroundColor: [COLORS.green, COLORS.rose],
+    }],
+  }, { plugins: { title: { display: true, text: "Active subscribers: retained vs at risk" } } });
+
+  const cohorts = (ret.renewal_cohorts || []).filter((row) => row.matured !== false);
+  const cohortLabels = [...new Set(cohorts.map((row) => row.first_charge_week))].sort();
+  chart("subRetentionCohortChart", "bar", {
+    labels: cohortLabels.map((week) => String(week).slice(0, 10)),
+    datasets: [{
+      label: "Renewal rate %",
+      data: cohortLabels.map((week) => {
+        const rows = cohorts.filter((row) => row.first_charge_week === week);
+        const buyers = rows.reduce((sum, row) => sum + Number(row.main_buyers || 0), 0);
+        const renewed = rows.reduce((sum, row) => sum + Number(row.renewed_users || 0), 0);
+        return Number(safePercent(renewed, buyers).toFixed(2));
+      }),
+      backgroundColor: COLORS.blue,
+    }],
+  }, { plugins: { title: { display: true, text: "First-month renewal rate by cohort week" } } });
+
+  table("subRetentionCohortTable", cohorts, [
+    { key: "first_charge_week", label: "Cohort Week", text: true, format: (value) => String(value).slice(0, 10) },
+    { key: "plan_code", label: "Plan", text: true },
+    { key: "main_buyers", label: "Buyers", format: number },
+    { key: "renewed_users", label: "Renewed", format: number },
+    { key: "renewal_rate_pct", label: "Renewal %", format: pct },
+  ], 20);
+}
+
+const ASK_EXAMPLES = [
+  "How many new users signed up each day in the last 7 days?",
+  "Total subscription revenue in the last 30 days by plan code",
+  "Count of active subscriptions scheduled to cancel at period end",
+];
+
+function setupQueryAssistant() {
+  const input = document.getElementById("askInput");
+  const runButton = document.getElementById("askRun");
+  const note = document.getElementById("askNote");
+  const examples = document.getElementById("askExamples");
+  if (!input || !runButton) return;
+
+  const enabled = Boolean(LIVE_API_STATUS?.query_enabled);
+  if (!enabled) {
+    runButton.disabled = true;
+    input.disabled = true;
+    if (note) {
+      note.textContent = LIVE_API_STATUS
+        ? "Custom query needs ANTHROPIC_API_KEY set on the dashboard API service. Connect the API service to enable it."
+        : "Custom query needs the live dashboard API service. Run scripts/serve_dashboard.py locally or deploy render.yaml, then set the API base URL in assets/config.js.";
+    }
+    return;
+  }
+
+  if (examples) {
+    examples.innerHTML = ASK_EXAMPLES
+      .map((text) => `<button type="button" class="ask-example">${escapeHtml(text)}</button>`)
+      .join("");
+    examples.querySelectorAll(".ask-example").forEach((button) => {
+      button.addEventListener("click", () => {
+        input.value = button.textContent;
+        input.focus();
+      });
+    });
+  }
+
+  const run = () => runQueryAssistant(input.value);
+  runButton.addEventListener("click", run);
+  input.addEventListener("keydown", (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") run();
+  });
+}
+
+async function runQueryAssistant(question) {
+  const status = document.getElementById("askStatus");
+  const sqlEl = document.getElementById("askSql");
+  const resultEl = document.getElementById("askResult");
+  const runButton = document.getElementById("askRun");
+  if (!status) return;
+  if (!question || !question.trim()) {
+    status.innerHTML = `<span class="ask-error">Ask a question first.</span>`;
+    return;
+  }
+  status.innerHTML = `<span class="ask-loading">Generating query and running it…</span>`;
+  sqlEl.innerHTML = "";
+  resultEl.innerHTML = "";
+  if (runButton) runButton.disabled = true;
+  try {
+    const response = await apiFetch("/api/query", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: question.trim() }),
+    });
+    const payload = await response.json();
+    renderQueryResult(payload);
+  } catch (error) {
+    status.innerHTML = `<span class="ask-error">Could not reach the query service: ${escapeHtml(error.message)}</span>`;
+  } finally {
+    if (runButton) runButton.disabled = false;
+  }
+}
+
+function renderQueryResult(payload) {
+  const status = document.getElementById("askStatus");
+  const sqlEl = document.getElementById("askSql");
+  const resultEl = document.getElementById("askResult");
+  status.innerHTML = "";
+  sqlEl.innerHTML = "";
+  resultEl.innerHTML = "";
+
+  if (!payload || payload.status === "error") {
+    status.innerHTML = `<span class="ask-error">${escapeHtml(payload?.error || "Query failed.")}</span>`;
+    if (payload?.sql) sqlEl.innerHTML = `<pre class="ask-code">${escapeHtml(payload.sql)}</pre>`;
+    return;
+  }
+  if (payload.status === "unanswerable") {
+    status.innerHTML = `<span class="ask-warn">${escapeHtml(payload.refusal_reason || payload.explanation || "This question cannot be answered from the available data.")}</span>`;
+    return;
+  }
+  if (payload.status === "rejected") {
+    status.innerHTML = `<span class="ask-error">Generated query was blocked for safety: ${escapeHtml(payload.error || "")}</span>`;
+    if (payload.sql) sqlEl.innerHTML = `<pre class="ask-code">${escapeHtml(payload.sql)}</pre>`;
+    return;
+  }
+
+  if (payload.explanation) status.innerHTML = `<span class="ask-ok">${escapeHtml(payload.explanation)}</span>`;
+  sqlEl.innerHTML = `<details class="ask-sql-details" open><summary>Generated SQL</summary><pre class="ask-code">${escapeHtml(payload.sql || "")}</pre></details>`;
+
+  const columns = payload.columns || [];
+  const rows = payload.rows || [];
+  if (!rows.length) {
+    resultEl.innerHTML = `<div class="kpi-sub">Query ran successfully but returned no rows.</div>`;
+    return;
+  }
+  const truncated = payload.truncated ? `<div class="kpi-sub">Showing first ${number(payload.max_rows)} rows.</div>` : "";
+  resultEl.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>${columns.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}</tr></thead>
+        <tbody>
+          ${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell === null || cell === undefined ? "" : cell)}</td>`).join("")}</tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+    ${truncated}
+  `;
+}
+
+async function reloadDashboardData() {
+  try {
+    const response = await fetch(`data/dashboard_data.json?ts=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) return false;
+    DASHBOARD_DATA = hideUnknownRows(await response.json());
+    renderDashboard();
+    resizeVisibleCharts();
+    return true;
+  } catch (_error) {
+    return false;
+  }
+}
+
+function setupAutoRefresh() {
+  if (!LIVE_API_STATUS) return; // only when connected to the live API service
+  window.setInterval(async () => {
+    const previous = LIVE_API_STATUS?.dashboard_latest_day;
+    const status = await fetchLiveStatus();
+    if (status?.dashboard_latest_day && status.dashboard_latest_day !== previous) {
+      await reloadDashboardData();
+    }
+  }, DATA_REFRESH_INTERVAL_MS);
+}
+
 async function main() {
   try {
     const response = await fetch(`data/dashboard_data.json?ts=${Date.now()}`, { cache: "no-store" });
@@ -3458,7 +3743,9 @@ async function main() {
     setupTabs();
     setupDrilldowns();
     setupSectionNav();
+    setupQueryAssistant();
     renderDashboard();
+    setupAutoRefresh();
   } catch (error) {
     document.getElementById("freshness").textContent = "Could not load dashboard data.";
     document.body.insertAdjacentHTML("afterbegin", `<div class="panel" style="margin:16px">Data load failed: ${escapeHtml(error.message)}</div>`);
@@ -4092,10 +4379,14 @@ function renderDashboard() {
   const generatedAt = rootMeta.generated_at_ist
     ? new Date(rootMeta.generated_at_ist).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
     : "";
-  document.getElementById("freshness").textContent = generatedAt ? `Updated ${generatedAt} IST` : "Updated today";
+  const freshnessText = generatedAt ? `Updated ${generatedAt} IST` : "Updated today";
+  const liveBadge = LIVE_API_STATUS?.auto_refresh ? ` · Live` : (LIVE_API_STATUS ? " · Live API" : "");
+  document.getElementById("freshness").textContent = `${freshnessText}${liveBadge}`;
   renderDashboardGuide(data);
+  renderSevenDayTrends(data);
   renderOverview(data);
   renderMonetization(data);
+  renderSubscriptionRetention(data);
   renderAcquisition(data);
   renderMarketing(data);
   renderRetention(data);

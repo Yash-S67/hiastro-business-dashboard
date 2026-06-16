@@ -113,3 +113,48 @@ MIXPANEL_PROJECT_ID
 MIXPANEL_SERVICE_ACCOUNT_USERNAME
 MIXPANEL_SERVICE_ACCOUNT_SECRET
 ```
+
+For the hosted API service (`render.yaml`), also set:
+
+```text
+ANTHROPIC_API_KEY      # enables the natural-language query box
+DASHBOARD_API_TOKEN    # shared token gating /api/dashboard and /api/query
+```
+
+## Ask the Data (natural-language query)
+
+The **Ask the Data** section turns a plain-English question into a read-only SQL
+query. Claude (`claude-opus-4-8`) writes a single `SELECT` against the live MySQL
+schema; the server validates it (SELECT-only, single statement, comments and
+string literals stripped before keyword checks, row + time capped) and runs it
+inside a `READ ONLY` transaction, so the database itself refuses any write even
+if validation were bypassed. Generated SQL and results are shown in the browser;
+raw credentials are never returned.
+
+This requires the live API service:
+
+- Local: run `scripts/serve_dashboard.py` with `ANTHROPIC_API_KEY` in the parent `.env`.
+- Hosted: deploy `render.yaml`, set `ANTHROPIC_API_KEY`, set `DASHBOARD_API_TOKEN`,
+  and put the same token in `assets/config.js` as `window.HIASTRO_DASHBOARD_API_TOKEN`.
+
+`POST /api/query` with `{"question": "..."}` returns `{status, sql, columns, rows, ...}`.
+Tunables (env): `DASHBOARD_QUERY_MODEL`, `DASHBOARD_QUERY_MAX_ROWS` (default 200),
+`DASHBOARD_QUERY_TIMEOUT_MS` (default 15000).
+
+## Live auto-refresh
+
+When the API service is running it refreshes `data/dashboard_data.json` daily on
+its own: a background thread checks whether the latest complete IST day is
+present and rebuilds if not (interval `DASHBOARD_AUTO_REFRESH_INTERVAL_S`,
+default 1800s; disable with `DASHBOARD_AUTO_REFRESH=0`). The front-end polls
+`/api/status` every 30 minutes and reloads the data when a newer day appears,
+showing a **Live** badge next to the freshness stamp.
+
+## Subscription retention and 7-day trends
+
+The Monetization → **Sub Retention** tab answers "how many subscribers are
+staying (not cancelling)" two ways: a point-in-time view (active paid
+subscribers not marked `cancel_at_period_end` / `CANCELED_PLAN`, with churn-risk
+and revenue-at-risk) and a realized first-month renewal cohort. The Executive
+Summary also shows a rolling last-7-days sparkline trend for revenue, new users,
+subscribers, and sessions.

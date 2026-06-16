@@ -1431,10 +1431,60 @@ def build_monetization(
         "user_revenue_current": records(user_revenue),
         "user_family_revenue_current": records(user_family_revenue),
         "subscription_renewal": renewal,
+        "subscription_retention": build_subscription_retention(renewal, subscription_lifecycle_depth),
         **subscription_sheet_metrics,
         **payment_funnel,
         **subscription_lifecycle_depth,
         **plan_usage_and_risk,
+    }
+
+
+def build_subscription_retention(renewal: dict[str, Any], lifecycle_depth: dict[str, Any]) -> dict[str, Any]:
+    """Surface subscription retention two ways, derived from already-computed data.
+
+    1. Point-in-time: of currently active paid subscribers, how many are NOT
+       scheduled to cancel (cancel_at_period_end / CANCELED_PLAN).
+    2. Cohort (M1 realized): of subscribers whose first paid period has matured,
+       how many actually renewed vs churned.
+    """
+    renewal_kpis = renewal.get("kpis", {}) or {}
+    active = int(renewal_kpis.get("active_paid_subscriptions", 0) or 0)
+    at_risk = int(renewal_kpis.get("cancel_scheduled_users", 0) or 0)
+    retained = max(active - at_risk, 0)
+    revenue_at_risk = float(renewal_kpis.get("cancel_scheduled_revenue", 0) or 0)
+
+    realized = lifecycle_depth.get("renewal_realized", {}) or {}
+    matured = int(realized.get("matured_main_buyers", 0) or 0)
+    renewed = int(realized.get("renewed_users", 0) or 0)
+    churned = max(matured - renewed, 0)
+    m1_renewal_rate_pct = realized.get("m1_renewal_rate_pct")
+    m1_churn_rate_pct = (
+        round(100 - m1_renewal_rate_pct, 2) if isinstance(m1_renewal_rate_pct, (int, float)) else None
+    )
+
+    return {
+        "point_in_time": {
+            "active_paid_subscriptions": active,
+            "retained_subscribers": retained,
+            "cancel_scheduled_users": at_risk,
+            "retention_pct": safe_div(retained, active),
+            "churn_risk_pct": safe_div(at_risk, active),
+            "revenue_at_risk": round(revenue_at_risk, 2),
+        },
+        "cohort_m1": {
+            "matured_main_buyers": matured,
+            "renewed_users": renewed,
+            "churned_users": churned,
+            "renewal_rate_pct": m1_renewal_rate_pct,
+            "churn_rate_pct": m1_churn_rate_pct,
+            "matured": bool(realized.get("matured", False)),
+        },
+        "renewal_cohorts": lifecycle_depth.get("renewal_cohorts", []),
+        "notes": [
+            "Point-in-time retention = active paid subscribers not marked cancel_at_period_end or CANCELED_PLAN, divided by all active paid subscribers.",
+            "Cohort M1 retention = subscribers whose first paid period matured (>=25 days ago) that recorded a second charge 25-45 days after the first.",
+            "Churn risk is forward-looking (scheduled cancels); cohort churn is realized (did not renew).",
+        ],
     }
 
 

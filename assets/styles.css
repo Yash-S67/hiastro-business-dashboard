@@ -1485,7 +1485,168 @@ body.drilldown-open {
   .funnel-strip,
   .funnel-strip-wide,
   .workflow-strip,
-  .stream-grid {
+  .stream-grid,
+  .trend-strip {
     grid-template-columns: 1fr;
   }
+
+  .ask-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* ---- Rolling 7-day trend strip ---- */
+.trend-section {
+  margin-top: 18px;
+}
+
+.trend-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.trend-card {
+  background: linear-gradient(180deg, var(--surface), var(--surface-soft));
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease;
+}
+
+.trend-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--teal);
+}
+
+.trend-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.trend-card-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.trend-card-value {
+  font-size: 20px;
+  font-weight: 760;
+  margin: 4px 0 2px;
+}
+
+.trend-spark {
+  height: 44px;
+}
+
+.trend-spark canvas {
+  width: 100% !important;
+  height: 44px !important;
+}
+
+/* ---- Ask the Data (NL query) ---- */
+.ask-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ask-controls {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+#askInput {
+  flex: 1;
+  resize: vertical;
+  min-height: 46px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+}
+
+#askInput:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#askRun {
+  appearance: none;
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 22px;
+  font-weight: 700;
+  color: #03141b;
+  background: linear-gradient(135deg, var(--teal), var(--blue));
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#askRun:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ask-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ask-example {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+  color: var(--slate);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ask-example:hover {
+  border-color: var(--teal);
+  color: var(--ink);
+}
+
+.ask-status {
+  font-size: 13px;
+  min-height: 18px;
+}
+
+.ask-ok { color: var(--green); }
+.ask-warn { color: var(--gold); }
+.ask-error { color: var(--rose); }
+.ask-loading { color: var(--muted); }
+
+.ask-code {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line-soft);
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+
+.ask-sql-details summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
 }
