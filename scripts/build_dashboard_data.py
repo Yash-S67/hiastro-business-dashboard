@@ -1409,8 +1409,11 @@ def build_monetization(
         "daily_summary": records(daily_summary),
         "daily_user_cohort": records(daily_user_cohort),
         "daily_family_user_cohort": records(daily_family_user_cohort),
-        "daily_pack": records(daily_pack.head(80)),
-        "daily_pack_merged": records(daily_pack_merged.head(80)),
+        # Keep the full window: these are sorted by day ascending, so a small
+        # head() silently drops the most recent days once the window has many
+        # plans/packs. The window is bounded (<=7 days), so the cap is generous.
+        "daily_pack": records(daily_pack.head(1000)),
+        "daily_pack_merged": records(daily_pack_merged.head(1000)),
         "amount_breakdown": records(amount_breakdown.head(40)),
         "payg_merged": records(payg_merged.head(1)),
         "payg_amount_breakdown": records(payg_amount_breakdown.head(30)),
