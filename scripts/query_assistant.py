@@ -170,12 +170,12 @@ def run_select(sql: str) -> dict[str, Any]:
     """Execute a validated SELECT inside a READ ONLY transaction and return capped rows."""
     engine = _engine()
     with engine.connect() as conn:
-        conn.execute(text("SET SESSION TRANSACTION READ ONLY"))
+        setup_conn = conn.execution_options(isolation_level="AUTOCOMMIT")
         try:
-            conn.execute(text(f"SET SESSION MAX_EXECUTION_TIME={MAX_EXECUTION_MS}"))
+            setup_conn.execute(text(f"SET SESSION MAX_EXECUTION_TIME={MAX_EXECUTION_MS}"))
         except Exception:
             pass  # MAX_EXECUTION_TIME is MySQL 5.7+; validation + READ ONLY still protect us.
-        trans = conn.begin()
+        setup_conn.execute(text("START TRANSACTION READ ONLY"))
         try:
             result = conn.execute(text(sql))
             columns = list(result.keys())
@@ -183,7 +183,10 @@ def run_select(sql: str) -> dict[str, Any]:
             for raw in result.fetchmany(MAX_ROWS):
                 rows.append([clean_value(value) for value in raw])
         finally:
-            trans.rollback()
+            try:
+                setup_conn.execute(text("ROLLBACK"))
+            except Exception:
+                pass
     return {"columns": columns, "rows": rows, "row_count": len(rows), "truncated": len(rows) >= MAX_ROWS}
 
 
