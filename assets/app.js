@@ -4153,6 +4153,34 @@ function subscriptionDetail(data) {
   `;
 }
 
+function subscriptionRetentionDetail(data) {
+  const ret = data.monetization?.subscription_retention || {};
+  const pit = ret.point_in_time || {};
+  const cohort = ret.cohort_m1 || {};
+  const cohorts = (ret.renewal_cohorts || []).filter((row) => row.matured !== false);
+  if (!pit.active_paid_subscriptions && !cohort.matured_main_buyers) {
+    return detailNote("Subscription retention", "No subscription retention data is available for the selected period.");
+  }
+  return `
+    ${detailMetrics([
+      detailMetric("Active Paid Subs", number(pit.active_paid_subscriptions), "Currently active paid subscribers"),
+      detailMetric("Retained (not cancelling)", number(pit.retained_subscribers), `${pct(pit.retention_pct)} of active`),
+      detailMetric("Churn Risk", number(pit.cancel_scheduled_users), `${pct(pit.churn_risk_pct)} scheduled to cancel`),
+      detailMetric("Revenue at Risk", money(pit.revenue_at_risk), "From scheduled cancels"),
+      detailMetric("M1 Renewal Rate", pct(cohort.renewal_rate_pct), `${number(cohort.renewed_users)} of ${number(cohort.matured_main_buyers)} matured`),
+      detailMetric("M1 Churned", number(cohort.churned_users), `${pct(cohort.churn_rate_pct)} of matured cohort`),
+    ])}
+    ${detailNote("How to read", "Point-in-time retention is the share of active paid subscribers not scheduled to cancel. First-month (M1) renewal is the realized rate at which subscribers whose first paid period matured recorded a second charge.")}
+    ${detailTable("First-Month Renewal Cohorts", cohorts, [
+      { key: "first_charge_week", label: "Cohort Week", text: true, format: (value) => String(value).slice(0, 10) },
+      { key: "plan_code", label: "Plan", text: true },
+      { key: "main_buyers", label: "Buyers", format: number },
+      { key: "renewed_users", label: "Renewed", format: number },
+      { key: "renewal_rate_pct", label: "Renewal %", format: pct },
+    ], 12)}
+  `;
+}
+
 function paygDetail(data) {
   const m = data.monetization || {};
   const payg = familyMetric(m, "pay_as_you_go");
@@ -4359,15 +4387,24 @@ function dataQualityDetail(data) {
 function drilldownHtmlFor(label) {
   const data = selectedData();
   const key = String(label || "").toLowerCase();
-  if (key.includes("subscription") || key.includes("rs 1") || key.includes("rs 49") || key.includes("trial") || key.includes("main")) return subscriptionDetail(data);
-  if (key.includes("payg") || key.includes("pay as")) return paygDetail(data);
-  if (key.includes("day pass")) return dayPassDetail(data);
-  if (key.includes("acquisition") || key.includes("new user") || key.includes("follow") || key.includes("conversion")) return acquisitionDetail(data);
-  if (key.includes("retention") || key.includes("repeat")) return retentionDetail(data);
-  if (key.includes("engagement") || key.includes("session") || key.includes("bim") || key.includes("time")) return engagementDetail(data);
-  if (key.includes("marketing") || key.includes("cac") || key.includes("roas") || key.includes("spend")) return marketingDetail(data);
-  if (key.includes("quality") || key.includes("coverage")) return dataQualityDetail(data);
-  if (key.includes("revenue") || key.includes("monetization") || key.includes("payer") || key.includes("transaction") || key.includes("stream") || key.includes("watch area") || key.includes("growing")) return monetizationDetail(data);
+  // Order matters: more specific concepts are checked before generic ones,
+  // because a label can contain several keywords (e.g. "Subscriber Retention"
+  // contains both "subscriber" and "retention").
+  const has = (...terms) => terms.some((term) => key.includes(term));
+
+  // Subscription retention / renewal / churn — distinct from cohort (D1) retention.
+  if (has("renewal", "churn", "retained", "at risk") || (has("retention") && has("subscriber", "subscription"))) {
+    return subscriptionRetentionDetail(data);
+  }
+  if (has("day pass")) return dayPassDetail(data);
+  if (has("payg", "pay as")) return paygDetail(data);
+  if (has("subscription", "subscriber", "rs 1", "rs 49", "trial", "main")) return subscriptionDetail(data);
+  if (has("marketing", "cac", "roas", "spend")) return marketingDetail(data);
+  if (has("new user", "acquisition", "follow", "conversion", "login")) return acquisitionDetail(data);
+  if (has("session", "engagement", "bim", "stickiness", "dau", "mau", "time", "active user", "minutes")) return engagementDetail(data);
+  if (has("retention", "repeat", "cohort")) return retentionDetail(data);
+  if (has("quality", "coverage")) return dataQualityDetail(data);
+  if (has("revenue", "monetization", "payer", "transaction", "stream", "watch area", "resilient", "growing", "arpu", "pack")) return monetizationDetail(data);
   return `
     ${detailNote("How to read this metric", "This card is part of the selected reporting period. Use the section tabs below the executive summary for the full chart view and supporting detail.")}
     ${monetizationDetail(data)}
