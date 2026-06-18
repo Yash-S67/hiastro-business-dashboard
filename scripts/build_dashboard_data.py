@@ -4638,7 +4638,7 @@ def main() -> None:
     latest_complete_day = today_ist - timedelta(days=1)
     current_end = latest_complete_day
     weekly_start = current_end - timedelta(days=6)
-    daily_history_days = max(3, min(31, int(env.get("DASHBOARD_DAILY_HISTORY_DAYS", "3"))))
+    daily_history_days = max(3, min(31, int(env.get("DASHBOARD_DAILY_HISTORY_DAYS", "7"))))
     daily_start = current_end - timedelta(days=daily_history_days - 1)
     full_rebuild = os.environ.get("DASHBOARD_FULL_REBUILD", "").lower() in {"1", "true", "yes"}
     period_ranges = {

@@ -1012,15 +1012,35 @@ function currentFunnelStageRows(configRows) {
   ];
 }
 
+function anchorSelectableDate() {
+  return LIVE_API_STATUS?.latest_complete_day
+    || DASHBOARD_DATA.metadata?.current_window?.end
+    || new Date().toISOString().slice(0, 10);
+}
+
+function lastNDays(n, anchor = anchorSelectableDate()) {
+  const out = [];
+  const base = new Date(`${anchor}T00:00:00`);
+  if (Number.isNaN(base.getTime())) return out;
+  for (let i = n - 1; i >= 0; i -= 1) {
+    const d = new Date(base);
+    d.setDate(base.getDate() - i);
+    out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+  }
+  return out;
+}
+
 function dashboardDateOptions() {
-  const dailyPeriods = DASHBOARD_DATA.metadata?.daily_periods || [];
-  if (dailyPeriods.length) return dailyPeriods.map((period) => period.date);
+  const preloaded = (DASHBOARD_DATA.metadata?.daily_periods || []).map((period) => period.date);
   const weekly = DASHBOARD_DATA.periods?.weekly;
-  const days = new Set();
-  (weekly?.monetization?.daily_summary || []).forEach((row) => days.add(row.day));
-  (weekly?.acquisition?.daily || []).forEach((row) => days.add(row.signup_date));
-  (weekly?.engagement?.session_daily || []).forEach((row) => days.add(row.date));
-  return [...days].filter(Boolean).sort();
+  const derived = new Set();
+  (weekly?.monetization?.daily_summary || []).forEach((row) => derived.add(row.day));
+  (weekly?.acquisition?.daily || []).forEach((row) => derived.add(row.signup_date));
+  (weekly?.engagement?.session_daily || []).forEach((row) => derived.add(row.date));
+  // Always offer the last 7 days (fetched on demand via the live API if not preloaded),
+  // plus any preloaded daily periods and days derivable from the weekly window.
+  const all = new Set([...lastNDays(7), ...preloaded, ...derived].filter(Boolean));
+  return [...all].sort();
 }
 
 function apiUrl(path) {
