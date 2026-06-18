@@ -1922,19 +1922,23 @@ function renderMonetization(data) {
   const renewalKpis = renewal.kpis || {};
   const dueDaily = renewal.due_daily || [];
   const dueByPlan = renewal.due_by_plan || [];
+  const realized = renewal.realized || {};
+  const realizedByPlan = realized.by_plan || [];
+  const hasRealized = realized.cycles_due > 0;
+  const renewalSuccessPct = renewalKpis.renewal_success_pct;
   const highestRiskPlan = topRows(dueByPlan, "renewal_revenue_at_risk", 1)[0] || {};
   document.getElementById("renewalCards").innerHTML = [
     card("Active Paid Subs", number(renewalKpis.active_paid_subscriptions), "Currently active paid plans"),
-    card("Trial Active", number(renewalKpis.trial_active_subscriptions), "Trial users that may convert"),
+    card("Renewal Success", hasRealized ? pct(renewalSuccessPct) : "Pending", hasRealized ? `${number(realized.cycles_renewed)} of ${number(realized.cycles_due)} matured cycles renewed` : "No matured cycles yet"),
+    card("Renewed Revenue", hasRealized ? money(realized.realized_renewal_revenue) : "-", hasRealized ? `${money(realized.avg_renewal_amount)} avg renewal charge` : "Realized renewal charges"),
+    card("Cycles Lapsed", hasRealized ? number(realized.cycles_lapsed) : "-", hasRealized ? `${pct(100 - Number(renewalSuccessPct || 0))} of matured cycles did not renew` : "Did not record a follow-on charge"),
     card("Renewal Due 7D", number(renewalKpis.renewal_due_next_7_days), `${money(renewalKpis.renewal_revenue_at_risk)} renewal revenue at risk`),
-    card("Autopay Ready", number(renewalKpis.autopay_ready_users), `${pct(renewalKpis.autopay_ready_pct)} of due renewals`),
     card("Cancel Scheduled", number(renewalKpis.cancel_scheduled_users), `${money(renewalKpis.cancel_scheduled_revenue)} upcoming due revenue at risk`),
-    card("Renewal Success", "Not tracked yet", "Needs recurring charge success/failure events"),
   ].join("");
   document.getElementById("renewalActionCards").innerHTML = [
-    actionCard("Expected 7D Renewal", money(renewalKpis.expected_renewal_revenue), `${number(renewalKpis.autopay_ready_users)} autopay-ready users`, Number(renewalKpis.expected_renewal_revenue || 0) > 0 ? "good" : "neutral"),
+    actionCard("Realized Renewal", hasRealized ? pct(renewalSuccessPct) : "Pending", hasRealized ? `Cycles charged ${shortDate(realized.window?.start)}–${shortDate(realized.window?.end)}` : "Waiting for cycles to mature", hasRealized ? (Number(renewalSuccessPct || 0) >= 50 ? "good" : "risk") : "neutral"),
+    actionCard("Autopay Ready (next 7d)", `${number(renewalKpis.autopay_ready_users)} users`, `${pct(renewalKpis.autopay_ready_pct)} of due | ${money(renewalKpis.expected_renewal_revenue)} expected`, Number(renewalKpis.expected_renewal_revenue || 0) > 0 ? "good" : "neutral"),
     actionCard("Highest Due Plan", highestRiskPlan.plan_code || "-", `${money(highestRiskPlan.renewal_revenue_at_risk)} | ${number(highestRiskPlan.due_users)} users`, "neutral"),
-    actionCard("Missing Event", "Autopay result", "Add renewal_success and renewal_failed events when recurring billing starts", "risk"),
   ].join("");
   chart("renewalDueChart", "line", {
     labels: dueDaily.map((row) => shortDate(row.renewal_due_date)),
@@ -1979,11 +1983,23 @@ function renderMonetization(data) {
   ], 12);
 
   chart("renewalRealizedChart", "bar", {
-    labels: ["Matured main buyers", "Renewed users"],
-    datasets: [{ label: "Users", data: [renewalRealized.matured_main_buyers || 0, renewalRealized.renewed_users || 0], backgroundColor: [COLORS.blue, COLORS.green] }],
+    labels: (realizedByPlan.slice(0, 8)).map((row) => row.plan_code),
+    datasets: [
+      { label: "Renewed", data: realizedByPlan.slice(0, 8).map((row) => row.cycles_renewed), backgroundColor: COLORS.green },
+      { label: "Lapsed", data: realizedByPlan.slice(0, 8).map((row) => row.cycles_lapsed), backgroundColor: COLORS.rose },
+    ],
   }, {
-    plugins: { title: { display: true, text: `Realized M1 Renewal: ${renewalRealized.matured ? pct(renewalRealized.m1_renewal_rate_pct) : "Not matured"}` }, legend: { display: false } },
+    plugins: { title: { display: true, text: `Realized Renewal by Plan${hasRealized ? ` — ${pct(renewalSuccessPct)} overall` : ""}` }, legend: { position: "bottom" } },
+    scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
   });
+  table("renewalRealizedTable", realizedByPlan, [
+    { key: "plan_code", label: "Plan", text: true },
+    { key: "cycles_due", label: "Matured Cycles", format: number },
+    { key: "cycles_renewed", label: "Renewed", format: number },
+    { key: "cycles_lapsed", label: "Lapsed", format: number },
+    { key: "renewal_success_pct", label: "Renewal %", format: pct },
+    { key: "realized_renewal_revenue", label: "Renewed Rev", format: money },
+  ], 12);
   chart("cancelDistributionChart", "bar", {
     labels: cancelDistribution.slice(0, 12).map((row) => `${row.bucket} | ${row.plan_code}`),
     datasets: [{ label: "Subscriptions", data: cancelDistribution.slice(0, 12).map((row) => row.subscriptions), backgroundColor: COLORS.rose }],

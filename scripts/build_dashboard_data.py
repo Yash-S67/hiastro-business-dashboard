@@ -1491,6 +1491,104 @@ def build_subscription_retention(renewal: dict[str, Any], lifecycle_depth: dict[
     }
 
 
+def build_realized_renewals(engine, end_day: date) -> dict[str, Any]:
+    """Realized subscription renewal from repeat charges.
+
+    A subscription charge is a "due cycle" once a full monthly renewal window has
+    elapsed (charge 45-75 days before end). It is "renewed" if the same
+    (user, plan) recorded a follow-on charge 25-45 days later. This gives an
+    actual renewal success rate without needing dedicated recurring-charge events.
+    """
+    # A monthly cycle is "due" once ~30 days have passed; anchor on charges 30-60
+    # days old so the first renewal window has had time to occur and be observed.
+    anchor_min = end_day - timedelta(days=60)
+    anchor_max = end_day - timedelta(days=30)
+    empty = {
+        "cycles_due": 0,
+        "cycles_renewed": 0,
+        "cycles_lapsed": 0,
+        "renewal_success_pct": None,
+        "realized_renewal_revenue": 0,
+        "avg_renewal_amount": 0,
+        "window": {"start": anchor_min.isoformat(), "end": anchor_max.isoformat()},
+        "by_plan": [],
+    }
+    charges = read_sql(
+        engine,
+        """
+        SELECT
+            LOWER(BIN_TO_UUID(sle.user_id)) AS user_id,
+            COALESCE(sp.code, 'Unmapped Plan') AS plan_code,
+            DATE(DATE_ADD(COALESCE(sle.event_created_at, sle.created_at, sle.charge_at, sle.current_start), INTERVAL 330 MINUTE)) AS charge_date,
+            ROUND(sle.charge_amount, 0) AS amount
+        FROM prod.subscription_lifecycle_events sle
+        LEFT JOIN prod.subscription_plans sp ON sle.plan_id = sp.id
+        WHERE COALESCE(sle.event_created_at, sle.created_at, sle.charge_at, sle.current_start) >= :start_utc
+          AND COALESCE(sle.event_created_at, sle.created_at, sle.charge_at, sle.current_start) < :end_utc
+          AND sle.revenue_recorded = 1
+          AND (sle.revenue_type = 'subscription_charged' OR sle.event_type = 'subscription.charged')
+          AND sle.charge_amount > 0
+        """,
+        {
+            "start_utc": utc_naive(local_midnight(end_day - timedelta(days=65))),
+            "end_utc": utc_naive(local_midnight(end_day + timedelta(days=1))),
+        },
+    )
+    if charges.empty:
+        return empty
+    charges["charge_date"] = pd.to_datetime(charges["charge_date"], errors="coerce").dt.date
+    charges = charges.dropna(subset=["charge_date"]).drop_duplicates(["user_id", "plan_code", "charge_date"])
+    if charges.empty:
+        return empty
+
+    # Self-join each charge to a later charge by the same (user, plan) to detect renewals.
+    pairs = charges.merge(charges, on=["user_id", "plan_code"], suffixes=("", "_next"))
+    pairs["gap"] = (pairs["charge_date_next"] - pairs["charge_date"]).apply(lambda value: value.days)
+    renew_pairs = pairs[(pairs["gap"] >= 25) & (pairs["gap"] <= 45)].copy()
+    renewal_amount = (
+        renew_pairs.sort_values("gap")
+        .drop_duplicates(["user_id", "plan_code", "charge_date"])
+        .set_index(["user_id", "plan_code", "charge_date"])["amount_next"]
+    )
+    renewed_anchor = set(renewal_amount.index)
+
+    # Anchors are charges 30-60 days old: a monthly renewal is due and observable.
+    anchors = charges[
+        (charges["charge_date"] <= anchor_max)
+        & (charges["charge_date"] >= anchor_min)
+    ].copy()
+    if anchors.empty:
+        return empty
+    anchors["renewed"] = anchors.apply(
+        lambda row: (row["user_id"], row["plan_code"], row["charge_date"]) in renewed_anchor, axis=1
+    )
+    anchors["renewal_amount"] = anchors.apply(
+        lambda row: float(renewal_amount.get((row["user_id"], row["plan_code"], row["charge_date"]), 0.0)), axis=1
+    )
+
+    cycles_due = int(len(anchors))
+    cycles_renewed = int(anchors["renewed"].sum())
+    realized_revenue = float(anchors.loc[anchors["renewed"], "renewal_amount"].sum())
+    by_plan = (
+        anchors.groupby("plan_code", as_index=False)
+        .agg(cycles_due=("renewed", "size"), cycles_renewed=("renewed", "sum"), realized_renewal_revenue=("renewal_amount", "sum"))
+        .sort_values("cycles_due", ascending=False)
+    )
+    by_plan["cycles_lapsed"] = by_plan["cycles_due"] - by_plan["cycles_renewed"]
+    by_plan["renewal_success_pct"] = (by_plan["cycles_renewed"] / by_plan["cycles_due"] * 100).round(2)
+
+    return {
+        "cycles_due": cycles_due,
+        "cycles_renewed": cycles_renewed,
+        "cycles_lapsed": cycles_due - cycles_renewed,
+        "renewal_success_pct": safe_div(cycles_renewed, cycles_due),
+        "realized_renewal_revenue": round(realized_revenue, 2),
+        "avg_renewal_amount": round(realized_revenue / cycles_renewed, 2) if cycles_renewed else 0,
+        "window": {"start": anchor_min.isoformat(), "end": anchor_max.isoformat()},
+        "by_plan": records(by_plan),
+    }
+
+
 def build_subscription_renewal(engine, ranges: dict[str, Any]) -> dict[str, Any]:
     due_start = ranges["current_end"] + timedelta(days=1)
     due_end = ranges["current_end"] + timedelta(days=7)
@@ -1527,6 +1625,7 @@ def build_subscription_renewal(engine, ranges: dict[str, Any]) -> dict[str, Any]
             "as_of_end_utc": utc_naive(local_midnight(ranges["current_end"] + timedelta(days=1))),
         },
     )
+    realized = build_realized_renewals(engine, ranges["current_end"])
     if subs.empty:
         return {
             "kpis": {
@@ -1539,8 +1638,12 @@ def build_subscription_renewal(engine, ranges: dict[str, Any]) -> dict[str, Any]
                 "expected_renewal_revenue": 0,
                 "cancel_scheduled_revenue": 0,
                 "autopay_ready_pct": 0,
-                "renewal_success_pct": None,
+                "renewal_success_pct": realized["renewal_success_pct"],
+                "cycles_due": realized["cycles_due"],
+                "cycles_renewed": realized["cycles_renewed"],
+                "realized_renewal_revenue": realized["realized_renewal_revenue"],
             },
+            "realized": realized,
             "due_daily": [],
             "due_by_plan": [],
             "status_breakdown": [],
@@ -1632,15 +1735,19 @@ def build_subscription_renewal(engine, ranges: dict[str, Any]) -> dict[str, Any]
             "expected_renewal_revenue": round(expected_renewal_revenue, 2),
             "cancel_scheduled_revenue": round(cancel_scheduled_revenue, 2),
             "autopay_ready_pct": safe_div(autopay_ready_users, due_users),
-            "renewal_success_pct": None,
+            "renewal_success_pct": realized["renewal_success_pct"],
+            "cycles_due": realized["cycles_due"],
+            "cycles_renewed": realized["cycles_renewed"],
+            "realized_renewal_revenue": realized["realized_renewal_revenue"],
         },
         "due_daily": records(due_daily),
         "due_by_plan": records(due_by_plan),
         "status_breakdown": records(status_breakdown),
+        "realized": realized,
         "notes": [
             "Renewal due is based on customer_subscriptions.current_period_ends_at.",
             "Autopay-ready excludes subscriptions already marked cancel_at_period_end or CANCELED_PLAN.",
-            "Autopay success/failure will need recurring charge events once renewals start.",
+            f"Realized renewal success = {realized['cycles_renewed']} of {realized['cycles_due']} matured monthly cycles recorded a follow-on charge 25-45 days later (cycles charged {realized['window']['start']} to {realized['window']['end']}).",
         ],
     }
 

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HiAstro Business Dashboard</title>
-    <link rel="stylesheet" href="assets/styles.css?v=20260617-drill" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260617-renewal" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -249,16 +249,22 @@
           </div>
           <div class="grid two">
             <div class="panel"><canvas id="renewalRealizedChart"></canvas></div>
-            <div class="panel"><canvas id="cancelDistributionChart"></canvas></div>
+            <div class="panel">
+              <h3>Realized Renewal by Plan</h3>
+              <div id="renewalRealizedTable"></div>
+            </div>
           </div>
           <div class="grid two">
-            <div class="panel">
-              <h3>Realized Renewal Cohorts</h3>
-              <div id="renewalCohortTable"></div>
-            </div>
+            <div class="panel"><canvas id="cancelDistributionChart"></canvas></div>
             <div class="panel">
               <h3>Cancel Timing</h3>
               <div id="cancelDistributionTable"></div>
+            </div>
+          </div>
+          <div class="grid two">
+            <div class="panel">
+              <h3>First-Month Renewal Cohorts</h3>
+              <div id="renewalCohortTable"></div>
             </div>
           </div>
           <div class="grid two">
@@ -816,7 +822,7 @@
       <div class="drilldown-body" id="drilldownBody"></div>
     </aside>
 
-    <script src="assets/config.js?v=20260617-drill"></script>
-    <script src="assets/app.js?v=20260617-drill"></script>
+    <script src="assets/config.js?v=20260617-renewal"></script>
+    <script src="assets/app.js?v=20260617-renewal"></script>
   </body>
 </html>
