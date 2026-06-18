@@ -61,6 +61,7 @@ const DATA_REFRESH_INTERVAL_MS = 30 * 60 * 1000;
 let DASHBOARD_DATA = null;
 let SELECTED_PERIOD = "weekly";
 let SELECTED_DAY = null;
+let PAYG_PLATFORM_FILTER = "all";
 let DATE_STATUS_MESSAGE = "";
 let LIVE_API_STATUS = null;
 let ACTIVE_SECTION = "monetization";
@@ -601,6 +602,77 @@ function familyMetric(monetization, familyId) {
   };
 }
 
+function normalizePaygPlatform(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (["android", "ios", "ipados", "app"].includes(raw)) return "app";
+  if (["nwebapp", "web", "webapp", "mobile_web", "desktop_web", "unknown", "unattributed", ""].includes(raw)) return "nwebapp";
+  return raw;
+}
+
+function paygPlatformDisplay(value) {
+  return value === "app" ? "App" : value === "nwebapp" ? "Nwebapp" : String(value || "Other").replaceAll("_", " ");
+}
+
+function paygPlatformRows(monetization) {
+  const sourceRows = (monetization.payer_segments_by_family || [])
+    .filter((row) => row.family === "pay_as_you_go" && row.segment === "platform");
+  const grouped = sourceRows.reduce((acc, row) => {
+    const key = normalizePaygPlatform(row.bucket);
+    if (!acc[key]) {
+      acc[key] = {
+        platform_group: key,
+        platform_label: paygPlatformDisplay(key),
+        revenue: 0,
+        payers: 0,
+        transactions: 0,
+      };
+    }
+    acc[key].revenue += Number(row.revenue || 0);
+    acc[key].payers += Number(row.payers || 0);
+    acc[key].transactions += Number(row.transactions || 0);
+    return acc;
+  }, {});
+  const rows = Object.values(grouped);
+  const totalRevenue = rows.reduce((sum, row) => sum + Number(row.revenue || 0), 0);
+  const totalPayers = rows.reduce((sum, row) => sum + Number(row.payers || 0), 0);
+  const totalTransactions = rows.reduce((sum, row) => sum + Number(row.transactions || 0), 0);
+  return rows
+    .map((row) => ({
+      ...row,
+      selection: `platform = ${row.platform_label}`,
+      avg_transaction: row.transactions ? Number(row.revenue || 0) / Number(row.transactions || 0) : 0,
+      avg_revenue_per_payer: row.payers ? Number(row.revenue || 0) / Number(row.payers || 0) : 0,
+      family_revenue_share_pct: safePercent(row.revenue, totalRevenue),
+      family_payer_share_pct: safePercent(row.payers, totalPayers),
+      family_transaction_share_pct: safePercent(row.transactions, totalTransactions),
+    }))
+    .sort((a, b) => Number(b.revenue || 0) - Number(a.revenue || 0));
+}
+
+function paygPlatformSummary(monetization, platformFilter = PAYG_PLATFORM_FILTER) {
+  if (platformFilter === "all") return familyMetric(monetization, "pay_as_you_go");
+  return paygPlatformRows(monetization).find((row) => row.platform_group === platformFilter) || {
+    platform_group: platformFilter,
+    platform_label: paygPlatformDisplay(platformFilter),
+    revenue: 0,
+    payers: 0,
+    transactions: 0,
+    avg_transaction: 0,
+    avg_revenue_per_payer: 0,
+    family_revenue_share_pct: 0,
+    family_payer_share_pct: 0,
+    family_transaction_share_pct: 0,
+  };
+}
+
+function paygPlatformDailyRows(platformFilter = PAYG_PLATFORM_FILTER) {
+  const rows = dailyPeriodDashboards().flatMap(({ date, data }) => paygPlatformRows(data.monetization || {}).map((row) => ({
+    day: date,
+    ...row,
+  })));
+  return platformFilter === "all" ? rows : rows.filter((row) => row.platform_group === platformFilter);
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -1012,7 +1084,7 @@ function upsertDailyPeriod(day, period) {
 async function ensureDailyPeriod(day) {
   if (hasDailyPeriod(day)) return true;
   if (!LIVE_API_STATUS?.live_daily_api) {
-    setDateStatus("Selected date is outside the published reporting range");
+    setDateStatus(LIVE_API_STATUS?.live_daily_api_reason || "Live daily fetch is not available right now.");
     return false;
   }
   setDateStatus(`Loading ${shortDate(day)}...`);
@@ -1677,6 +1749,13 @@ function renderMonetization(data) {
   const paygMergedRows = m.payg_merged || [];
   const paygMerged = paygMergedRows[0] || familyMetric(m, "pay_as_you_go");
   const paygAmounts = m.payg_amount_breakdown || [];
+  const paygPlatformSplit = paygPlatformRows(m);
+  const paygPlatformOptions = paygPlatformSplit.map((row) => row.platform_group);
+  if (PAYG_PLATFORM_FILTER !== "all" && !paygPlatformOptions.includes(PAYG_PLATFORM_FILTER)) {
+    PAYG_PLATFORM_FILTER = "all";
+  }
+  const paygScope = paygPlatformSummary(m, PAYG_PLATFORM_FILTER);
+  const paygScopeLabel = PAYG_PLATFORM_FILTER === "all" ? "All platforms" : paygScope.platform_label;
   const configCohortRows = m.config_funnel_by_user_cohort || [];
   const topPlan = subscriptionPlans[0] || {};
   const topWalletAmount = paygAmounts[0] || {};
@@ -1774,11 +1853,30 @@ function renderMonetization(data) {
     actionCard("Best Revenue Plan", bestRevenuePlan.plan_code || "-", `${money(bestRevenuePlan.revenue)} | ${number(bestRevenuePlan.payers)} payers`, "neutral"),
   ].join("");
 
+  document.getElementById("paygPlatformControls").innerHTML = `
+    <label>Platform
+      <select id="paygPlatformSelect">
+        <option value="all"${PAYG_PLATFORM_FILTER === "all" ? " selected" : ""}>All PayG</option>
+        ${paygPlatformSplit.map((row) => `<option value="${escapeHtml(row.platform_group)}"${PAYG_PLATFORM_FILTER === row.platform_group ? " selected" : ""}>${escapeHtml(row.platform_label)}</option>`).join("")}
+      </select>
+    </label>
+  `;
+  document.getElementById("paygPlatformSelect")?.addEventListener("change", (event) => {
+    PAYG_PLATFORM_FILTER = event.target.value;
+    renderMonetization(selectedData());
+  });
+
   document.getElementById("paygFocusCards").innerHTML = [
-    card("PayG Revenue", money(paygMerged.revenue), `${pct(paygMerged.revenue_share_pct)} of total | ${trend(paygMerged.revenue_growth_vs_prior_7_pct)} vs prev`),
-    card("PayG Payers", number(paygMerged.payers), `${number(paygMerged.transactions)} transactions`),
-    card("PayG Avg Transaction", money(paygMerged.avg_transaction), `ARPP ${money(paygMerged.avg_revenue_per_payer)}`),
-    card("Top Wallet Amount", optionalMoney(topWalletAmount.amount), `${money(topWalletAmount.revenue)} | ${number(topWalletAmount.payers)} payers`),
+    card("PayG Revenue", money(paygScope.revenue), PAYG_PLATFORM_FILTER === "all"
+      ? `${pct(paygMerged.revenue_share_pct)} of total | ${trend(paygMerged.revenue_growth_vs_prior_7_pct)} vs prev`
+      : `${paygScopeLabel} | ${pct(paygScope.family_revenue_share_pct)} of PayG`),
+    card("PayG Payers", number(paygScope.payers), PAYG_PLATFORM_FILTER === "all"
+      ? `${number(paygMerged.transactions)} transactions`
+      : `${number(paygScope.transactions)} transactions | ${pct(paygScope.family_payer_share_pct)} of PayG payers`),
+    card("PayG Avg Transaction", money(paygScope.avg_transaction), `ARPP ${money(paygScope.avg_revenue_per_payer)}`),
+    PAYG_PLATFORM_FILTER === "all"
+      ? card("Top Wallet Amount", optionalMoney(topWalletAmount.amount), `${money(topWalletAmount.revenue)} | ${number(topWalletAmount.payers)} payers`)
+      : card("Platform Revenue Share", pct(paygScope.family_revenue_share_pct), `${pct(paygScope.family_transaction_share_pct)} of PayG transactions`),
   ].join("");
 
   chart("mainPackBuyerChart", "line", mainPackDaily, {
@@ -2037,7 +2135,9 @@ function renderMonetization(data) {
     { key: "d0_cancel_pct", label: "D0 Cancel %", format: pct },
   ], 12);
 
-  const paygDailyRows = (mTrend.daily || m.daily || []).filter((row) => row.family === "pay_as_you_go");
+  const paygDailyRows = PAYG_PLATFORM_FILTER === "all"
+    ? (mTrend.daily || m.daily || []).filter((row) => row.family === "pay_as_you_go")
+    : paygPlatformDailyRows(PAYG_PLATFORM_FILTER);
   chart("paygDailyChart", "line", {
     labels: paygDailyRows.map((r) => shortDate(r.day)),
     datasets: [
@@ -2045,7 +2145,7 @@ function renderMonetization(data) {
       { label: "PayG payers", data: paygDailyRows.map((r) => r.payers), borderColor: COLORS.gold, yAxisID: "y1", tension: 0.25 },
     ],
   }, {
-    plugins: { title: { display: true, text: `${chartLabel}: Merged Pay as You Go` }, legend: { position: "bottom" } },
+    plugins: { title: { display: true, text: `${chartLabel}: ${PAYG_PLATFORM_FILTER === "all" ? "Merged Pay as You Go" : `${paygScopeLabel} Pay as You Go`}` }, legend: { position: "bottom" } },
     scales: {
       x: { grid: { display: false } },
       y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Revenue" } },
@@ -2061,7 +2161,7 @@ function renderMonetization(data) {
       { label: "Payers", data: paygAmountRows.map((row) => row.payers), backgroundColor: COLORS.gold, yAxisID: "y1" },
     ],
   }, {
-    plugins: { title: { display: true, text: "PayG Wallet Amount Mix" }, legend: { position: "bottom" } },
+    plugins: { title: { display: true, text: `PayG Wallet Amount Mix${PAYG_PLATFORM_FILTER === "all" ? "" : " (all platforms)"}` }, legend: { position: "bottom" } },
     scales: {
       x: { grid: { display: false } },
       y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" }, title: { display: true, text: "Revenue" } },
@@ -2174,15 +2274,12 @@ function renderMonetization(data) {
     { key: "minutes_per_user", label: "Min/User", format: (v) => Number(v || 0).toFixed(2) },
   ], 10);
 
-  table("paygMergedTable", paygMergedRows, [
-    { key: "selection", label: "Selection", text: true },
+  table("paygPlatformTable", paygPlatformSplit, [
+    { key: "platform_label", label: "Platform", text: true },
     { key: "revenue", label: "Revenue", format: money },
-    { key: "revenue_share_pct", label: "Revenue Share", format: pct },
-    { key: "revenue_growth_vs_prior_7_pct", label: "Rev Growth", format: pct },
+    { key: "family_revenue_share_pct", label: "PayG Share", format: pct },
     { key: "payers", label: "Payers", format: number },
-    { key: "payer_share_pct", label: "Payer Share", format: pct },
     { key: "transactions", label: "Txns", format: number },
-    { key: "transaction_share_pct", label: "Txn Share", format: pct },
     { key: "avg_transaction", label: "Avg Txn", format: money },
     { key: "avg_revenue_per_payer", label: "ARPP", format: money },
   ], 5);
@@ -3442,34 +3539,40 @@ function renderEngagement(data) {
 function renderMetricCoverage(data) {
   const coverage = data.metric_coverage || { rows: [], summary: [] };
   const rows = coverage.rows || [];
-  const summary = coverage.summary || [];
-  const getStatusCount = (status) => summary.find((row) => row.status === status)?.metrics || 0;
-  const partialRows = rows.filter((row) => row.status !== "Available");
-  const avgCoverage = rows.length
-    ? rows.reduce((sum, row) => sum + Number(row.coverage_pct || 0), 0) / rows.length
+  const marketingRows = marketingCoverageRows(rows);
+  const displayRows = marketingRows.length ? marketingRows : rows;
+  const summary = displayRows.reduce((acc, row) => {
+    acc[row.status] = (acc[row.status] || 0) + 1;
+    return acc;
+  }, {});
+  const statuses = Object.keys(summary);
+  const getStatusCount = (status) => summary[status] || 0;
+  const partialRows = marketingRows.filter((row) => row.status !== "Available");
+  const avgCoverage = displayRows.length
+    ? displayRows.reduce((sum, row) => sum + Number(row.coverage_pct || 0), 0) / displayRows.length
     : 0;
 
   document.getElementById("metricCoverageCards").innerHTML = [
-    card("Available Metrics", number(getStatusCount("Available")), "Fully calculable from current sources"),
-    card("Partial Metrics", number(getStatusCount("Partial")), "Usable but with source/data gaps"),
-    card("Missing Metrics", number(getStatusCount("Missing source") + getStatusCount("Missing denominator")), "Need one more source or denominator"),
-    card("Avg Coverage", pct(avgCoverage), "Across tracked metric families"),
+    card("Marketing Checks", number(displayRows.length), "Only marketing-related coverage is shown here"),
+    card("Available", number(getStatusCount("Available")), "Fully calculable from current sources"),
+    card("Open Gaps", number(getStatusCount("Partial") + getStatusCount("Missing source") + getStatusCount("Missing denominator")), "Only marketing gaps are shown"),
+    card("Avg Coverage", pct(avgCoverage), "Across marketing coverage checks"),
   ].join("");
 
   chart("metricCoverageChart", "bar", {
-    labels: summary.map((row) => row.status),
-    datasets: [{ label: "Metric count", data: summary.map((row) => row.metrics), backgroundColor: summary.map((row) => {
-      if (row.status === "Available") return COLORS.green;
-      if (row.status === "Partial") return COLORS.gold;
+    labels: statuses,
+    datasets: [{ label: "Metric count", data: statuses.map((status) => summary[status]), backgroundColor: statuses.map((status) => {
+      if (status === "Available") return COLORS.green;
+      if (status === "Partial") return COLORS.gold;
       return COLORS.rose;
     }) }],
   }, {
     indexAxis: "y",
-    plugins: { title: { display: true, text: "Data Quality Status" }, legend: { display: false } },
+    plugins: { title: { display: true, text: "Marketing Data Quality Status" }, legend: { display: false } },
     scales: { x: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.10)" } }, y: { grid: { display: false } } },
   });
 
-  table("metricCoverageTable", partialRows.length ? partialRows : rows, [
+  table("metricCoverageTable", partialRows.length ? partialRows : marketingRows, [
     { key: "area", label: "Area", text: true },
     { key: "metric", label: "Metric", text: true },
     { key: "status", label: "Status", text: true },
@@ -3636,9 +3739,10 @@ function setupQueryAssistant() {
     runButton.disabled = true;
     input.disabled = true;
     if (note) {
-      note.textContent = LIVE_API_STATUS
-        ? "Custom query needs ANTHROPIC_API_KEY set on the dashboard API service. Connect the API service to enable it."
-        : "Custom query needs the live dashboard API service. Run scripts/serve_dashboard.py locally or deploy render.yaml, then set the API base URL in assets/config.js.";
+      note.textContent = LIVE_API_STATUS?.query_reason
+        || (LIVE_API_STATUS
+          ? "Custom query is not available right now."
+          : "Custom query needs the live dashboard API service. Run scripts/serve_dashboard.py locally or deploy render.yaml, then set the API base URL in assets/config.js.");
     }
     return;
   }
@@ -3952,6 +4056,10 @@ function businessSourceNotes(notes = []) {
   return [...filtered, ...replacements];
 }
 
+function marketingCoverageRows(rows = []) {
+  return (rows || []).filter((row) => /marketing|campaign/i.test(`${row.area || ""} ${row.metric || ""}`));
+}
+
 function detailMetric(label, value, sub = "") {
   return `
     <article class="detail-metric">
@@ -4199,14 +4307,25 @@ function subscriptionRetentionDetail(data) {
 
 function paygDetail(data) {
   const m = data.monetization || {};
-  const payg = familyMetric(m, "pay_as_you_go");
+  const payg = paygPlatformSummary(m, PAYG_PLATFORM_FILTER);
+  const paygPlatforms = paygPlatformRows(m);
+  const filtered = PAYG_PLATFORM_FILTER !== "all";
   return `
+    ${filtered ? detailNote("Active platform filter", `${payg.platform_label} is selected in the PayG tab. Revenue cards and trend are scoped to this platform; wallet amount mix stays combined.`) : ""}
     ${detailMetrics([
-      detailMetric("PayG Revenue", money(payg.revenue), `${pct(payg.revenue_share_pct)} of total revenue`),
-      detailMetric("PayG Payers", number(payg.payers), `${trend(payg.revenue_growth_vs_prior_7_pct)} revenue growth`),
+      detailMetric("PayG Revenue", money(payg.revenue), filtered ? `${pct(payg.family_revenue_share_pct)} of PayG revenue` : `${pct(payg.revenue_share_pct)} of total revenue`),
+      detailMetric("PayG Payers", number(payg.payers), filtered ? `${pct(payg.family_payer_share_pct)} of PayG payers` : `${trend(payg.revenue_growth_vs_prior_7_pct)} revenue growth`),
       detailMetric("Transactions", number(payg.transactions), `${money(payg.avg_transaction)} avg transaction`),
       detailMetric("ARPP", money(payg.avg_revenue_per_payer), "Average revenue per PayG payer"),
     ])}
+    ${detailTable("PayG Platform Split", paygPlatforms, [
+      { key: "platform_label", label: "Platform", text: true },
+      { key: "revenue", label: "Revenue", format: money },
+      { key: "family_revenue_share_pct", label: "PayG Share", format: pct },
+      { key: "payers", label: "Payers", format: number },
+      { key: "transactions", label: "Txns", format: number },
+      { key: "avg_transaction", label: "Avg Txn", format: money },
+    ], 6)}
     ${newOldRevenueSplitTable(m, "pay_as_you_go", "New vs Old PayG Split")}
     ${detailTable("Amount Distribution", topRows(m.payg_amount_breakdown, "revenue", 8), [
       { key: "amount", label: "Amount", format: money },
@@ -4382,13 +4501,13 @@ function marketingDetail(data) {
 }
 
 function dataQualityDetail(data) {
-  const rows = data.metric_coverage?.rows || [];
+  const rows = marketingCoverageRows(data.metric_coverage?.rows || []);
   const ready = rows.filter((row) => row.status === "Available").length;
   return `
     ${detailMetrics([
-      detailMetric("Ready Families", `${number(ready)}/${number(rows.length)}`, "Metric families available today"),
-      detailMetric("Partial or Missing", number(rows.length - ready), "Needs deeper source coverage"),
-      detailMetric("Avg Coverage", pct(rows.length ? rows.reduce((sum, row) => sum + Number(row.coverage_pct || 0), 0) / rows.length : 0), "Across tracked metrics"),
+      detailMetric("Ready Checks", `${number(ready)}/${number(rows.length)}`, "Only marketing coverage checks are shown here"),
+      detailMetric("Open Gaps", number(rows.length - ready), "Marketing data that still needs one more source"),
+      detailMetric("Avg Coverage", pct(rows.length ? rows.reduce((sum, row) => sum + Number(row.coverage_pct || 0), 0) / rows.length : 0), "Across marketing checks"),
     ])}
     ${detailTable("Open Measurement Gaps", rows.filter((row) => row.status !== "Available"), [
       { key: "area", label: "Area", text: true },
@@ -4482,7 +4601,10 @@ function renderDashboard() {
     ? new Date(rootMeta.generated_at_ist).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
     : "";
   const freshnessText = generatedAt ? `Updated ${generatedAt} IST` : "Updated today";
-  const liveBadge = LIVE_API_STATUS?.auto_refresh ? ` · Live` : (LIVE_API_STATUS ? " · Live API" : "");
+  const refreshIssue = LIVE_API_STATUS?.auto_refresh_state && !LIVE_API_STATUS.auto_refresh_state.healthy;
+  const liveBadge = refreshIssue
+    ? " · Refresh issue"
+    : LIVE_API_STATUS?.auto_refresh ? " · Live" : (LIVE_API_STATUS ? " · Live API" : "");
   document.getElementById("freshness").textContent = `${freshnessText}${liveBadge}`;
   renderDashboardGuide(data);
   renderSevenDayTrends(data);

@@ -18,13 +18,61 @@ from build_dashboard_data import (
     IST,
     OUTPUT_PATH,
     build_daily_api_payload,
+    load_env,
 )
 
 API_TOKEN = os.environ.get("DASHBOARD_API_TOKEN", "").strip()
-QUERY_ENABLED = bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"))
 AUTO_REFRESH = os.environ.get("DASHBOARD_AUTO_REFRESH", "1").lower() in {"1", "true", "yes"}
 AUTO_REFRESH_INTERVAL_S = int(os.environ.get("DASHBOARD_AUTO_REFRESH_INTERVAL_S", "1800"))
 MAX_QUERY_BODY = 8000
+REFRESH_STATE = {
+    "running": False,
+    "last_attempt_at": None,
+    "last_success_at": None,
+    "last_failure_at": None,
+    "last_error": None,
+    "last_exit_code": None,
+}
+
+
+def ist_now_iso() -> str:
+    return datetime.now(IST).isoformat(timespec="seconds")
+
+
+def tail_text(text: str | None, lines: int = 8) -> str | None:
+    if not text:
+        return None
+    cleaned = [line.strip() for line in str(text).splitlines() if line.strip()]
+    if not cleaned:
+        return None
+    return " | ".join(cleaned[-lines:])
+
+
+def live_daily_api_capability() -> tuple[bool, str | None]:
+    try:
+        load_env()
+    except Exception as exc:
+        return False, str(exc)
+    return True, None
+
+
+def query_api_capability() -> tuple[bool, str | None]:
+    if not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")):
+        return False, "ANTHROPIC_API_KEY is not configured on the API service."
+    live_ready, live_reason = live_daily_api_capability()
+    if not live_ready:
+        return False, live_reason
+    return True, None
+
+
+def refresh_status_snapshot() -> dict:
+    latest = latest_complete_ist_day().isoformat()
+    loaded = dashboard_latest_loaded_day()
+    stale = loaded is None or loaded < latest
+    snapshot = dict(REFRESH_STATE)
+    snapshot["stale"] = stale
+    snapshot["healthy"] = not stale and not snapshot["running"] and snapshot.get("last_exit_code", 0) in (None, 0)
+    return snapshot
 
 
 def latest_complete_ist_day() -> date:
@@ -113,18 +161,23 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
 
     # ---- endpoints --------------------------------------------------------
     def handle_status_api(self) -> None:
+        live_ready, live_reason = live_daily_api_capability()
+        query_ready, query_reason = query_api_capability()
         self.write_json(
             HTTPStatus.OK,
             {
                 "status": "ok",
-                "live_daily_api": True,
-                "query_enabled": QUERY_ENABLED,
+                "live_daily_api": live_ready,
+                "live_daily_api_reason": live_reason,
+                "query_enabled": query_ready,
+                "query_reason": query_reason,
                 "auth_required": bool(API_TOKEN),
                 "auto_refresh": AUTO_REFRESH,
+                "auto_refresh_state": refresh_status_snapshot(),
                 "latest_complete_day": latest_complete_ist_day().isoformat(),
                 "dashboard_latest_day": dashboard_latest_loaded_day(),
                 "timezone": "Asia/Kolkata",
-                "generated_at_ist": datetime.now(IST).isoformat(timespec="seconds"),
+                "generated_at_ist": ist_now_iso(),
             },
         )
 
@@ -145,17 +198,18 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
                 {
                     "error": "Could not fetch live dashboard data for this date.",
                     "detail": str(exc),
-                    "generated_at": datetime.now().isoformat(timespec="seconds"),
+                    "generated_at": ist_now_iso(),
                 },
             )
         else:
             self.write_json(HTTPStatus.OK, payload)
 
     def handle_query_api(self) -> None:
-        if not QUERY_ENABLED:
+        query_ready, query_reason = query_api_capability()
+        if not query_ready:
             self.write_json(
                 HTTPStatus.SERVICE_UNAVAILABLE,
-                {"error": "Custom query is disabled. Set ANTHROPIC_API_KEY on the API service to enable it."},
+                {"error": query_reason or "Custom query is disabled."},
             )
             return
         length = int(self.headers.get("Content-Length", "0") or "0")
@@ -188,15 +242,33 @@ _refresh_lock = threading.Lock()
 def _run_refresh() -> None:
     if not _refresh_lock.acquire(blocking=False):
         return  # a refresh is already running
+    REFRESH_STATE["running"] = True
+    REFRESH_STATE["last_attempt_at"] = ist_now_iso()
     try:
-        print(f"[auto-refresh] rebuilding dashboard data at {datetime.now(IST).isoformat(timespec='seconds')} IST")
-        subprocess.run(
+        print(f"[auto-refresh] rebuilding dashboard data at {ist_now_iso()} IST")
+        result = subprocess.run(
             [sys.executable, str(Path(__file__).resolve().parent / "build_dashboard_data.py")],
+            capture_output=True,
             check=False,
             cwd=str(DASHBOARD_ROOT.parent),
+            text=True,
         )
-        print("[auto-refresh] done")
+        REFRESH_STATE["last_exit_code"] = result.returncode
+        if result.returncode == 0:
+            REFRESH_STATE["last_success_at"] = ist_now_iso()
+            REFRESH_STATE["last_error"] = None
+            print("[auto-refresh] done")
+        else:
+            REFRESH_STATE["last_failure_at"] = ist_now_iso()
+            REFRESH_STATE["last_error"] = tail_text(result.stderr) or tail_text(result.stdout) or f"Refresh exited with code {result.returncode}."
+            print(f"[auto-refresh] failed: {REFRESH_STATE['last_error']}")
+    except Exception as exc:
+        REFRESH_STATE["last_failure_at"] = ist_now_iso()
+        REFRESH_STATE["last_exit_code"] = None
+        REFRESH_STATE["last_error"] = str(exc)
+        print(f"[auto-refresh] failed: {exc}")
     finally:
+        REFRESH_STATE["running"] = False
         _refresh_lock.release()
 
 
@@ -230,7 +302,8 @@ def main() -> None:
     print(f"Serving HiAstro dashboard at http://{args.host}:{args.port}")
     print("Live daily data endpoint:  GET  /api/dashboard?date=YYYY-MM-DD")
     print("Natural-language query:    POST /api/query  {\"question\": \"...\"}")
-    print(f"Custom query enabled: {QUERY_ENABLED} | auth required: {bool(API_TOKEN)} | auto-refresh: {AUTO_REFRESH}")
+    query_ready, _query_reason = query_api_capability()
+    print(f"Custom query enabled: {query_ready} | auth required: {bool(API_TOKEN)} | auto-refresh: {AUTO_REFRESH}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
